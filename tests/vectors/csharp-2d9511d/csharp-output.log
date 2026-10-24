@@ -1,0 +1,348 @@
+{
+  "@id": "QA",
+  "@context": "https://open.charging.cloud/contexts/wwcp/roamingNetwork/trustAnchor/v2",
+  "urls": [
+    "https://open.charging.cloud/RNs/QA"
+  ],
+  "keys": [
+    "81e6fc2093633659a0d260d49ca7f8d455b98fced10cc8b3a0c0d77ff554015d",
+    "92df55508434d6220584d5110f92c8c860914b1711079c08bf8e44a0469a8bb1",
+    "db7e1395c3a2c4316188315a0e87067a7bc255c9ec656499739542e355c35805"
+  ],
+  "name": {
+    "en": "Quality Assurance"
+  },
+  "description": {
+    "en": "The roaming network of the examples"
+  },
+  "minConsensus": 2
+}
+QR code: 511 characters, 334 bytes of CBOR
+WWCP/TA-2:B7LJ683VCBCACVCC$C6REF6B:IGE*VLSI8*6+EK%AC8 JPKVU$A48IBJQYGPMEK.ART0VY70F6BOPIFZA4WG83RHV05.QQ/1AHPG9C8M9*62TWJX9OIU8T-8VTHF6BUXRIL2.WO5 O%ECYA6T$1% 02TF1%A$*TDWCORENK8+$AX5BFVCBEC7%CYJCD/DIDAAEC-ED3EFFC8$QEVKE:.D  C6%E/VDOGGXF4MWEW9E0G7%:5I9E -DNPCGECD3D3/D+%5*VD$$E9:5D-98:54C8D68-3E7WEBAFB9FA9DIWENPEJ/5/3E1$C+%5 8D$KEZED:1DRPC34E.TCUPCG/DB$CLWE10684F98E0LEBECZEDV2D7$CK4F-KE/:56LE QEAC8NPC04E006$G66VCJQE*KEX9E EDG:DYJCK/D:K4+8DQ44S3EJ$D3/DM447$CK4F-KEN44:+CAWEDZCB$CBECP9E6$C$VDZEDSN8F/D1$C$QECOE
+https://open.charging.cloud/RNs/QA?keys=81e6fc2093633659a0d260d49ca7f8d455b98fced10cc8b3a0c0d77ff554015d,92df55508434d6220584d5110f92c8c860914b1711079c08bf8e44a0469a8bb1,db7e1395c3a2c4316188315a0e87067a7bc255c9ec656499739542e355c35805&minConsensus=2
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:b5b90c2be3ab1b9b7622a66d01fbd6058bb07ad7ec63f700f509da453f5e739e
+cbor          cbor:sha256:hex:45af1677d80e626142cbd0f910677c509d911b74eb862f7f1b11151eb198320b
+effectiveTree effectiveTree:sha256:hex:7d2a345e4b4dbde05dc57e269726a3ec6c327085cc53cfd7a17d3289c7bb18d1
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 0, commit 89d7e3184f8a5e1b167242fc71e8c1b8dd17297bc79f0a1ccd6fc83560e6ceea, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:b5b90c2be3ab1b9b7622a66d01fbd6058bb07ad7ec63f700f509da453f5e739e, cbor:sha256:hex:45af1677d80e626142cbd0f910677c509d911b74eb862f7f1b11151eb198320b
+
+
+Sent by DE*GEF, signed by its 2 identity keys; missing: Change 0: Add of the ChargingStationOperator 'DE*GEF' needs signatures by signing keys of 2 holders of the roaming network operator 'OCC'!
+Signed by AlphaOrg alone: Refused, Change 0: Add of the ChargingStationOperator 'DE*GEF' needs signatures by signing keys of 2 holders of the roaming network operator 'OCC'!
+Signed by AlphaOrg and BetaOrg: Committed, revision 1, commit 0202c6278e4d6bc58c0c5ec4800617b0f99eb3bfb5d2063503193862194e61bc
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:c72833f4cacc547e84390eafae4cf1d04d58e5be4a0757526be6ddf51212d5c7
+cbor          cbor:sha256:hex:4ebc984024ef133c43f657f1411bbabf69e7e4384136fc25798cbd942872991c
+effectiveTree effectiveTree:sha256:hex:4b6d5960f117161a05feb8be3622ebe7def998b458f1d92b50252fef8d26453c
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 1, commit 0202c6278e4d6bc58c0c5ec4800617b0f99eb3bfb5d2063503193862194e61bc, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:c72833f4cacc547e84390eafae4cf1d04d58e5be4a0757526be6ddf51212d5c7, cbor:sha256:hex:4ebc984024ef133c43f657f1411bbabf69e7e4384136fc25798cbd942872991c
+
+DE*GEF is a member of QA with its keys:
+  signing key  27b8a08208eb4695032080f00c47862433114f1dc7931ae35d0591675a96129e for infrastructure
+  signing key  318c7157e1a72c01a61848a0dfe6835ae2a4dca7bb9dc5987db46b98665ca868 for party
+  signing key  dd96810e7afc8df0a87489ff9c23d0026c7c1cba61494ba6d26ebe05d0a6b0c7 for priceStatements, tariffs
+  identity key 734bd2cdb656ec6e9b0fe4b1245a6c53b9a8110ed68c729f4031e97c2f592abb
+  identity key bee43115558e795f2410598f31218be17db951bacaf2a3f7bba66c53319e1629
+
+
+Committed, revision 2: The templates of the DC and the AC stations and EVSEs
+Signed by its tariffs key: Refused, Change 0: Add of the ChargingPool 'DE*GEF*P1' needs a signature by a signing key of the ChargingStationOperator 'DE*GEF' that may sign 'infrastructure'!
+Signed by AlphaOrg of OCC: Refused, Change 0: Add of the ChargingPool 'DE*GEF*P1' needs a signature by a signing key of the ChargingStationOperator 'DE*GEF'!
+Committed, revision 3: Jena Paradies, a DC and an AC station
+Committed, revision 4: Jena Nord, a DC and an AC station
+Committed, revision 5: The DC and the AC charging stations
+Committed, revision 6: The DC and the AC EVSEs
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:7a78d834c169f5c9c4fe9bbf7083e20bd86595044d2693603ee8beda5132f84b
+cbor          cbor:sha256:hex:7a00e7e14eca6c52d3d214295e811d063275bc41962e9c04fe3f8ee608d10b69
+effectiveTree effectiveTree:sha256:hex:943cc05a10be5fcce4b07c6ffd78fd723b3656afcca66839c01950511f3575ef
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 6, commit 87c9d30a3e35d4174a8e0b301f7998a52474e4852418524954f4db970c0539d0, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:7a78d834c169f5c9c4fe9bbf7083e20bd86595044d2693603ee8beda5132f84b, cbor:sha256:hex:7a00e7e14eca6c52d3d214295e811d063275bc41962e9c04fe3f8ee608d10b69
+
+DE*GEF*P1  Jena Paradies
+  DE*GEF*S1  300 kW  (templates DE*GEF*ST_DC)
+    DE*GEF*E1*1  DC 150 kW  IEC_62196_T2_COMBO CABLE  (templates DE*GEF*ET_DC)
+    DE*GEF*E1*2  DC 150 kW  IEC_62196_T2_COMBO CABLE  (templates DE*GEF*ET_DC)
+  DE*GEF*S2  44 kW  (templates DE*GEF*ST_AC)
+    DE*GEF*E2*1  AC_ThreePhases 22 kW  IEC_62196_T2 SOCKET  (templates DE*GEF*ET_AC)
+    DE*GEF*E2*2  AC_ThreePhases 22 kW  IEC_62196_T2 SOCKET  (templates DE*GEF*ET_AC)
+DE*GEF*P2  Jena Nord
+  DE*GEF*S3  300 kW  (templates DE*GEF*ST_DC)
+    DE*GEF*E3*1  DC 150 kW  IEC_62196_T2_COMBO CABLE  (templates DE*GEF*ET_DC)
+    DE*GEF*E3*2  DC 150 kW  IEC_62196_T2_COMBO CABLE  (templates DE*GEF*ET_DC)
+  DE*GEF*S4  44 kW  (templates DE*GEF*ST_AC)
+    DE*GEF*E4*1  AC_ThreePhases 22 kW  IEC_62196_T2 SOCKET  (templates DE*GEF*ET_AC)
+    DE*GEF*E4*2  AC_ThreePhases 22 kW  IEC_62196_T2 SOCKET  (templates DE*GEF*ET_AC)
+
+DE*GEF*SG_AC  DE*GEF*S2, DE*GEF*S4
+DE*GEF*SG_DC  DE*GEF*S1, DE*GEF*S3
+DE*GEF*EG_AC  DE*GEF*E2*1, DE*GEF*E2*2, DE*GEF*E4*1, DE*GEF*E4*2
+DE*GEF*EG_DC  DE*GEF*E1*1, DE*GEF*E1*2, DE*GEF*E3*1, DE*GEF*E3*2
+
+
+Checkpoint 0 of revision 6: 7 commit(s), 3 signatures, 38c1d4bbb34bc699f8dcf9a425475406b034b5cb721d39b732251eb60337e861
+The commit of revision 3 is the commit 3 of the 7 of checkpoint 0
+
+Committed, revision 7: Jena Lobeda, a DC and an AC station
+Committed, revision 8: Jena Winzerla, a DC and an AC station
+The proof of revision 8: No checkpoint here includes the commit 'aa98d898326f1abab1d872e65922a77623db46601a8f77afbb606c9a8f2eb538' yet!
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:4e660c64525213de5eb2a7ff4a7d12b786352c6e8d9f12ac4fdf806948ef0b05
+cbor          cbor:sha256:hex:414527c3d38f915f48c0ac08763f2c5e4a78c67bc02203922675e6dd592ef14e
+effectiveTree effectiveTree:sha256:hex:3acc980b33acb91ec9bef157200ceaea4602bc73b300127aa2d3fa119a1a9fb5
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 8, commit aa98d898326f1abab1d872e65922a77623db46601a8f77afbb606c9a8f2eb538, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:4e660c64525213de5eb2a7ff4a7d12b786352c6e8d9f12ac4fdf806948ef0b05, cbor:sha256:hex:414527c3d38f915f48c0ac08763f2c5e4a78c67bc02203922675e6dd592ef14e
+Checkpoint 0 of epoch 1: revision 6, 7 commit(s) since the genesis, signed by AlphaOrg, BetaOrg, GammaOrg
+Joined at revision 6, the checkpoint's: the same; checkpoints: 1
+Appended revision 7: Jena Lobeda, a DC and an AC station
+Appended revision 8: Jena Winzerla, a DC and an AC station
+The head of the joined history and the published commit: the same
+
+The proof of the commit of revision 3 in checkpoint 0: valid
+A checkpoint of another revision: The checkpoint identification '38c1d4bbb34bc699f8dcf9a425475406b034b5cb721d39b732251eb60337e861' is not the one of its content, '34a3eb227337ede5d83687198dd90393b63fda4012b4d98da2441133bad9f237'!
+A version of the checkpoint changed: Invalid snapshot of the checkpoint: Invalid roaming network of the snapshot: The ETags of the roaming network 'QA' do not match its content: The JSON ETag (SHA256) differs!
+A proof of another position: The proof does not lead to the commits of the checkpoint!
+
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  44 kW: DE*GEF*E6*1 AC_ThreePhases 22 kW, DE*GEF*E6*2 AC_ThreePhases 22 kW
+DE*GEF*P4  Jena Winzerla
+  DE*GEF*S7  300 kW: DE*GEF*E7*1 DC 150 kW, DE*GEF*E7*2 DC 150 kW
+  DE*GEF*S8  44 kW: DE*GEF*E8*1 AC_ThreePhases 22 kW, DE*GEF*E8*2 AC_ThreePhases 22 kW
+
+
+Checkpoint 1 of revision 8: 2 commit(s), 3 signatures, 0526089b950c12f3907b54636bd4516e36e4e913abbb481a40388d5948b9750b
+Committed, revision 9: The AC stations of Jena Lobeda and Jena Winzerla: 22 kW, two EVSEs of 11 kW
+Checkpoint 2 of revision 9: 1 commit(s), 3 signatures, df9d6417ecd0bd911dd7383786660d5a76d2a9ef29158c8c65bec21de1cd0df5
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:1c401999abfa2e081bbf0ef53e46231bf691514403ddd10ac90d85018fcc7c1c
+cbor          cbor:sha256:hex:ba7770b33ffee3900a65a5106df1f8a45738142dbc4c5e013a3938b6746f853f
+effectiveTree effectiveTree:sha256:hex:76d85a863146d837ca203885bc618a8a94ce88e3c1d5d7045b425ba14a7caf09
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 9, commit a5d4fda03e5a47252d09ab7a0fbc30ee4c363800306292936cdc10466817874f, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:1c401999abfa2e081bbf0ef53e46231bf691514403ddd10ac90d85018fcc7c1c, cbor:sha256:hex:ba7770b33ffee3900a65a5106df1f8a45738142dbc4c5e013a3938b6746f853f
+Checkpoint 0 of epoch 1: revision 6, 7 commit(s) since the genesis, signed by AlphaOrg, BetaOrg, GammaOrg
+Checkpoint 1 of epoch 1: revision 8, 2 commit(s) since checkpoint 38c1d4bb…, signed by AlphaOrg, BetaOrg, GammaOrg
+Checkpoint 2 of epoch 1: revision 9, 1 commit(s) since checkpoint 0526089b…, signed by AlphaOrg, BetaOrg, GammaOrg
+One line: 0 (revision 6) <- 1 (revision 8) <- 2 (revision 9)
+
+Revision 6, checkpoint 0:
+no pool 3 or 4 yet
+Appended revision 7: Jena Lobeda, a DC and an AC station
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  44 kW: DE*GEF*E6*1 AC_ThreePhases 22 kW, DE*GEF*E6*2 AC_ThreePhases 22 kW
+Appended revision 8: Jena Winzerla, a DC and an AC station
+Revision 8, checkpoint 1, its ETags and those of the version reached: the same
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  44 kW: DE*GEF*E6*1 AC_ThreePhases 22 kW, DE*GEF*E6*2 AC_ThreePhases 22 kW
+DE*GEF*P4  Jena Winzerla
+  DE*GEF*S7  300 kW: DE*GEF*E7*1 DC 150 kW, DE*GEF*E7*2 DC 150 kW
+  DE*GEF*S8  44 kW: DE*GEF*E8*1 AC_ThreePhases 22 kW, DE*GEF*E8*2 AC_ThreePhases 22 kW
+Appended revision 9: The AC stations of Jena Lobeda and Jena Winzerla: 22 kW, two EVSEs of 11 kW
+Revision 9, checkpoint 2, its ETags and those of the version reached: the same
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  22 kW: DE*GEF*E6*1 AC_ThreePhases 11 kW, DE*GEF*E6*2 AC_ThreePhases 11 kW
+DE*GEF*P4  Jena Winzerla
+  DE*GEF*S7  300 kW: DE*GEF*E7*1 DC 150 kW, DE*GEF*E7*2 DC 150 kW
+  DE*GEF*S8  22 kW: DE*GEF*E8*1 AC_ThreePhases 11 kW, DE*GEF*E8*2 AC_ThreePhases 11 kW
+Checkpoints taken: 3
+
+Joined from checkpoint 1, revision 8, and the version reached commit by commit: the same
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  44 kW: DE*GEF*E6*1 AC_ThreePhases 22 kW, DE*GEF*E6*2 AC_ThreePhases 22 kW
+DE*GEF*P4  Jena Winzerla
+  DE*GEF*S7  300 kW: DE*GEF*E7*1 DC 150 kW, DE*GEF*E7*2 DC 150 kW
+  DE*GEF*S8  44 kW: DE*GEF*E8*1 AC_ThreePhases 22 kW, DE*GEF*E8*2 AC_ThreePhases 22 kW
+Joined from checkpoint 2, revision 9, and the version reached commit by commit: the same
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  22 kW: DE*GEF*E6*1 AC_ThreePhases 11 kW, DE*GEF*E6*2 AC_ThreePhases 11 kW
+DE*GEF*P4  Jena Winzerla
+  DE*GEF*S7  300 kW: DE*GEF*E7*1 DC 150 kW, DE*GEF*E7*2 DC 150 kW
+  DE*GEF*S8  22 kW: DE*GEF*E8*1 AC_ThreePhases 11 kW, DE*GEF*E8*2 AC_ThreePhases 11 kW
+
+The proof of revision 3 in checkpoint 0: valid
+The proof of revision 7 in checkpoint 1: valid
+The proof of revision 9 in checkpoint 2: valid
+The proof of revision 9 in checkpoint 1: The proof is for the checkpoint 'df9d6417ecd0bd911dd7383786660d5a76d2a9ef29158c8c65bec21de1cd0df5', not for '0526089b950c12f3907b54636bd4516e36e4e913abbb481a40388d5948b9750b'!
+Checkpoint 2 without checkpoint 1: The checkpoint does not follow the latest checkpoint '38c1d4bbb34bc699f8dcf9a425475406b034b5cb721d39b732251eb60337e861' of the sequence 0 here!
+
+
+calibration.example: the genesis and 9 commits checked, 3 checkpoints taken
+calibration.example signs checkpoint 0
+calibration.example signs checkpoint 1
+calibration.example signs checkpoint 2
+association.example: the genesis and 9 commits checked, 3 checkpoints taken
+association.example signs checkpoint 0
+association.example signs checkpoint 1
+association.example signs checkpoint 2
+
+Checkpoint 0, 38c1d4bb…: 2 signatures more, 5 in all
+Checkpoint 1, 0526089b…: 2 signatures more, 5 in all
+Checkpoint 2, df9d6417…: 2 signatures more, 5 in all
+calibration.example: the genesis and 9 commits checked, 3 checkpoints taken
+Another checkpoint 2, cd0fd4f9…, at calibration.example: This history has another checkpoint of the sequence 2: two checkpoints of one sequence are a split view!
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:1c401999abfa2e081bbf0ef53e46231bf691514403ddd10ac90d85018fcc7c1c
+cbor          cbor:sha256:hex:ba7770b33ffee3900a65a5106df1f8a45738142dbc4c5e013a3938b6746f853f
+effectiveTree effectiveTree:sha256:hex:76d85a863146d837ca203885bc618a8a94ce88e3c1d5d7045b425ba14a7caf09
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 9, commit a5d4fda03e5a47252d09ab7a0fbc30ee4c363800306292936cdc10466817874f, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:1c401999abfa2e081bbf0ef53e46231bf691514403ddd10ac90d85018fcc7c1c, cbor:sha256:hex:ba7770b33ffee3900a65a5106df1f8a45738142dbc4c5e013a3938b6746f853f
+Checkpoint 0 of epoch 1: revision 6, 7 commit(s) since the genesis, signed by AlphaOrg, BetaOrg, GammaOrg
+  witnessed by calibration.example, association.example
+Checkpoint 1 of epoch 1: revision 8, 2 commit(s) since checkpoint 38c1d4bb…, signed by AlphaOrg, BetaOrg, GammaOrg
+  witnessed by calibration.example, association.example
+Checkpoint 2 of epoch 1: revision 9, 1 commit(s) since checkpoint 0526089b…, signed by AlphaOrg, BetaOrg, GammaOrg
+  witnessed by calibration.example, association.example
+
+Joined from checkpoint 2, signed by the roaming network operator and its witnesses: revision 9
+The proof of revision 7 in checkpoint 1, witnessed by calibration.example, association.example: valid
+
+Checkpoint 2 without its witnesses: The checkpoint of the snapshot can not be taken: The checkpoint 'df9d6417ecd0bd911dd7383786660d5a76d2a9ef29158c8c65bec21de1cd0df5' is not signed in the role 'witness'!
+A signature of calibration.example by another key: refused, not the key trusted for it
+
+
+Before: root revision 0, head revision 9, 3 checkpoints
+Compacted, keeping 3 revision(s) behind the head: root revision 6; segment 1 archives the revisions 0 to 6, 6 commit(s) after its root
+Compacted, keeping 1 revision(s) behind the head: root revision 8; segment 2 archives the revisions 6 to 8, 2 commit(s) after its root
+After: root revision 8, head revision 9, 3 checkpoints
+Commits since the genesis: The commit '89d7e3184f8a5e1b167242fc71e8c1b8dd17297bc79f0a1ccd6fc83560e6ceea' is unknown here; start from a new snapshot!
+The commit of revision 3 from the archive: Jena Paradies, a DC and an AC station; its proof, as before the compaction: the same
+Restarted: root revision 8, head revision 9, 3 checkpoints, the proof of revision 3 the same
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:1c401999abfa2e081bbf0ef53e46231bf691514403ddd10ac90d85018fcc7c1c
+cbor          cbor:sha256:hex:ba7770b33ffee3900a65a5106df1f8a45738142dbc4c5e013a3938b6746f853f
+effectiveTree effectiveTree:sha256:hex:76d85a863146d837ca203885bc618a8a94ce88e3c1d5d7045b425ba14a7caf09
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 9, commit a5d4fda03e5a47252d09ab7a0fbc30ee4c363800306292936cdc10466817874f, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:1c401999abfa2e081bbf0ef53e46231bf691514403ddd10ac90d85018fcc7c1c, cbor:sha256:hex:ba7770b33ffee3900a65a5106df1f8a45738142dbc4c5e013a3938b6746f853f
+Checkpoint 0 of epoch 1: revision 6, 7 commit(s) since the genesis, signed by AlphaOrg, BetaOrg, GammaOrg
+Checkpoint 1 of epoch 1: revision 8, 2 commit(s) since checkpoint 38c1d4bb…, signed by AlphaOrg, BetaOrg, GammaOrg
+Checkpoint 2 of epoch 1: revision 9, 1 commit(s) since checkpoint 0526089b…, signed by AlphaOrg, BetaOrg, GammaOrg
+
+Segments: 1: revisions 0 to 6, 2: revisions 6 to 8, one after the other
+
+Segment 1, from revision 0:
+Appended revision 1: DE*GEF, GraphDefined Charging Solutions
+Appended revision 2: The templates of the DC and the AC stations and EVSEs
+Appended revision 3: Jena Paradies, a DC and an AC station
+Appended revision 4: Jena Nord, a DC and an AC station
+Appended revision 5: The DC and the AC charging stations
+Appended revision 6: The DC and the AC EVSEs
+  its end and checkpoint 0: ETags the same, the root of its 7 commits the same
+Segment 2, from revision 6:
+Appended revision 7: Jena Lobeda, a DC and an AC station
+Appended revision 8: Jena Winzerla, a DC and an AC station
+  its end and checkpoint 1: ETags the same, the root of its 2 commits the same
+DE*GEF*P3  Jena Lobeda
+  DE*GEF*S5  300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW
+  DE*GEF*S6  44 kW: DE*GEF*E6*1 AC_ThreePhases 22 kW, DE*GEF*E6*2 AC_ThreePhases 22 kW
+DE*GEF*P4  Jena Winzerla
+  DE*GEF*S7  300 kW: DE*GEF*E7*1 DC 150 kW, DE*GEF*E7*2 DC 150 kW
+  DE*GEF*S8  44 kW: DE*GEF*E8*1 AC_ThreePhases 22 kW, DE*GEF*E8*2 AC_ThreePhases 22 kW
+
+The proof of revision 3, from the archive, in checkpoint 0: valid
+A segment with a commit changed: The commit identification '28122197fd5082e3559d73f2ef6b759ce2740e18fbcab1eb1ce29c6abbf54aea' is not the one of its content, '7d7f5e6c67388f8954866d4196b0c99753e947e104be400ab8bdf782dd33de51'!
+A segment with another base: Invalid roaming network of the snapshot: The ETags of the roaming network 'QA' do not match its content: The JSON ETag (SHA256) differs!
+
+
+Committed, revision 10: The AC and the DC charging tariffs
+Committed, revision 11: The EVSE templates name the tariffs
+Checkpoint 3 of revision 11: 2 commit(s), 3 signatures, 144e62a0dc043d24d91fc07bc2458cfe3df09cf526bdc7df239426fc22328a66
+
+DE*GEF*E1*1, 0.59 €/kWh, sequence 0: Taken
+DE*GEF*E1*2, 0.59 €/kWh, sequence 0: Taken
+DE*GEF*E1*1, 0.79 €/kWh, sequence 1: Taken
+DE*GEF*E1*1, sequence 0 again: Outdated, The EVSE 'DE*GEF*E1*1' has the price statement 1 already, a later one than 0!
+DE*GEF*E1*1, another statement of the sequence 1: Refused, The EVSE 'DE*GEF*E1*1' has another price statement 1: two statements of one sequence are a split view!
+DE*GEF*E1*2, signed by the infrastructure key: Refused, The signing key '27b8a08208eb4695032080f00c47862433114f1dc7931ae35d0591675a96129e' of the charging station operator 'DE*GEF' may not sign 'priceStatements', only 'infrastructure'!
+
+Committed, revision 12: The AC charging tariff: 0.52 €/kWh
+Checkpoint 4 of revision 12: 1 commit(s), 3 signatures, 3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579
+  naming 3 price statements, root fd6c3f1f…
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:a5240e8663bd75f907728ec96c5e583222f189c7212f67cc97d17917e698eaaf
+cbor          cbor:sha256:hex:0cc61074c9799ae44737921d490930aaee7628bdd905022b880707ceec081d09
+effectiveTree effectiveTree:sha256:hex:40dd962082b413105d4a9f884850b323e7e586d800d74f0a4b679c6488ddf58a
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 12, commit 12603bd6f73e223fb65782b08b99a28dfd577d60c7e816ece03da08479b2549c, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:a5240e8663bd75f907728ec96c5e583222f189c7212f67cc97d17917e698eaaf, cbor:sha256:hex:0cc61074c9799ae44737921d490930aaee7628bdd905022b880707ceec081d09
+Checkpoint 3 of epoch 1: revision 11, 2 commit(s) since checkpoint df9d6417…, signed by AlphaOrg, BetaOrg, GammaOrg
+Checkpoint 4 of epoch 1: revision 12, 1 commit(s) since checkpoint 144e62a0…, signed by AlphaOrg, BetaOrg, GammaOrg
+DE*GEF*E1*1: DE*GEF*T_DC 0.69 €/kWh
+DE*GEF*E1*2: DE*GEF*T_DC 0.69 €/kWh
+DE*GEF*T_AC: 0.52 €/kWh
+
+EVSE DE*GEF*E1*1, sequence 1: DE*GEF*T_DC 0.79 €/kWh, signed by DE*GEF, valid now: True, after checkpoint 3
+
+Checkpoint 4 names 3 price statements; the root of those published: the same
+The proof of DE*GEF*E1*1, sequence 0, in checkpoint 4: valid
+
+Joined from checkpoint 4 with its price statements: revision 12, 3 statements
+Joined with a statement less: The checkpoint of the snapshot can not be taken: The price statements are not those the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' names!
+A statement of another price: The signature of the price statement is invalid: The signature is invalid!
+
+
+calibration.example, checkpoint 4 without its price statements: The price statements of the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' are not checked here; a witness signs only checkpoints it checked!
+calibration.example, a price statement missing: The price statements are not those the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' names!
+calibration.example, a price statement changed: The price statements are not those the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' names!
+calibration.example: revision 12, signs checkpoint 3, and checkpoint 4 with its 3 price statements checked
+
+association.example, checkpoint 4 without its price statements: The price statements of the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' are not checked here; a witness signs only checkpoints it checked!
+association.example, a price statement missing: The price statements are not those the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' names!
+association.example, a price statement changed: The price statements are not those the checkpoint '3f6f47c5f1291a2720219bb86df75a1134b942ea25cd8eac34361a83c0a04579' names!
+association.example: revision 12, signs checkpoint 3, and checkpoint 4 with its 3 price statements checked
+
+Checkpoint 3, 144e62a0…: 2 signatures more, 5 in all
+Checkpoint 4, 3f6f47c5…: 2 signatures more, 5 in all
+
+Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'
+
+json          json:sha256:hex:a5240e8663bd75f907728ec96c5e583222f189c7212f67cc97d17917e698eaaf
+cbor          cbor:sha256:hex:0cc61074c9799ae44737921d490930aaee7628bdd905022b880707ceec081d09
+effectiveTree effectiveTree:sha256:hex:40dd962082b413105d4a9f884850b323e7e586d800d74f0a4b679c6488ddf58a
+the commit's  JSON, CBOR, EffectiveTree: the same
+
+QA is checked: revision 12, commit 12603bd6f73e223fb65782b08b99a28dfd577d60c7e816ece03da08479b2549c, signed by AlphaOrg and BetaOrg and GammaOrg
+beforeETags of the next change set: json:sha256:hex:a5240e8663bd75f907728ec96c5e583222f189c7212f67cc97d17917e698eaaf, cbor:sha256:hex:0cc61074c9799ae44737921d490930aaee7628bdd905022b880707ceec081d09
+Checkpoint 3 of epoch 1: revision 11, 2 commit(s) since checkpoint df9d6417…, signed by AlphaOrg, BetaOrg, GammaOrg
+  witnessed by calibration.example, association.example
+Checkpoint 4 of epoch 1: revision 12, 1 commit(s) since checkpoint 144e62a0…, signed by AlphaOrg, BetaOrg, GammaOrg
+  witnessed by calibration.example, association.example, its 3 price statements checked
+
+The proof of DE*GEF*E1*1, sequence 0, 0.59 €/kWh, in checkpoint 4, witnessed by calibration.example, association.example: valid
+Joined from checkpoint 4, signed by the roaming network operator and its witnesses: revision 12, 3 price statements

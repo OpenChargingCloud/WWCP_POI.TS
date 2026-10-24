@@ -1,0 +1,2 @@
+# The test vectors are what the C# implementation published: keep their exact bytes across checkouts.
+tests/vectors/** -text

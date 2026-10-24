@@ -1,0 +1,13 @@
+{
+    // Emits src/ alone, rewriting the `.ts` import specifiers to the `.js` a consumer's resolver expects.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit":                            false,
+        "outDir":                            "dist",
+        "rootDir":                           "src",
+        "declaration":                       true,
+        "declarationMap":                    true,
+        "rewriteRelativeImportExtensions":   true
+    },
+    "include": ["src"]
+}

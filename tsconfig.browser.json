@@ -1,0 +1,9 @@
+{
+    // Type-checks src/ a second time as a browser or a React Native app sees it: no node:* modules, no Buffer.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "lib":    ["ES2023", "DOM"],
+        "types":  []
+    },
+    "include": ["src"]
+}

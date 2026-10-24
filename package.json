@@ -1,0 +1,76 @@
+{
+    "name": "@open-charging-cloud/wwcp-poi",
+    "version": "0.1.0",
+    "description": "Verifies WWCP POI 3 data in TypeScript: trust anchors, key statements, roaming networks and their ETags, commits, checkpoints, charging station proofs and price statements - so that an EV driver's app knows the charging station and its tariffs it shows are the ones the roaming network signed and published.",
+    "keywords": [
+        "wwcp",
+        "poi",
+        "e-mobility",
+        "charging-station",
+        "charging-tariff",
+        "roaming",
+        "transparency",
+        "merkle-tree",
+        "cose",
+        "canonical-json",
+        "signatures"
+    ],
+    "homepage": "https://github.com/OpenChargingCloud/WWCP_POI.TS#readme",
+    "bugs": {
+        "url": "https://github.com/OpenChargingCloud/WWCP_POI.TS/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/OpenChargingCloud/WWCP_POI.TS.git"
+    },
+    "license": "AGPL-3.0-only",
+    "author": "GraphDefined GmbH <achim.friedland@graphdefined.com>",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md"
+    ],
+    "sideEffects": false,
+    "engines": {
+        "node": ">=20.19"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "npm run clean && npm run build:js && npm run build:types",
+        "build:js": "tsup",
+        "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "clean": "node -e \"import('node:fs').then(fs => fs.rmSync('dist', { recursive: true, force: true }))\"",
+        "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.browser.json",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "examples": "tsx examples/validate-examples.ts",
+        "verify": "npm run typecheck && npm test && npm run build",
+        "prepublishOnly": "npm run verify"
+    },
+    "dependencies": {
+        "@noble/hashes": "^2.4.0",
+        "@vanaheimr/cose": "^0.9.0",
+        "@vanaheimr/metrological-cbor": "^0.11.0"
+    },
+    "devDependencies": {
+        "@types/node": "^26.6.3",
+        "tsup": "^8.5.1",
+        "tsx": "^4.23.15",
+        "typescript": "^6.0.3",
+        "vitest": "^5.0.0"
+    }
+}
