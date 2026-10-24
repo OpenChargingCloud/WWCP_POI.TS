@@ -1,5 +1,8 @@
 # WWCP POI for TypeScript
 
+[![CI](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/ci.yml)
+[![Nightly](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/nightly.yml/badge.svg)](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/nightly.yml)
+
 Verifies what a roaming network of [WWCP POI 3](https://github.com/OpenChargingCloud/WWCP_POI) publishes about its
 charging stations and their tariffs, from the **trust anchor** of the roaming network alone: the QR code its operator
 publishes, naming the identity keys of the operator and its quorum.

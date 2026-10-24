@@ -205,9 +205,11 @@ jobs:
           cache: npm
           cache-dependency-path: WWCP_POI.TS/package-lock.json
 
+      # Errors only: the warnings of the C# libraries, some hundred, would each become an annotation of this run, about
+      # code that is not this repository's.
       - name: Build the C# examples
         working-directory: RoamingHubCLI/libs/WWCP_POI/examples/csharp
-        run: dotnet build --configuration Release
+        run: dotnet build --configuration Release -clp:ErrorsOnly
 
       # They write the private keys, what they publish and the history next to themselves, and open two servers on
       # 127.0.0.1 (example A12).
