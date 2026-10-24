@@ -30,6 +30,12 @@ the C# implementation makes; also from a second run of the C# examples, with new
 
 What a review of the C# implementation found while porting it is in [docs/csharp-review.md](docs/csharp-review.md).
 
+Whether both implementations really calculate, take and refuse the same is the business of
+[WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests): golden test vectors, run against
+this library and the C# implementation alike, and where they differ, written down and pinned
+([docs/implementation-deviations.md](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/implementation-deviations.md)).
+This repository vendors the vectors and runs them in its own suite (`tests/conformance.test.ts`).
+
 
 ## Installation
 
@@ -206,15 +212,26 @@ ChargyCore.TS, and `npm test`, which is
 GitHub Actions run it on every push and pull request (`.github/workflows/ci.yml`): Ubuntu on Node 22.18, the minimum
 `package.json` names, and on Node 26, Windows on Node 24. Every night (`.github/workflows/nightly.yml`) the same suite
 runs again, and, informational, with the dependencies the lockfile does not pin, with the newest releases of
-`@vanaheimr/cose` and `@vanaheimr/metrological-cbor`, as `npm audit`, and against the C# implementation as it is: the
-examples of WWCP_POI at the commits the RoamingHubCLI pins, run with .NET and checked with `examples/validate-examples.ts`,
-which turns red the day WWCP_POI moves on and this port needs work.
+`@vanaheimr/cose` and `@vanaheimr/metrological-cbor`, and as `npm audit`. The C# implementation as it is today is checked
+every night by [WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests): its nightly run
+holds WWCP_POI master and this library to the same golden vectors, and runs the C# examples of WWCP_POI master anew,
+checked with `examples/validate-examples.ts` of this repository, which turns red the day WWCP_POI moves on and this port
+needs work.
 
-The test vectors are in `tests/vectors/csharp-801bbce`: what one run of the C# examples of WWCP_POI at commit `801bbce`
-published (public data only; its output is `csharp-output.log` there), and in `proofs/`, what
-`proofs/MakeProofs.cs.txt` made of the same history with the C# implementation: proofs of charging stations of epoch 2,
-the commits of epoch 2 up to the head, and the ECDSA twin of a price statement.
+The test vectors are in `tests/vectors`, vendored from
+[WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests), where they are generated -
+never edit them here, and its `VendoredCopiesTests` fail when these copies drift:
 
+- `tests/vectors/poi-*.json`, the golden vectors: canonical JSON and CBOR, Base64 and Base45, the examples of section 6
+  of the specification, station proofs of its example network signed with its keys against a trust anchor, what to
+  calculate of the documents of the run below, and documents to refuse (the format: the
+  [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
+- `tests/vectors/csharp-801bbce`, what one run of the C# examples of WWCP_POI at commit `801bbce` published (public data
+  only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same
+  history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the head, and
+  the ECDSA twin of a price statement.
+
+- `tests/conformance.test.ts`: the golden vectors, as the C# implementation runs them in WWCPPOIConformanceTests.
 - `tests/canonical.test.ts`, `tests/specification.test.ts`: the test vectors of Styx and of section 6 of the
   specification.
 - `tests/exampleA1.test.ts`, `tests/examples.test.ts`: the examples A1 to A9, epoch 1, the manufacturers and the models

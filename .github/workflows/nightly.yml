@@ -2,8 +2,13 @@ name: Nightly
 
 # The counterpart to ci.yml. That workflow gates every push: does this commit work with the dependency tree we ship?
 # Everything below changes without anyone touching this repository - a new advisory, a new upstream release, a new
-# runner image, and above all the C# implementation of WWCP POI, which this library has to calculate byte for byte as
-# it does - so none of it belongs in a gate, where a red would block a merge for reasons that have nothing to do with it.
+# runner image - so none of it belongs in a gate, where a red would block a merge for reasons that have nothing to do
+# with it.
+#
+# What else moves on its own, the C# implementation of WWCP POI, which this library has to calculate byte for byte as it
+# does, is the business of WWCPPOIConformanceTests (https://github.com/OpenChargingCloud/WWCPPOIConformanceTests): its
+# nightly run holds WWCP_POI master and this library to the same golden vectors, and runs the C# examples A1 to A13 of
+# WWCP_POI master anew, checked with examples/validate-examples.ts of this repository.
 #
 # Scheduled workflows run on the default branch only, and GitHub disables them after 60 days without any activity in
 # the repository: if this stops reporting, that is the first thing to check.
@@ -169,89 +174,6 @@ jobs:
         with:
           name: nightly-results-newest-codecs
           path: artifacts/*.xml
-
-  # The C# implementation as it is today: the examples A1 to A13 of WWCP_POI at the commits the RoamingHubCLI pins, run
-  # with .NET, and what they published checked with this library, as examples/validate-examples.ts does. The test
-  # vectors of this repository are one run of a fixed commit; this job notices the day the C# implementation moves on
-  # and this port no longer calculates what it publishes - new entities, other ETags, other messages - which is when the
-  # port needs work and new test vectors. Informational: a red here says WWCP_POI moved, not that this commit broke.
-  csharp-interop:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          path: WWCP_POI.TS
-
-      - uses: actions/checkout@v7
-        with:
-          repository: OpenChargingCloud/RoamingHubCLI
-          path: RoamingHubCLI
-
-      # Only the libraries the examples build with, side by side as their project files expect them, at the commits the
-      # RoamingHubCLI pins together; its other submodules are not needed.
-      - name: Check out WWCP_POI and the libraries it builds with
-        working-directory: RoamingHubCLI
-        run: git submodule update --init --depth 1 libs/WWCP_POI libs/Hermod libs/Styx libs/WWCP_Node libs/Norn libs/Urdr
-
-      - uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '26'
-          cache: npm
-          cache-dependency-path: WWCP_POI.TS/package-lock.json
-
-      # Errors only: the warnings of the C# libraries, some hundred, would each become an annotation of this run, about
-      # code that is not this repository's.
-      - name: Build the C# examples
-        working-directory: RoamingHubCLI/libs/WWCP_POI/examples/csharp
-        run: dotnet build --configuration Release -clp:ErrorsOnly
-
-      # They write the private keys, what they publish and the history next to themselves, and open two servers on
-      # 127.0.0.1 (example A12).
-      - name: Run the C# examples A1 to A13
-        working-directory: RoamingHubCLI/libs/WWCP_POI/examples/csharp
-        shell: bash
-        run: dotnet run --configuration Release --no-build | tee "$GITHUB_WORKSPACE/csharp-output.log"
-
-      - name: Install this library
-        working-directory: WWCP_POI.TS
-        run: npm ci
-
-      # Right after the run: the attestations of the station proofs it published last 15 minutes.
-      - name: Check what the C# examples published
-        working-directory: WWCP_POI.TS
-        shell: bash
-        run: npm run examples -- "$GITHUB_WORKSPACE/RoamingHubCLI/libs/WWCP_POI/examples/csharp" | tee "$GITHUB_WORKSPACE/validate-output.log"
-
-      - name: Summary
-        if: ${{ !cancelled() }}
-        shell: bash
-        run: |
-          {
-            echo '## The C# examples of WWCP_POI, checked with this library'
-            echo
-            echo "- RoamingHubCLI: \`$(git -C RoamingHubCLI log -1 --format='%h %s')\`"
-            echo "- WWCP_POI: \`$(git -C RoamingHubCLI/libs/WWCP_POI log -1 --format='%h %s')\`"
-            echo "- the test vectors of this repository: \`$(grep -o "csharp-[0-9a-f]*" WWCP_POI.TS/tests/at.ts)\`"
-            echo
-            echo '```'
-            tail -n 3 validate-output.log 2>/dev/null || echo 'The check did not run.'
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload the outputs
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: nightly-csharp-interop
-          path: |
-            csharp-output.log
-            validate-output.log
 
   # npm audit against the tree we ship. Not in the gate: the advisory database changes daily, and a merge must not turn
   # red for findings that have nothing to do with it. The counters are the thing to watch: a number that moves.

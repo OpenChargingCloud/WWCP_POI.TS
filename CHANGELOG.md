@@ -42,3 +42,9 @@ away, it is refused with a `POIError` saying what is missing. Tests of the bundl
 declarations for TypeScript apps, the files `npm pack` takes) and of the library in Chromium join the tests in Node; GitHub
 Actions run all of them on every push, and every night against floating dependencies, the newest codecs of Vanaheimr, and
 the C# examples of WWCP_POI as they are.
+
+The test vectors moved to WWCPPOIConformanceTests, which generates golden vectors - canonical JSON and CBOR, encodings,
+the examples of section 6 of the specification, signed station proofs against a trust anchor, the documents of the run of
+the C# examples, and documents to refuse - and runs them against this library and the C# implementation alike. This
+repository vendors them in `tests/vectors` and runs them in `tests/conformance.test.ts`. The nightly check against the C#
+examples of WWCP_POI master moved there as well.

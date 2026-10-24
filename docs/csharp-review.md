@@ -13,6 +13,14 @@ Each finding says how it was established:
 - **confirmed**: the exact code path was read;
 - **plausible**: the code path was read in parts; the scenario needs conditions that were not set up.
 
+Since this review, [WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests) holds the C#
+implementation and this port to the same golden test vectors. Where the two take or calculate different things, it is
+written down and pinned there, in
+[docs/implementation-deviations.md](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/implementation-deviations.md)
+(cited below as *D1* to *D6*): it demonstrates findings 6, 7 and 19 with vectors, and found two deviations more, a JSON
+reader for hashing that takes what is no JSON (D1) and the revision of a station proof left unchecked (D2). This document
+stays the review of the C# implementation.
+
 | # | Finding | Severity | Status | Since `bbd4cbd` |
 |---|---|---|---|---|
 | 1 | The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged |
@@ -20,8 +28,8 @@ Each finding says how it was established:
 | 3 | A removed or expired key still signs, through an older version | high | confirmed | unchanged |
 | 4 | A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged |
 | 5 | A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged |
-| 6 | A subject attestation verifies a whole proof | medium | confirmed | unchanged |
-| 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | confirmed | unchanged |
+| 6 | A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged |
+| 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
 | 8 | `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; the models follow the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
 | 10 | What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged |
@@ -163,6 +171,10 @@ station and its meters, the transparency software releases and certificates of t
 subject and root attestations are counted
 together. `role` and `signer` of attestations are not checked.
 
+**Demonstrated** by the vectors `trust-subject` (D4) and `trust-role` (D5) of WWCPPOIConformanceTests: a proof whose
+quorum of two holders is met by one root attestation and one of a subject, or by one in the role of a witness, is taken
+by the C# implementation and refused by this port.
+
 **Fix:** a subject attestation attests its subject only: count it for the subtree, never for the proof. The TypeScript
 port counts root attestations only, in the role `roamingNetworkOperator`.
 
@@ -178,6 +190,10 @@ its own certificates. An offline verifier therefore accepts, forever, an attesta
 (its certificate removed, 8.6) or expired, back-dated into its validity. The same holds for price statements without
 `validUntil`. Example A10 relies on bounded attestations (15 minutes) and checkpoints for what holds later: that is the
 right pattern, but nothing enforces it.
+
+**Demonstrated** by the vectors `stationProof-before-signed` and `trust-future` (D3) of WWCPPOIConformanceTests: a proof
+checked a second before its attestations were signed is taken by the C# implementation. Attestations without
+`validUntil` are taken by both, valid forever (`trust-no-valid-until`): requiring it is a matter for the specification.
 
 **Fix:** require `validUntil` with a bounded lifetime, `signedAt ≤ at`, and the key valid at `at`. The TypeScript port
 requires `signedAt ≤ at`.
@@ -375,7 +391,8 @@ who resolves it; or let a removal of the RNO remove or clear the references to w
   (`RoamingNetworkTrustAnchor.cs`, `TryCheck`); see 1.
 - **Certificates and statements of another operator in a proof:** `RoamingNetworkProof.Verify` does not compare the
   `roamingNetworkOperatorId` of the certificates and of the key statement with the operator of the proof (the content
-  check of a full version does). The TypeScript port does.
+  check of a full version does). The TypeScript port does. Demonstrated by the vectors `trust-certificate-operator` and
+  `trust-statement-operator` (D6) of WWCPPOIConformanceTests.
 - **Checkpoint roles:** required roles are checked as the role a signer declares; `examples/csharp/exampleA4.cs` accepts a
   signing key of the RNO in any role. The TypeScript port binds witness signatures to the key trusted for the witness
   named, and ignores, rather than refuses, signatures by keys it does not trust (so nobody blocks a checkpoint by adding
