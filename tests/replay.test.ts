@@ -1,35 +1,56 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, readJSON, readText } from './helpers.ts';
+import { readJSON } from './helpers.ts';
+import { anchor, checkpoint, commits, commitsOfEpoch1, following, genesis, witnesses } from './qa.ts';
 
-import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
+import { Checkpoint }         from '../src/history/checkpoint.ts';
 import { History }            from '../src/history/history.ts';
-import { OperatorTrust }      from '../src/verifier/trust.ts';
-import type { JSONArray, JSONObject } from '../src/json/value.ts';
+import type { JSONObject }    from '../src/json/value.ts';
 
 
-describe('Replaying the history of QA commit by commit', () => {
+// The whole history of QA, as a witness trusting the trust anchor of epoch 1 and its own keys of epoch 1 takes it: every
+// commit of both epochs, each change set applied with the signatures of its owners checked, each commit signed by the
+// quorum of OCC in the version before, the checkpoints signed by OCC and both witnesses.
 
-    const anchor  = TrustAnchor.parse(readText('published/QA-trustAnchor.txt'));
-    const trust   = OperatorTrust.of(anchor, RoamingNetwork.parse(readJSON('published/QA.json')), AT);
+describe('Replaying the history of QA commit by commit, through both epochs', () => {
 
-    it('takes the genesis snapshot and every commit since, as a witness does', () => {
+    it('takes epoch 1 from its genesis, its checkpoints up to the final one, epoch 2 since its genesis, and reaches the head', () => {
 
-        const history = History.fromSnapshot(readJSON('published/QA-genesis.json'), {
-            verifyCommit: commit => trust.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit'),
-        });
+        const verifier = following(anchor, genesis, witnesses, 2);
+        const epoch1   = History.fromSnapshot(readJSON('published/QA-genesis.json'), verifier);
 
-        for (const commit of readJSON('published/QA-commits-since-genesis.json') as JSONArray)
-            history.append(commit);
+        for (const commit of commitsOfEpoch1())
+            epoch1.append(commit);
 
-        expect(history.head.commit.revision).toBe(9);
+        for (const sequence of [ 0, 1, 2, 3, 4, 5, 6 ])
+            epoch1.takeCheckpoint(checkpoint(sequence));
 
-        for (const commit of readJSON('published/QA-commits-since-checkpoint-2.json') as JSONArray)
-            history.append(commit);
+        expect(epoch1.head.commit.revision).toBe(15);
+        expect(epoch1.finalCheckpoint?.sequence).toBe(6);
+        expect(epoch1.epochStatus).toBe('closing');
 
-        expect(history.head.commit.revision).toBe(12);
-        expect(history.head.commit.id).toBe((readJSON('published/QA-commit.json') as JSONObject)['@id']);
+        // Epoch 2 from the version of the final checkpoint: the genesis the server published.
+        const epoch2 = epoch1.startNextEpoch();
+        const published = readJSON('published/QA-epoch-2-genesis.json') as JSONObject;
+
+        expect(epoch1.epochStatus).toBe('closed');
+        expect(epoch2.root.commit.id).toBe((published['commit'] as JSONObject)['@id']);
+        expect(epoch2.root.commit.id).toHaveLength(128);
+
+        for (const commit of commits('proofs/QA-epoch-2-commits-to-head.json'))
+            epoch2.append(commit);
+
+        epoch2.takeCheckpoint(Checkpoint.parse(readJSON('published/QA-epoch-2-checkpoint-0.json')));
+
+        // The head of epoch 2, as example A13 published it.
+        expect(epoch2.head.commit.revision).toBe(7);
+        expect(epoch2.head.commit.id).toBe((readJSON('published/QA-commit.json') as JSONObject)['@id']);
+        expect(epoch2.head.network.matchesCommitETags(RoamingNetwork.parse(readJSON('published/QA.json')).eTags())).toBe(true);
+
+        // Its trust followed OCC from the identity keys of the trust anchor of epoch 1 to those of epoch 2.
+        expect([ ...verifier.trust.keyStatement.identityKeys.map(key => key.id) ].sort())
+            .toEqual([ ...epoch2.head.network.operator!.keyStatement!.identityKeys.map(key => key.id) ].sort());
 
     });
 

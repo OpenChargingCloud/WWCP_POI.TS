@@ -24,6 +24,7 @@ import { verifySignature }           from '../crypto/signature.ts';
 import { parseETags, sameETags, type ETag } from '../etags.ts';
 import { leafHash, merkleRootOfLeafHashes, parseAuditPath, parseMerkleTreeHead, rootFromAuditPath, type MerkleTreeHead } from '../merkle.ts';
 import { parseRoleSignature, roleSignatureBytes, type Commit, type RoleSignature } from './commit.ts';
+import { parseEpoch, parseEpochLink, type Epoch, type EpochLink } from './epoch.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
 
@@ -54,8 +55,17 @@ export class Checkpoint {
         public readonly createdAt:           number,
         public readonly signatures:          readonly RoleSignature[],
         public readonly identificationHash:  HashAlgorithm,
+        /** The next epoch, which the final checkpoint of an epoch names (11.2). */
+        public readonly next:                Epoch | undefined,
+        /** The final checkpoint of the epoch before, which the first checkpoint of a later epoch names (11.3). */
+        public readonly previous:            EpochLink | undefined,
         public readonly json:                JSONObject
     ) {}
+
+    /** Whether this is the final checkpoint of its epoch, `"final": true` with the next epoch (11.2). */
+    public get isFinal(): boolean {
+        return this.next !== undefined;
+    }
 
 
     public static parse(value: JSONValue | undefined): Checkpoint {
@@ -78,22 +88,54 @@ export class Checkpoint {
         if ((sequence === 0) !== (previousId === undefined))
             throw new POIError(`The checkpoint '${id}' of the sequence ${sequence} ${sequence === 0 ? 'names no previous checkpoint' : 'names the checkpoint before it'}!`);
 
-        const signaturesJSON = get(json, 'signatures');
+        const signaturesJSON  = get(json, 'signatures');
+        const epoch           = requireInteger(json, 'epoch', 1, 0xFFFFFFFF, `The epoch of the checkpoint '${id}'`);
+        const commitId        = requireString (json, 'commitId', `The commit of the checkpoint '${id}'`);
+
+        // A checkpoint, its commit and the checkpoint before are identified with the hash of their epoch, SHA-256 in the first.
+        if (epoch === 1 && identificationHash !== 'sha256')
+            throw new POIError(`The checkpoint '${id}' of the first epoch is identified with SHA-256!`);
+
+        if (!isLowerHex(commitId) || commitId.length !== id.length || (previousId !== undefined && (!isLowerHex(previousId) || previousId.length !== id.length)))
+            throw new POIError(`The checkpoint '${id}', its commit and the checkpoint before are not identified with the same hash, the one of their epoch!`);
+
+        // The final checkpoint of an epoch names the next one, the first checkpoint of a later epoch the final one before.
+        let next: Epoch | undefined;
+
+        if (get(json, 'final') !== undefined) {
+            if (get(json, 'final') !== true || get(json, 'next') === undefined)
+                throw new POIError('A final checkpoint is "final": true, with the next epoch as "next"!');
+            next = parseEpoch(get(json, 'next'), 'The next epoch');
+            if (next.number !== epoch + 1)
+                throw new POIError(`The final checkpoint '${id}' of the epoch ${epoch} names the epoch ${next.number}, not the next one!`);
+        }
+        else if (get(json, 'next') !== undefined)
+            throw new POIError(`The checkpoint '${id}' names a next epoch without being final!`);
+
+        const previous = get(json, 'previous') === undefined ? undefined : parseEpochLink(get(json, 'previous'));
+
+        if ((previous !== undefined) !== (sequence === 0 && epoch > 1))
+            throw new POIError(`The first checkpoint of an epoch after the first one names the final checkpoint of the one before, no other checkpoint does: '${id}'!`);
+
+        if (previous !== undefined && previous.epoch !== epoch - 1)
+            throw new POIError(`The first checkpoint '${id}' of the epoch ${epoch} names a checkpoint of the epoch ${previous.epoch}, not of the one just before!`);
 
         const checkpoint = new Checkpoint(
             id,
             requireString   (json, 'roamingNetworkId', `The roaming network of the checkpoint '${id}'`),
-            requireInteger  (json, 'epoch', 1, Number.MAX_SAFE_INTEGER, `The epoch of the checkpoint '${id}'`),
+            epoch,
             sequence,
             previousId,
-            requireString   (json, 'commitId', `The commit of the checkpoint '${id}'`),
+            commitId,
             requireInteger  (json, 'revision', 0, Number.MAX_SAFE_INTEGER, `The revision of the checkpoint '${id}'`),
             parseETags(get(json, 'eTags'), true, `The ETags of the checkpoint '${id}'`),
             parseMerkleTreeHead(get(json, 'commits'), identificationHash, `The commits of the checkpoint '${id}'`),
-            get(json, 'priceStatements') === undefined ? undefined : parseMerkleTreeHead(get(json, 'priceStatements'), 'sha256', `The price statements of the checkpoint '${id}'`),
+            get(json, 'priceStatements') === undefined ? undefined : parseMerkleTreeHead(get(json, 'priceStatements'), identificationHash, `The price statements of the checkpoint '${id}'`),
             requireTimestamp(json, 'createdAt', `The createdAt of the checkpoint '${id}'`),
             signaturesJSON === undefined ? [] : requireArray(signaturesJSON, 'The signatures of a checkpoint').map(signature => parseRoleSignature(signature, 'A signature of a checkpoint')),
             identificationHash,
+            next,
+            previous,
             json
         );
 

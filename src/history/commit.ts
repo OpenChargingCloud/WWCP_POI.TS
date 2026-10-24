@@ -19,9 +19,10 @@ import { checkContext, onlyProperties, optionalString, requireArray, requireInte
 import { canonicalJSONBytes }        from '../json/canonical.ts';
 import { get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toHex, isLowerHex }         from '../encoding/text.ts';
-import { hash, hashAlgorithmOfIdentification, isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
+import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
 import { parseETags, type ETag }     from '../etags.ts';
+import { EpochProfiles, type Epoch } from './epoch.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
 
@@ -107,8 +108,31 @@ export class Commit {
         public readonly changeSet:           JSONObject | undefined,
         public readonly signatures:          readonly RoleSignature[],
         public readonly identificationHash:  HashAlgorithm,
+        /** The profiles of the epoch this commit starts, for the genesis of an epoch after the first one (11.3). */
+        public readonly profiles:            EpochProfiles | undefined,
         public readonly json:                JSONObject
     ) {}
+
+
+    /**
+     * The genesis of an epoch after the first one (11.3): the version of the final checkpoint of the epoch before, nothing
+     * applied, revision 0, naming the epoch and its profiles, identified with its identification hash. Every server
+     * starting the epoch from the same final checkpoint makes the same; signatures do not change its identification.
+     */
+    public static genesisOf(roamingNetworkId: string, eTags: JSONValue, epoch: Epoch): Commit {
+
+        const content: JSONObject = {
+            '@context':        COMMIT_CONTEXT,
+            roamingNetworkId,
+            revision:          0,
+            eTags,
+            epoch:             epoch.number,
+            profiles:          epoch.profiles.toJSON(),
+        };
+
+        return Commit.parse({ '@id': toHex(hash(epoch.profiles.identificationHash, canonicalJSONBytes(content))), ...content });
+
+    }
 
 
     public static parse(value: JSONValue | undefined): Commit {
@@ -156,20 +180,28 @@ export class Commit {
                                     ? []
                                     : requireArray(signaturesJSON, 'The signatures of a commit').map(signature => parseRoleSignature(signature, 'A signature of a commit'));
 
-        // The identification hash of the epoch: SHA-256 in the first one, told by the length of the identification.
-        const profiles            = get(json, 'profiles');
+        // The identification hash of the epoch: SHA-256 in the first one, told by the length of the identification; the
+        // genesis of a later epoch names its profiles (11.3), no other commit does.
         const identificationHash  = hashAlgorithmOfIdentification(id);
+        let   profiles: EpochProfiles | undefined;
 
-        if (epoch === 1 && identificationHash !== 'sha256')
-            throw new POIError(`The commit '${id}' of the first epoch is identified by SHA-256!`);
-
-        if (isObject(profiles)) {
-            const declared = get(profiles, 'identificationHash');
-            if (!isHashAlgorithm(declared) || declared !== identificationHash)
-                throw new POIError(`The identification of the commit '${id}' is not one of its identification hash!`);
+        try {
+            profiles = get(json, 'profiles') === undefined ? undefined : EpochProfiles.parse(get(json, 'profiles'));
+        }
+        catch (e) {
+            throw new POIError(`Invalid profiles of the epoch of the commit '${id}': ${e instanceof Error ? e.message : String(e)}`);
         }
 
-        const commit   = new Commit(id, roamingNetworkId, revision, eTags, epoch, parentIds, changeSet, signatures, identificationHash, json);
+        if ((profiles !== undefined) !== (parentIds.length === 0 && epoch > 1))
+            throw new POIError(`The genesis of an epoch after the first one names the profiles of the epoch, no other commit does: '${id}'!`);
+
+        if (profiles !== undefined ? profiles.identificationHash !== identificationHash : epoch === 1 && identificationHash !== 'sha256')
+            throw new POIError(`The commit '${id}' is not identified with the identification hash of its epoch!`);
+
+        if (parentIds.some(parentId => hashAlgorithmOfIdentification(parentId) !== identificationHash))
+            throw new POIError(`The commit '${id}' and its parents are not identified with the same hash, the one of their epoch!`);
+
+        const commit   = new Commit(id, roamingNetworkId, revision, eTags, epoch, parentIds, changeSet, signatures, identificationHash, profiles, json);
         const computed = toHex(hash(identificationHash, canonicalJSONBytes(commit.identificationContent())));
 
         if (computed !== id)

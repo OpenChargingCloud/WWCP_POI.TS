@@ -1,12 +1,13 @@
 /*
- * Checks what the C# examples A1 to A9 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
+ * Checks what the C# examples A1 to A13 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
- *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-24T04:00:00.000Z
+ *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-24T14:20:00.000Z
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
- * same. The proofs of charging stations (proofs/) are not made by the examples: they are checked where they are given.
+ * same. Attestations end 15 minutes after they are signed: the station proof of example A13 is checked at the time of its
+ * attestations unless `--at` names another, the evidence of example A10 at the time charging began, as the app does.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -14,18 +15,19 @@ import { join }                     from 'node:path';
 
 import {
     ArchiveSegment, Checkpoint, CheckpointProof, History, OperatorTrust, POIPublicKey, PriceStatement, PriceStatementProof,
-    RoamingNetwork, TrustAnchor, describeVersion, etagToText, get, parseArchiveSegmentInfo, parseJSON, parsePriceStatements,
-    parseTrustedWitnesses, verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements,
-    verifyCheckpointSignatures, verifyPriceStatements, verifySegmentLine, verifyVersion,
-    type HistoryOptions, type JSONArray, type JSONObject, type JSONValue,
+    RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, get, parseArchiveSegmentInfo, parseEvidence,
+    parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, toTimestamp, verifyChargingStation,
+    verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence, verifyPriceStatements,
+    verifySegmentLine, verifyVersion,
+    type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type TrustedWitness,
 } from '../src/index.ts';
 
 
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? args[atIndex + 1]! : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-2d9511d');
-const time       = at ?? (directory.includes('csharp-2d9511d') ? '2026-10-24T04:00:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-bbd4cbd');
+const time       = at ?? (directory.includes('csharp-bbd4cbd') ? '2026-10-24T14:20:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');
@@ -59,40 +61,56 @@ function refused(what: string, run: () => unknown): void {
 
 console.log(`Checking ${directory}, at ${time}`);
 
-const anchor = TrustAnchor.parse(text('published/QA-trustAnchor.txt'));
-const head   = verifyVersion(anchor, json('published/QA.json'), json('published/QA-commit.json'), time);
-const trust  = head.trust;
+const anchor     = TrustAnchor.parse(text('published/QA-trustAnchor.txt'));
+const witnesses  = parseTrustedWitnesses(json('trusted/witnesses.json'));
+const genesis    = json('published/QA-genesis.json') as JSONObject;
+const first      = verifyVersion(anchor, genesis['roamingNetwork']!, genesis['commit']!, time);
+const trust      = first.trust;
 
+/** As example A4: commits signed as the roaming network operator by its quorum, checkpoints as well. */
 const byOperator: HistoryOptions = {
     verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit'); },
     verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust); },
 };
 
+/** As examples A6 and A11: a verifier following the history, its trust following the key statements the commits change. */
+function following(trustAnchor: TrustAnchor, root: RoamingNetwork, trusted: readonly TrustedWitness[]): HistoryOptions & { readonly trust: OperatorTrust } {
+    let current = OperatorTrust.of(trustAnchor, root, time);
+    return {
+        get trust() { return current; },
+        verifyCommit: (commit, _before, after) => {
+            current.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit');
+            current = current.followedBy(after, time);
+        },
+        verifyCheckpoint: checkpoint => { verifyCheckpointSignatures(checkpoint, current, { witnesses: trusted, requiredWitnesses: trusted.length }); },
+    };
+}
+
 const checkpoint = (sequence: number): Checkpoint => Checkpoint.parse(json(`published/QA-checkpoint-${sequence}.json`));
 const commits    = (name: string): JSONArray  => json(name) as JSONArray;
+
+// QA as examples A8 and A9 left it: revision 12 of epoch 1, the version of checkpoint 4.
+const snapshot4  = json('published/QA-checkpoint-4-snapshot.json') as JSONObject;
+const head       = verifyVersion(anchor, snapshot4['roamingNetwork']!, snapshot4['commit']!, time);
 
 
 step('Example A1: checking QA from its trust anchor', () => {
 
     console.log(`The QR code: ${anchor.toQRCode().length} characters; ${anchor.keys.length} identity keys pinned, minConsensus ${anchor.minConsensus}`);
-    console.log(describeVersion(head));
-    for (const warning of head.warnings)
+    console.log(describeVersion(first));
+    for (const warning of first.warnings)
         console.log(`warning: ${warning}`);
 
-    for (const eTag of head.network.eTags())
+    for (const eTag of first.network.eTags())
         console.log(`  ${etagToText(eTag)}`);
 
-    console.log(`QA is checked: revision ${head.commit.revision}, commit ${head.commit.id}, signed by ${head.signedBy.join(' and ')}`);
-    console.log(`beforeETags of the next change set: ${head.network.changeSetETags().map(etagToText).join(', ')}`);
-
-    const genesis = json('published/QA-genesis.json') as JSONObject;
-    const version = verifyVersion(anchor, genesis['roamingNetwork']!, genesis['commit']!, time);
-    console.log(`The genesis: revision ${version.commit.revision}, commit ${version.commit.id}, signed by ${version.signedBy.join(' and ')}`);
+    console.log(`QA is checked: revision ${first.commit.revision}, commit ${first.commit.id}, signed by ${first.signedBy.join(' and ')}`);
+    console.log(`beforeETags of the next change set: ${first.network.changeSetETags().map(etagToText).join(', ')}`);
 
 });
 
 
-step('Example A2: the charging station operator DE*GEF', () => {
+step('Example A2: the charging station operator DE*GEF and the manufacturers', () => {
 
     const gef = head.network.chargingStationOperator('DE*GEF');
 
@@ -112,11 +130,15 @@ step('Example A2: the charging station operator DE*GEF', () => {
     for (const key of POIPublicKey.parseAll(gef['identityKeys'], 'identity keys'))
         console.log(`  identity key ${key.id}`);
 
+    for (const [kind, property] of [ [ 'Charging station manufacturer', 'chargingStationManufacturers' ], [ 'Energy meter manufacturer', 'energyMeterManufacturers' ] ] as const)
+        for (const manufacturer of (get(head.network.content, property) as JSONObject[] | undefined) ?? [])
+            console.log(`${kind} ${String(manufacturer['@id'])}: ${String((manufacturer['name'] as JSONObject)['en'])}`);
+
 });
 
 
 /** The pools of DE*GEF as they are at runtime. */
-function showPools(network: RoamingNetwork, ...numbers: number[]): void {
+function showPools(network: RoamingNetwork, meters: boolean, ...numbers: number[]): void {
 
     const operator = (get(network.effectiveContent, 'chargingStationOperators') as JSONObject[]).find(item => item['@id'] === 'DE*GEF')!;
     const pools    = ((get(operator, 'chargingPools') as JSONObject[] | undefined) ?? []).filter(pool => numbers.length === 0 || numbers.some(n => pool['@id'] === `DE*GEF*P${n}`));
@@ -126,16 +148,24 @@ function showPools(network: RoamingNetwork, ...numbers: number[]): void {
 
     for (const pool of pools) {
         console.log(`${String(pool['@id'])}  ${String((pool['name'] as JSONObject)['en'])}`);
-        for (const station of get(pool, 'chargingStations') as JSONObject[])
+        for (const station of get(pool, 'chargingStations') as JSONObject[]) {
             console.log(`  ${String(station['@id'])}  ${Number(station['maxPower']) / 1000} kW: ` +
                         (get(station, 'EVSEs') as JSONObject[]).map(evse => `${String(evse['@id'])} ${String((evse['currentTypes'] as string[])[0])} ${Number(evse['maxPower']) / 1000} kW`).join(', '));
+            if (meters)
+                for (const evse of get(station, 'EVSEs') as JSONObject[]) {
+                    const meter = evse['energyMeter'] as JSONObject | undefined;
+                    if (meter !== undefined)
+                        console.log(`    ${String(meter['@id'])}  ${String(meter['manufacturerId'])} ${String(meter['modelId'])}, serial ${String(meter['serialNumber'])}, ` +
+                                    `${((meter['signatureMethods'] as string[] | undefined) ?? []).join(', ')}, key ${String(((meter['publicKeys'] as JSONObject[] | undefined) ?? [])[0]?.['@id'] ?? '').slice(0, 8)}…`);
+                }
+        }
     }
 
 }
 
 
-step('Example A3: the pools of DE*GEF as they are at runtime', () => {
-    showPools(head.network, 1, 2);
+step('Example A3: the pools of DE*GEF as they are at runtime, with their energy meters', () => {
+    showPools(head.network, true, 1, 2);
 });
 
 
@@ -161,7 +191,7 @@ step('Example A4: the first checkpoint, and joining from it', () => {
     changed['revision'] = 5;
     refused('A checkpoint of another revision', () => Checkpoint.parse(changed));
 
-    showPools(joined.head.network, 3, 4);
+    showPools(joined.head.network, false, 3, 4);
 
 });
 
@@ -181,8 +211,8 @@ step('Example A5: a correction between two checkpoints', () => {
         history.append(commit);
     history.takeCheckpoint(line[1]!);
     history.takeCheckpoint(line[2]!);
-    console.log(`Revisions 7 to 9 taken commit by commit, checkpoints 1 and 2 taken: their ETags and those of the versions reached the same`);
-    showPools(history.head.network, 3, 4);
+    console.log('Revisions 7 to 9 taken commit by commit, checkpoints 1 and 2 taken: their ETags and those of the versions reached the same');
+    showPools(history.head.network, false, 3, 4);
 
     refused('The proof of revision 9 in checkpoint 1', () => CheckpointProof.parse(json('published/QA-proof-revision-9.json')).verify(line[1]!));
 
@@ -191,8 +221,7 @@ step('Example A5: a correction between two checkpoints', () => {
 
 step('Example A6: witnesses sign the checkpoints', () => {
 
-    const witnesses = parseTrustedWitnesses(json('trusted/witnesses.json'));
-    const witness   = History.fromSnapshot(json('published/QA-genesis.json'), byOperator);
+    const witness = History.fromSnapshot(json('published/QA-genesis.json'), byOperator);
 
     for (const commit of commits('published/QA-commits-since-genesis.json'))
         witness.append(commit);
@@ -244,7 +273,7 @@ step('Example A8: price statements, named by checkpoints', () => {
 
     const current = PriceStatement.parse((json('published/QA-priceStatements-DE_GEF_E1_1.json') as JSONArray)[0]);
     current.verify('QA', 'DE*GEF', signingKeys);
-    console.log(`EVSE ${current.entityId}, sequence ${current.sequence}: ${String(current.prices[0]!['chargingTariffId'])}, signed by ${current.signer}, valid at ${time}: ${current.isValidAt(Date.parse(time))}`);
+    console.log(`EVSE ${current.entityId}, sequence ${current.sequence}: ${String(current.prices[0]!['chargingTariffId'])}, signed by ${current.signer}`);
 
     const proof = PriceStatementProof.parse(json('published/QA-priceStatementProof-E1_1-0.json'));
     proof.verify(checkpoint4);
@@ -256,8 +285,6 @@ step('Example A8: price statements, named by checkpoints', () => {
 
 
 step('Example A9: witnesses check the price statements', () => {
-
-    const witnesses = parseTrustedWitnesses(json('trusted/witnesses.json'));
 
     for (const sequence of [ 3, 4 ]) {
         const signatures = verifyCheckpointSignatures(checkpoint(sequence), trust, { witnesses, requiredWitnesses: 2 });
@@ -271,16 +298,129 @@ step('Example A9: witnesses check the price statements', () => {
 });
 
 
+if (has('driver/evidence-DE_GEF_E1_1.json'))
+    step('Example A10: what a driver\'s app keeps as evidence, checked months later', () => {
+
+        const evidence  = parseEvidence(json('driver/evidence-DE_GEF_E1_1.json'));
+        const verified  = verifyEvidence(evidence, { witnesses, requiredWitnesses: witnesses.length });
+
+        for (const { checkpoint: item, signatures } of verified.checkpoints)
+            console.log(`Checkpoint ${item.sequence}: revision ${item.revision}, signed by ${signatures.signedBy.join(', ')}, witnessed by ${signatures.witnessedBy.join(', ')}`);
+
+        const price = verified.prices.get(`EVSE:${evidence.evseId}`)!;
+        const named = verified.statementCheckpoints.get(price.digest);
+
+        console.log(`At ${evidence.chargingStarted}, when charging began: the station proof attested, the price statement valid`);
+        console.log(`Revision ${verified.station.revision}, the version of the station proof: in checkpoint ${verified.versionCheckpoint?.sequence ?? '-'}, witnessed`);
+        console.log(`The price statement, sequence ${price.statement.sequence}: after checkpoint ${named?.after?.sequence ?? '-'}, before checkpoint ${named?.namedBy.sequence ?? '-'}, witnessed`);
+
+    });
+
+
+if (has('published/QA-checkpoint-6.json'))
+    step('Example A11: epoch 2, followed by a verifier trusting only the old locks, and joined by one trusting only the new ones', () => {
+
+        const snapshot5  = json('published/QA-checkpoint-5-snapshot.json') as JSONObject;
+        const old        = following(anchor, RoamingNetwork.parse(snapshot5['roamingNetwork']), witnesses);
+        const epoch1     = History.fromSnapshot(snapshot5, old);
+
+        for (const commit of commits('published/QA-commits-since-checkpoint-5.json'))
+            epoch1.append(commit);
+
+        const final  = epoch1.takeCheckpoint(checkpoint(6));
+        console.log(`Old trust: revision ${epoch1.head.commit.revision}, checkpoint ${final.sequence}, final; next: epoch ${final.next!.number}, ${final.next!.profiles.toString()}`);
+
+        const epoch2     = epoch1.startNextEpoch();
+        const published  = (json('published/QA-epoch-2-genesis.json') as JSONObject)['commit'] as JSONObject;
+        console.log(`Old trust: epoch 2 started, genesis ${epoch2.root.commit.id.slice(0, 8)}…, ${epoch2.root.commit.id === published['@id'] ? 'the published one' : 'ANOTHER one'}`);
+
+        if (epoch2.root.commit.id !== published['@id'])
+            throw new Error('the published genesis of epoch 2 is not the one of the final checkpoint');
+
+        for (const commit of commits('published/QA-epoch-2-commits-since-genesis.json'))
+            epoch2.append(commit);
+
+        const first0 = epoch2.takeCheckpoint(json('published/QA-epoch-2-checkpoint-0.json'));
+        console.log(`Old trust: checkpoint ${first0.sequence} of epoch ${first0.epoch}, after checkpoint ${final.sequence} of epoch 1: ${first0.previous?.checkpointId === final.id ? 'the final one it took' : 'another one'}`);
+
+        refused('The head with the old trust anchor alone', () => OperatorTrust.of(anchor, RoamingNetwork.parse(json('published/QA.json')), time));
+
+        const anchorPQ   = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const followed   = old.trust.keyStatement;
+        console.log(`The new trust anchor: ${[ ...anchorPQ.keys ].sort().join() === followed.identityKeys.map(key => key.id).sort().join() && anchorPQ.minConsensus === followed.minConsensus ? 'the identity keys and the quorum of the key statement it followed' : 'OTHER keys'}`);
+
+        // A verifier trusting only the new locks.
+        const witnessesPQ  = parseTrustedWitnesses(json('trusted/witnesses-mldsa.json'));
+        const snapshot0    = json('published/QA-epoch-2-checkpoint-0-snapshot.json') as JSONObject;
+        const pq           = following(anchorPQ, RoamingNetwork.parse(snapshot0['roamingNetwork']), witnessesPQ);
+        const joined       = History.fromSnapshot(snapshot0, pq);
+        console.log(`New trust: joined epoch ${joined.epoch.number} from checkpoint ${joined.checkpoints[0]!.sequence}, revision ${joined.head.commit.revision}, ${joined.head.commit.id.length} hexadecimal digits`);
+
+        verifyCheckpointPriceStatements(joined.checkpoints[0]!, parsePriceStatements(json('published/QA-epoch-2-checkpoint-0-priceStatements.json')));
+        refused('A commit of epoch 1', () => joined.append(commits('published/QA-commits-since-checkpoint-5.json').at(-1)!));
+
+    });
+
+
+if (has('driver/live.json'))
+    step('Example A12: the atlas and the traffic report, live', () => {
+
+        const live      = json('driver/live.json') as JSONObject;
+        const pushes    = (live['pushes'] as JSONArray).map(frame => parseFrame(frame));
+        const updates   = pushes.filter(push => push.type === 'push' && push.action !== 'commit');
+
+        for (const update of updates.map(push => parseStatusUpdate(push.payload)))
+            console.log(`${update.entityId} ${update.kind}: ${typeof update.value === 'string' ? update.value : 'changed'} since ${toTimestamp(update.timestamp)}, unsigned`);
+
+        const anchorPQ  = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const snapshot  = json('published/QA-live-snapshot.json') as JSONObject;
+        const mirror    = History.fromSnapshot(snapshot);
+        const commit    = pushes.find(push => push.type === 'push' && push.action === 'commit');
+
+        if (commit !== undefined) {
+            const pushed   = mirror.head.commit.id === (commit.payload as JSONObject)['@id'] ? mirror.head.commit : undefined;
+            const signedBy = OperatorTrust.of(anchorPQ, mirror.head.network, time).verifyOperatorSignatures(mirror.head.commit.signatures, (signature, key) => mirror.head.commit.verifySignature(signature, key), 'the commit');
+            console.log(`The commit pushed: revision ${mirror.head.commit.revision}, signed by ${[ ...signedBy ].join(', ')}, checked against the trust anchor of epoch 2; the head of the mirror: ${pushed !== undefined}`);
+        }
+
+        const status = RuntimeStatus.fromSnapshot(snapshot).get('EVSE', 'DE*GEF*E1*1');
+        console.log(`The live snapshot: DE*GEF*E1*1 ${String(status?.value)} since ${status === undefined ? '-' : toTimestamp(status.timestamp)}; outside the version, unsigned`);
+
+    });
+
+
+if (has('published/QA-DE-GEF-E1-1-proof.json'))
+    step('Example A13: who checks the meter', () => {
+
+        const anchorPQ  = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const proof     = json('published/QA-DE-GEF-E1-1-proof.json') as JSONObject;
+        const attested  = at ?? String(((proof['attestations'] as JSONObject[])[0]!)['signedAt']);
+        const station   = verifyChargingStation(anchorPQ, proof, { at: attested, evseId: 'DE*GEF*E1*1' });
+
+        console.log(`The station proof, revision ${station.revision}, at ${attested}: attested by ${station.attestedBy.join(', ')}`);
+
+        for (const software of station.transparencySoftware) {
+            const name = (value: JSONValue | undefined) => typeof value === 'object' && value !== null ? String(Object.values(value as JSONObject)[0]) : String(value);
+            console.log(`${software.energyMeterId}: ${software.legalStatus ?? ''}`);
+            console.log(`  ${name(software.release['name'])} ${String(software.release['version'])}, by ${name(software.manufacturer['name'])}, ${String(software.manufacturer['craRole'] ?? '')}`);
+            if (software.certificate !== undefined)
+                console.log(`  ${String(software.certificate['@id'])} under the ${String(software.certificate['legislation'])}, by the ${String(software.body?.['@id'])}; keys of its own: ${software.bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for the model of the station: ${software.forThisModel ? 'yes' : 'no'}`);
+        }
+
+    });
+
+
 if (has('proofs/QA-proof-station-DE_GEF_S1.json'))
     step('The app: the proof of a charging station and its prices', () => {
 
-        const station = verifyChargingStation(anchor, json('proofs/QA-proof-station-DE_GEF_S1.json'), { at: time });
+        const anchorPQ = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const station  = verifyChargingStation(anchorPQ, json('proofs/QA-proof-station-DE_GEF_S1.json'), { at: time });
         console.log(`At ${time}: ${station.roamingNetwork.name ?? ''} (revision ${station.revision}), attested by ${station.attestedBy.join(', ')}`);
 
         for (const evse of station.evses)
             console.log(`  ${String(evse['@id'])}, ${Number(evse['maxPower']) / 1000} kW: ${(station.tariffs.get(String(evse['@id'])) ?? []).map(tariff => String(tariff['@id'])).join(', ')}`);
 
-        const prices = verifyPriceStatements(station, json('published/QA-priceStatements-DE_GEF_E1_1.json'), { at: time });
+        const prices = verifyPriceStatements(station, json('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: time });
         for (const [entity, price] of prices)
             console.log(`  ${entity}: the price statement ${price.statement.sequence}, valid`);
 
@@ -289,5 +429,3 @@ if (has('proofs/QA-proof-station-DE_GEF_S1.json'))
 
 console.log(failures === 0 ? '\nEverything checked.' : `\n${failures} check(s) failed!`);
 process.exitCode = failures === 0 ? 0 : 1;
-
-export { OperatorTrust };

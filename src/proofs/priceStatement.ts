@@ -19,7 +19,7 @@ import { checkContext, onlyProperties, optionalString, optionalTimestamp, requir
 import { canonicalJSONBytes, ordinal } from '../json/canonical.ts';
 import { get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { bytesEqual, fromHex, isLowerHex, toHex } from '../encoding/text.ts';
-import { hash }                      from '../crypto/hash.ts';
+import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
 import { leafHash, merkleRootOfLeafHashes, parseAuditPath, rootFromAuditPath } from '../merkle.ts';
 import { KeyUsages, type POIPublicKey } from '../keys.ts';
@@ -222,9 +222,10 @@ export function verifyPriceStatementChain(statements: readonly PriceStatement[])
 
 /**
  * The root of the tree of the price statements a checkpoint names (12.3): in the ordinal order of their entity types and
- * identifications, then of their sequences; a leaf the 32 bytes of the digest of a statement.
+ * identifications, then of their sequences; a leaf the 32 bytes of the digest of a statement, hashed with the identification
+ * hash of the epoch of the checkpoint (11.1).
  */
-export function priceStatementsRoot(statements: readonly PriceStatement[]): { root: Uint8Array, size: number } {
+export function priceStatementsRoot(statements: readonly PriceStatement[], algorithm: HashAlgorithm = 'sha256'): { root: Uint8Array, size: number } {
 
     const ordered = [ ...statements ].sort((left, right) =>
         ordinal(left.entityType, right.entityType) ||
@@ -233,7 +234,7 @@ export function priceStatementsRoot(statements: readonly PriceStatement[]): { ro
         ordinal(left.digestHex(), right.digestHex()));
 
     return {
-        root: merkleRootOfLeafHashes('sha256', ordered.map(statement => leafHash('sha256', statement.digest()))),
+        root: merkleRootOfLeafHashes(algorithm, ordered.map(statement => leafHash(algorithm, statement.digest()))),
         size: ordered.length,
     };
 
@@ -245,7 +246,7 @@ export function verifyCheckpointPriceStatements(checkpoint: Checkpoint, statemen
     if (checkpoint.priceStatements === undefined)
         throw new POIError(`The checkpoint '${checkpoint.id}' names no price statements!`);
 
-    const { root, size } = priceStatementsRoot(statements);
+    const { root, size } = priceStatementsRoot(statements, checkpoint.identificationHash);
 
     if (size !== checkpoint.priceStatements.size || !bytesEqual(root, checkpoint.priceStatements.root))
         throw new POIError(`The price statements are not those the checkpoint '${checkpoint.id}' names!`);
@@ -279,17 +280,18 @@ export class PriceStatementProof {
 
     public static parse(value: JSONValue | undefined): PriceStatementProof {
 
-        const json = requireObject(value, 'A proof of a price statement');
+        const json          = requireObject(value, 'A proof of a price statement');
+        const checkpointId  = requireString(json, 'checkpointId', 'The checkpoint of a proof of a price statement');
 
         checkContext(json, PRICE_STATEMENT_PROOF_CONTEXT, 'a proof of a price statement');
         onlyProperties(json, [ '@context', 'checkpointId', 'priceStatement', '@index', '@size', '@auditPath' ], 'A proof of a price statement');
 
         return new PriceStatementProof(
-                   requireString (json, 'checkpointId', 'The checkpoint of a proof of a price statement'),
+                   checkpointId,
                    PriceStatement.parse(get(json, 'priceStatement')),
                    requireInteger(json, '@index', 0, Number.MAX_SAFE_INTEGER, 'The @index of a proof of a price statement'),
                    requireInteger(json, '@size',  1, Number.MAX_SAFE_INTEGER, 'The @size of a proof of a price statement'),
-                   parseAuditPath(get(json, '@auditPath'), 'sha256', 'a proof of a price statement'),
+                   parseAuditPath(get(json, '@auditPath'), hashAlgorithmOfIdentification(checkpointId), 'a proof of a price statement'),
                    json
                );
 
@@ -315,7 +317,7 @@ export class PriceStatementProof {
         if (this.priceStatement.roamingNetworkId !== checkpoint.roamingNetworkId)
             throw new POIError('The price statement is one of another roaming network!');
 
-        const root = rootFromAuditPath('sha256', leafHash('sha256', this.priceStatement.digest()), this.index, this.size, this.auditPath);
+        const root = rootFromAuditPath(checkpoint.identificationHash, leafHash(checkpoint.identificationHash, this.priceStatement.digest()), this.index, this.size, this.auditPath);
 
         if (!bytesEqual(root, checkpoint.priceStatements.root))
             throw new POIError('The proof does not lead to the price statements of the checkpoint!');

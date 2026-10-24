@@ -6,13 +6,13 @@ import type { JSONValue } from '../src/json/value.ts';
 
 
 /**
- * The published artifacts of one run of the C# examples of WWCP_POI at commit 2d9511d (examples/csharp, `dotnet run`):
+ * The published artifacts of one run of the C# examples of WWCP_POI at commit bbd4cbd (examples/csharp, `dotnet run`):
  * what everybody may read, without any private key. The keys are new in every run, so are all digests.
  */
-export const VECTORS = join(import.meta.dirname, 'vectors', 'csharp-2d9511d');
+export const VECTORS = join(import.meta.dirname, 'vectors', 'csharp-bbd4cbd');
 
 /** A point in time while the key statement and the keys of that run are valid. */
-export const AT = '2026-10-24T04:00:00.000Z';
+export const AT = '2026-10-24T14:20:00.000Z';
 
 export const readText = (file: string): string =>
     readFileSync(join(VECTORS, file), 'utf8');

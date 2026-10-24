@@ -66,13 +66,15 @@ export { Commit, SignatureRoles, COMMIT_CONTEXT, type RoleSignature } from './hi
 export { ChangeSet, CHANGE_SET_CONTEXT, type Change, type ChangeKind, type ChangeSetSignature } from './history/changeSet.ts';
 export { applyChangeSet, checkOwnership }                    from './history/apply.ts';
 export { Checkpoint, CheckpointProof, commitsRoot, CHECKPOINT_CONTEXT } from './history/checkpoint.ts';
-export { History, type HistoryOptions, type Version }        from './history/history.ts';
+export { History, type EpochStatus, type HistoryOptions, type Version } from './history/history.ts';
+export { EpochProfiles, FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, EPOCH_CONTEXT, EPOCH_LINK_CONTEXT, EPOCH_PROFILES_CONTEXT, STYX_CANONICAL_JSON, type Epoch, type EpochLink } from './history/epoch.ts';
 export { ArchiveSegment, parseArchiveSegmentInfo, verifySegmentLine, type ArchiveSegmentInfo } from './history/archive.ts';
 
 // Verifiers
 export { OperatorTrust }                                     from './verifier/trust.ts';
 export { verifyVersion, describeVersion, type VerifiedVersion } from './verifier/version.ts';
-export { verifyChargingStation, verifyPriceStatements, type VerifiedChargingStation, type VerifiedPrice } from './verifier/chargingStation.ts';
+export { verifyChargingStation, verifyPriceStatements, type MeterTransparencySoftware, type VerifiedChargingStation, type VerifiedPrice } from './verifier/chargingStation.ts';
 export { parseTrustedWitnesses, verifyCheckpointLine, verifyCheckpointSignatures, type CheckpointSignatures, type TrustedWitness } from './verifier/checkpoints.ts';
-export { verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';
+export { parseEvidence, verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';
 export { POIClient, type CheckedChargingStation, type Fetch } from './client.ts';
+export { LIVE_TOPICS, RUNTIME_STATUS_KINDS, STATUS_UPDATE_CONTEXT, RuntimeStatus, liveRequest, parseFrame, parseStatusUpdate, subscribeRequest, type LiveFrame, type RuntimeStatusEntry, type RuntimeStatusKind, type StatusUpdate } from './live.ts';

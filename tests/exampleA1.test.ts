@@ -11,10 +11,14 @@ import { clone, isObject, type JSONObject } from '../src/json/value.ts';
 
 
 // Example A1: the creation of the roaming network QA, and how to check it, from the QR code and what is published alone.
+// The version A1 published is the genesis: later examples publish later versions under the same name.
 
 describe('Example A1: checking QA from its trust anchor', () => {
 
-    const anchorText = readText('published/QA-trustAnchor.txt');
+    const anchorText  = readText('published/QA-trustAnchor.txt');
+    const genesis     = readJSON('published/QA-genesis.json') as JSONObject;
+    const network     = genesis['roamingNetwork'] as JSONObject;
+    const commit      = genesis['commit'] as JSONObject;
 
     it('reads the trust anchor of the QR code, and writes the same QR code', () => {
 
@@ -22,57 +26,50 @@ describe('Example A1: checking QA from its trust anchor', () => {
 
         expect(anchor.id).toBe('QA');
         expect(anchor.minConsensus).toBe(2);
-        expect(anchor.keys).toHaveLength(3);
+        expect(anchor.keys).toEqual([
+            '6db76b56bd8be735e33dfd536ffe1a8b7540c8ef8496cf94f9cef4a95cc71c77',
+            'f3b736955bd0fc7cd36b9471ab0692c8b94429c28fbb360bfd1293d68558f0a4',
+            'f6a32bb82163ff7f661cadbee3c8e6838720a923227abc24ce8bd6b58d7f6816',
+        ]);
         expect(anchor.urls).toEqual([ 'https://open.charging.cloud/RNs/QA' ]);
         expect(anchor.name).toEqual({ en: 'Quality Assurance' });
         expect(anchor.toQRCode()).toBe(anchorText.trim());
+        expect(anchor.toQRCode()).toHaveLength(511);
 
-        // The URL form names the same keys and quorum.
+        // The URL form names the same keys and quorum, as C# printed it.
+        expect(anchor.toURL()).toBe('https://open.charging.cloud/RNs/QA?keys=6db76b56bd8be735e33dfd536ffe1a8b7540c8ef8496cf94f9cef4a95cc71c77,' +
+                                    'f3b736955bd0fc7cd36b9471ab0692c8b94429c28fbb360bfd1293d68558f0a4,f6a32bb82163ff7f661cadbee3c8e6838720a923227abc24ce8bd6b58d7f6816&minConsensus=2');
         const fromURL = TrustAnchor.parse(anchor.toURL());
         expect(fromURL.keys).toEqual(anchor.keys);
         expect(fromURL.minConsensus).toBe(2);
 
     });
 
-    it('checks QA at its head as an app does (steps a to g)', () => {
+    it('checks QA as an app does (steps a to g): revision 0, signed by the three holders of OCC', () => {
 
         const anchor   = TrustAnchor.parse(anchorText);
-        const version  = verifyVersion(anchor, readJSON('published/QA.json'), readJSON('published/QA-commit.json'), AT);
+        const version  = verifyVersion(anchor, network, commit, AT);
 
         expect(describeVersion(version)).toBe("Roaming network 'QA'/'Quality Assurance' ('The roaming network of the examples'), operated by 'OCC'/'Open Charging Cloud'");
         expect(version.signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(version.warnings).toEqual([]);
-        expect(version.commit.revision).toBe(12);
+        expect(version.commit.revision).toBe(0);
+        expect(version.commit.id).toBe('874e934f156ee59ff93d30a3f5e894abba38e40826be51a299f6d75b51b46bf6');
 
-        // The ETags as C# printed them for this head.
+        // The ETags as C# printed them for this version.
         expect(version.network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:a5240e8663bd75f907728ec96c5e583222f189c7212f67cc97d17917e698eaaf',
-            'cbor:sha256:hex:0cc61074c9799ae44737921d490930aaee7628bdd905022b880707ceec081d09',
-            'effectiveTree:sha256:hex:40dd962082b413105d4a9f884850b323e7e586d800d74f0a4b679c6488ddf58a',
+            'json:sha256:hex:39654d2f9f3bbe9b6feabd7adaec775a6e150350d6a1d97a41a276cfd14b7b37',
+            'cbor:sha256:hex:dc80be6a9c11c4f38b4fb6e1bc6725369c036549acb7025e96713c4ee51739b4',
+            'effectiveTree:sha256:hex:d192cf2353147ffd4bdc77c2f8423a17922e1efe01f6d585ee62f5bb78532c2b',
         ]);
 
-    });
-
-    it('checks the genesis version, revision 0', () => {
-
-        const genesis = readJSON('published/QA-genesis.json') as JSONObject;
-        const network = RoamingNetwork.parse(genesis['roamingNetwork']);
-        const commit  = Commit.parse(genesis['commit']);
-
-        expect(commit.revision).toBe(0);
-        expect(network.matchesCommitETags(commit.eTags)).toBe(true);
-
-        const anchor  = TrustAnchor.parse(anchorText);
-        const version = verifyVersion(anchor, genesis['roamingNetwork']!, genesis['commit']!, AT);
-        expect(version.signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
+        expect(RoamingNetwork.parse(network).matchesCommitETags(Commit.parse(commit).eTags)).toBe(true);
 
     });
 
     it('refuses what step b) to f) refuse', () => {
 
-        const anchor   = TrustAnchor.parse(anchorText);
-        const network  = readJSON('published/QA.json') as JSONObject;
-        const commit   = readJSON('published/QA-commit.json') as JSONObject;
+        const anchor = TrustAnchor.parse(anchorText);
 
         // b) a name changed: the eTags are not those of the content.
         const renamed = clone(network);
@@ -108,7 +105,7 @@ describe('Example A1: checking QA from its trust anchor', () => {
         // f) a signature changed.
         const badSignature = clone(commit);
         const signature    = (badSignature['signatures'] as JSONObject[])[0]!;
-        signature['signedAt'] = '2026-10-24T03:36:00.000Z';
+        signature['signedAt'] = '2026-10-24T14:13:00.000Z';
         expect(() => verifyVersion(anchor, network, badSignature, AT)).toThrow(/signature is invalid/);
 
         expect(isObject(network)).toBe(true);

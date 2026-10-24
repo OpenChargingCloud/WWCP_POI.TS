@@ -29,6 +29,8 @@ export const KeyUsages = {
     Infrastructure:   'infrastructure',
     Tariffs:          'tariffs',
     PriceStatements:  'priceStatements',
+    Software:         'software',
+    Certificates:     'certificates',
     Party:            'party',
 } as const;
 

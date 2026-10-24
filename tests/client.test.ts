@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AT, readText } from './helpers.ts';
+import { anchorPQ } from './qa.ts';
 
 import { POIClient, type Fetch } from '../src/client.ts';
 import { TrustAnchor }           from '../src/proofs/trustAnchor.ts';
@@ -11,7 +12,7 @@ import { TrustAnchor }           from '../src/proofs/trustAnchor.ts';
 
 describe('POIClient', () => {
 
-    const scanned  = TrustAnchor.parse(readText('published/QA-trustAnchor.txt'));
+    const scanned  = anchorPQ;
     const anchor   = TrustAnchor.create('QA',
                                         [ 'https://down.example/RNs/QA', 'https://forged.example/RNs/QA', 'https://open.charging.cloud/RNs/QA' ],
                                         scanned.keys, scanned.minConsensus, scanned.name, scanned.description);
@@ -26,7 +27,7 @@ describe('POIClient', () => {
             throw new Error('connection refused');
 
         const proof       = readText('proofs/QA-proof-station-DE_GEF_S1.json');
-        const statements  = readText('published/QA-priceStatements-DE_GEF_E1_1.json');
+        const statements  = readText('published/QA-epoch-2-checkpoint-0-priceStatements.json');
 
         const body = url.endsWith('/proof')
                          ? url.startsWith('https://forged.example/') ? proof.replace('"maxPower": 300000', '"maxPower": 400000') : proof
@@ -43,7 +44,7 @@ describe('POIClient', () => {
 
         expect(checked.source).toBe('https://open.charging.cloud/RNs/QA');
         expect(checked.station.chargingStation['@id']).toBe('DE*GEF*S1');
-        expect(checked.prices.get('EVSE:DE*GEF*E1*1')!.statement.sequence).toBe(1);
+        expect(checked.prices.get('EVSE:DE*GEF*E1*1')!.statement.sequence).toBe(3);
         expect(requested).toContain('https://open.charging.cloud/RNs/QA/EVSEs/DE*GEF*E1*1/proof');
         expect(requested).toContain('https://open.charging.cloud/RNs/QA/EVSEs/DE*GEF*E1*1/priceStatements');
 

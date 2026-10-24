@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { parseTimestamp, toTimestamp }      from '../common.ts';
+import { onlyProperties, parseTimestamp, requireArray, requireObject, requireString, toTimestamp } from '../common.ts';
 import { get, type JSONValue }              from '../json/value.ts';
 import { Checkpoint, CheckpointProof }      from '../history/checkpoint.ts';
 import { ChargingStationProof }             from '../proofs/stationProof.ts';
@@ -43,6 +43,36 @@ export interface Evidence {
     readonly priceStatementProofs?: readonly JSONValue[];
     readonly checkpoints?:          readonly JSONValue[];
 }
+
+/**
+ * Reads the evidence as the app of example A10 keeps it, `driver/evidence-{EVSE}.json`: `{ trustAnchor, EVSEId,
+ * chargingStarted, chargingStationProof, priceStatements, commitProof?, priceStatementProofs?, checkpoints? }`.
+ */
+export function parseEvidence(value: JSONValue): Evidence {
+
+    const json      = requireObject(value, 'The evidence of a charging session');
+    const optional  = (property: string): JSONValue[] | undefined =>
+                          get(json, property) === undefined ? undefined : requireArray(get(json, property), `The ${property} of the evidence`);
+
+    onlyProperties(json, [ 'trustAnchor', 'EVSEId', 'chargingStarted', 'chargingStationProof', 'priceStatements', 'commitProof', 'priceStatementProofs', 'checkpoints' ], 'The evidence of a charging session');
+
+    const commitProof           = get(json, 'commitProof');
+    const priceStatementProofs  = optional('priceStatementProofs');
+    const checkpoints           = optional('checkpoints');
+
+    return {
+        trustAnchor:           requireString(json, 'trustAnchor',     'The trust anchor of the evidence'),
+        evseId:                requireString(json, 'EVSEId',          'The EVSE of the evidence'),
+        chargingStarted:       requireString(json, 'chargingStarted', 'The start of charging of the evidence'),
+        chargingStationProof:  requireObject(get(json, 'chargingStationProof'), 'The charging station proof of the evidence'),
+        priceStatements:       requireArray (get(json, 'priceStatements'),      'The price statements of the evidence'),
+        ...(commitProof          !== undefined ? { commitProof }          : {}),
+        ...(priceStatementProofs !== undefined ? { priceStatementProofs } : {}),
+        ...(checkpoints          !== undefined ? { checkpoints }          : {}),
+    };
+
+}
+
 
 /** What the evidence proves. */
 export interface VerifiedEvidence {

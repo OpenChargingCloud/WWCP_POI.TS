@@ -16,7 +16,7 @@
  */
 
 import { firstText, timeOf }           from '../common.ts';
-import { get, isObject, type JSONValue } from '../json/value.ts';
+import { get, isObject, sameValue, type JSONValue } from '../json/value.ts';
 import { KeyUsages, type KeyUsage, type POIPublicKey } from '../keys.ts';
 import { SignatureRoles, type RoleSignature } from '../history/commit.ts';
 import { RoamingNetworkOperator, type RoamingNetwork } from '../network/roamingNetwork.ts';
@@ -69,6 +69,36 @@ export class OperatorTrust {
      */
     public static fromOperatorJSON(anchor: TrustAnchor, operatorJSON: JSONValue | undefined, at?: number | Date | string): OperatorTrust {
         return OperatorTrust.ofOperator(anchor, operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, anchor.id), at);
+    }
+
+    /**
+     * The trust in the operator of a later version of a history this trust follows (8.6, *Succession*): its key statement
+     * signed by identity keys trusted here, of as many holders as required, e.g. after the operator stated new keys signed
+     * by its old ones, as before a new epoch (example A11). Its own identity keys are then trusted, those it dropped not.
+     * Only for a version the history took commit by commit, each signed by the owners of its changes in the version before.
+     */
+    public followedBy(network: RoamingNetwork, at?: number | Date | string): OperatorTrust {
+
+        const operator   = network.operator;
+        const statement  = operator?.keyStatement;
+
+        if (network.id !== this.anchor.id)
+            throw new POIError('this is not the roaming network of the trust anchor');
+
+        if (operator === undefined || statement === undefined)
+            throw new POIError('the roaming network operator states no keys');
+
+        if (sameValue(statement.json, this.keyStatement.json))
+            return new OperatorTrust(this.anchor, operator, statement, this.trustedIdentityKeyIds, this.statementSignedBy);
+
+        const signedBy = statement.verify(this.trustedIdentityKeyIds, operator.identityKeys, { minConsensus: this.requiredConsensus, at: timeOf(at) });
+
+        return new OperatorTrust(this.anchor,
+                                 operator,
+                                 statement,
+                                 new Set([ ...this.anchor.keys, ...statement.identityKeys.map(key => key.id) ]),
+                                 signedBy);
+
     }
 
     private static ofOperator(anchor: TrustAnchor, operator: RoamingNetworkOperator | undefined, at?: number | Date | string): OperatorTrust {

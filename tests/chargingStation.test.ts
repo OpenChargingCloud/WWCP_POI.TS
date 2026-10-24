@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AT, readJSON, readText } from './helpers.ts';
+import { anchor as anchorOfEpoch1, anchorPQ } from './qa.ts';
 
 import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { ChargingStationProof } from '../src/proofs/stationProof.ts';
@@ -12,11 +13,12 @@ import { parseJSON }          from '../src/json/parse.ts';
 
 // The use case: an EV driver's app selects a charging station, downloads its proof and the price statements of its EVSEs,
 // and checks them against the trust anchor of the roaming network it pinned. Proofs made by the C# implementation
-// (tests/vectors/csharp-2d9511d/proofs/MakeProofs.cs.txt) of the head of QA as the examples left it.
+// (tests/vectors/csharp-bbd4cbd/proofs/MakeProofs.cs.txt) of the head of QA as the examples left it, revision 7 of epoch 2,
+// attested by the ML-DSA signing keys of the holders of OCC, checked against the trust anchor of epoch 2.
 
 describe('The proof of a charging station, as an app checks it', () => {
 
-    const anchor = TrustAnchor.parse(readText('published/QA-trustAnchor.txt'));
+    const anchor = anchorPQ;
 
     it('verifies the proof of DE*GEF*S1 and shows it as it is at runtime', () => {
 
@@ -24,8 +26,9 @@ describe('The proof of a charging station, as an app checks it', () => {
 
         expect(station.roamingNetwork).toEqual({ id: 'QA', name: 'Quality Assurance', description: 'The roaming network of the examples' });
         expect(station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
-        expect(station.revision).toBe(12);
-        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:40dd962082b413105d4a9f884850b323e7e586d800d74f0a4b679c6488ddf58a');
+        expect(station.revision).toBe(7);
+        expect(station.commitId).toHaveLength(128);
+        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:36be40e5893a89da29aa36f8c7629c695ca273a169ab0ed51197f128c9b90fd9');
         expect(station.chargingStation['@id']).toBe('DE*GEF*S1');
         expect(station.chargingStation['maxPower']).toBe(300000);
         expect(station.evses.map(evse => evse['@id'])).toEqual([ 'DE*GEF*E1*1', 'DE*GEF*E1*2' ]);
@@ -51,15 +54,16 @@ describe('The proof of a charging station, as an app checks it', () => {
     it('verifies the price statement of an EVSE against the proof', () => {
 
         const station  = verifyChargingStation(anchor, readJSON('proofs/QA-proof-station-DE_GEF_S1.json'), { at: AT });
-        const prices   = verifyPriceStatements(station, readJSON('published/QA-priceStatements-DE_GEF_E1_1.json'), { at: AT });
+        const prices   = verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: AT });
         const price    = prices.get('EVSE:DE*GEF*E1*1')!;
 
-        expect(price.statement.sequence).toBe(1);
+        expect(price.statement.sequence).toBe(3);
+        expect(price.statement.algorithm).toBe('ML-DSA-65');
         expect(price.statement.prices[0]!['chargingTariffId']).toBe('DE*GEF*T_DC');
-        expect(String(((price.statement.prices[0]!['elements'] as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!['price'])).toBe('0.79');
+        expect(String(((price.statement.prices[0]!['elements'] as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!['price'])).toBe('0.59');
 
         // After its validUntil there is no current price.
-        expect(verifyPriceStatements(station, readJSON('published/QA-priceStatements-DE_GEF_E1_1.json'), { at: '2026-10-24T05:00:00.000Z' }).size).toBe(0);
+        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-24T16:00:00.000Z' }).size).toBe(0);
 
     });
 
@@ -72,7 +76,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(() => verifyChargingStation(anchor, changed, { at: AT })).toThrow(/attest the root/);
 
         // The attestations are valid for 15 minutes.
-        expect(() => verifyChargingStation(anchor, proof, { at: '2026-10-24T04:20:00.000Z' })).toThrow(/of 0 holders/);
+        expect(() => verifyChargingStation(anchor, proof, { at: '2026-10-24T14:40:00.000Z' })).toThrow(/of 0 holders/);
 
         // One attestation is not enough for a quorum of two.
         const one = clone(proof);
@@ -82,6 +86,9 @@ describe('The proof of a charging station, as an app checks it', () => {
         // A trust anchor of other keys.
         const other = TrustAnchor.create('QA', anchor.urls, [ 'a'.repeat(64), 'b'.repeat(64) ], 2);
         expect(() => ChargingStationProof.parse(proof).verify(other, AT)).toThrow(/signed by trusted identity keys of 0 holders/);
+
+        // The trust anchor of epoch 1 alone: the key statement of epoch 2 is signed by the ML-DSA identity keys only.
+        expect(() => ChargingStationProof.parse(proof).verify(anchorOfEpoch1, AT)).toThrow('The key statement is signed by trusted identity keys of 0 holders, not of 2!');
 
     });
 

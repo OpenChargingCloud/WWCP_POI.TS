@@ -42,6 +42,8 @@ export interface VerifiedChargingStation {
     readonly operatorSigningKeys: readonly POIPublicKey[];
     /** The energy meters of the station and its EVSEs, with their public keys, for transparency software. */
     readonly energyMeters:    readonly JSONObject[];
+    /** Who checks the meters: the transparency software each energy meter names, with its certificate, as the proof gives them. */
+    readonly transparencySoftware: readonly MeterTransparencySoftware[];
 
     readonly commitId:        string;
     readonly revision:        number;
@@ -53,8 +55,92 @@ export interface VerifiedChargingStation {
 }
 
 
+/**
+ * A transparency software an energy meter names (`transparencySoftwareStatus`), as the proof of its station gives it
+ * (example A13): the release in the skeleton of its transparency software manufacturer, and the certificate it is given
+ * with in the skeleton of the conformity assessment body issuing it. POI proves who states them, not that they are true.
+ */
+export interface MeterTransparencySoftware {
+    readonly energyMeterId:  string;
+    /** The legal status the meter's values are checked under, e.g. `germanCalibrationLaw`. */
+    readonly legalStatus:    string | undefined;
+    /** The release, as its manufacturer states it: name, version, licenses, support period, declaration of conformity, bill of materials. */
+    readonly release:        JSONObject;
+    /** Its manufacturer, as its skeleton: its own properties, e.g. its role under the CRA and where vulnerabilities are reported. */
+    readonly manufacturer:   JSONObject;
+    readonly certificate:    JSONObject | undefined;
+    /** The conformity assessment body that issued the certificate, as its skeleton. */
+    readonly body:           JSONObject | undefined;
+    /**
+     * Whether the body has keys of its own. A body without keys signed none of its certificates: the roaming network operator
+     * stated them in its place. One with keys may have got them after the certificate was stated: who signed it, the commits
+     * tell, not the proof (example A13, docs/csharp-review.md).
+     */
+    readonly bodyHasKeys:    boolean | undefined;
+    /** Whether the certificate is for the model of the station: its `modelId` and its `manufacturerId`. */
+    readonly forThisModel:   boolean | undefined;
+}
+
+
 const objects = (value: JSONValue | undefined): JSONObject[] =>
     isArray(value) ? value.filter(isObject) : [];
+
+const textOf = (object: JSONObject, property: string): string | undefined =>
+    typeof get(object, property) === 'string' ? get(object, property) as string : undefined;
+
+
+/** The transparency software the given energy meters name, from the releases and certificates the proof gives. */
+function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energyMeters: readonly JSONObject[], warnings: string[]): MeterTransparencySoftware[] {
+
+    const releases      = objects(get(attested, 'transparencySoftwareManufacturers')).flatMap(manufacturer =>
+                              objects(get(manufacturer, 'transparencySoftware')).map(release => ({ release, manufacturer })));
+
+    const certificates  = objects(get(attested, 'conformityAssessmentBodies')).flatMap(body =>
+                              objects(get(body, 'transparencySoftwareCertificates')).map(certificate => ({ certificate, body })));
+
+    const skeleton      = (party: JSONObject, children: string): JSONObject => {
+                              const { [children]: _, ...own } = party;
+                              return own;
+                          };
+
+    const result: MeterTransparencySoftware[] = [];
+
+    for (const meter of energyMeters)
+        for (const assignment of objects(get(meter, 'transparencySoftwareStatus'))) {
+
+            const meterId        = String(meter['@id']);
+            const releaseId      = textOf(assignment, 'transparencySoftwareId');
+            const certificateId  = textOf(assignment, 'certificateId');
+            const release        = releases.find(item => item.release['@id'] === releaseId);
+            const certificate    = certificateId === undefined ? undefined : certificates.find(item => item.certificate['@id'] === certificateId);
+
+            if (release === undefined) {
+                warnings.push(`the transparency software '${releaseId ?? ''}' of the energy meter '${meterId}' is not given by the proof`);
+                continue;
+            }
+
+            if (certificateId !== undefined && certificate === undefined)
+                warnings.push(`the certificate '${certificateId}' of the energy meter '${meterId}' is not given by the proof`);
+
+            result.push({
+                energyMeterId:  meterId,
+                legalStatus:    textOf(assignment, 'legalStatus'),
+                release:        release.release,
+                manufacturer:   skeleton(release.manufacturer, 'transparencySoftware'),
+                certificate:    certificate?.certificate,
+                body:           certificate === undefined ? undefined : skeleton(certificate.body, 'transparencySoftwareCertificates'),
+                bodyHasKeys:    certificate === undefined ? undefined : isArray(get(certificate.body, 'signingKeys')) && (get(certificate.body, 'signingKeys') as JSONValue[]).length > 0,
+                forThisModel:   certificate === undefined
+                                    ? undefined
+                                    : textOf(certificate.certificate, 'chargingStationModel')          === textOf(station, 'modelId') &&
+                                      textOf(certificate.certificate, 'chargingStationManufacturerId') === textOf(station, 'manufacturerId'),
+            });
+
+        }
+
+    return result;
+
+}
 
 
 /**
@@ -135,6 +221,7 @@ export function verifyChargingStation(anchor:   TrustAnchor,
         tariffs,
         operatorSigningKeys:  POIPublicKey.parseAll(get(operator, 'signingKeys'), `signing keys of the charging station operator '${String(operator['@id'])}'`),
         energyMeters,
+        transparencySoftware: transparencySoftwareOf(attested, station, energyMeters, warnings),
         commitId:             parsed.commitId,
         revision:             parsed.revision,
         eTag:                 verified.eTag,

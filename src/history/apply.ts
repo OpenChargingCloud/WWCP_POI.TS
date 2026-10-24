@@ -38,14 +38,96 @@ const NETWORK_ARRAYS: Readonly<Record<string, string>> = {
     EMobilityProvider:                'eMobilityProviders',
     GridOperator:                     'gridOperators',
     ParkingOperator:                  'parkingOperators',
-    ChargingStationManufacturer:      'chargingStationManufacturers',
-    EnergyMeterManufacturer:          'energyMeterManufacturers',
-    TransparencySoftware:             'transparencySoftware',
-    TransparencySoftwareCertificate:  'transparencySoftwareCertificates',
+    ChargingStationManufacturer:       'chargingStationManufacturers',
+    EnergyMeterManufacturer:           'energyMeterManufacturers',
+    TransparencySoftwareManufacturer:  'transparencySoftwareManufacturers',
+    ConformityAssessmentBody:          'conformityAssessmentBodies',
 };
 
 /** The parties: the RNO adds and removes them, they own their other properties (4.1). */
-const PARTIES = new Set([ 'ChargingStationOperator', 'EMobilityProvider', 'GridOperator', 'ParkingOperator' ]);
+const PARTIES = new Set([ 'ChargingStationOperator', 'EMobilityProvider', 'GridOperator', 'ParkingOperator',
+                          'TransparencySoftwareManufacturer', 'ConformityAssessmentBody' ]);
+
+/** The embedded children a party is not added with, but adds on its own (`PartyChildren`). */
+const PARTY_CHILDREN: Readonly<Record<string, readonly string[]>> = {
+    ChargingStationOperator:           [ 'chargingPools', 'chargingTariffs', 'EVSETemplates', 'chargingStationTemplates', 'chargingPoolTemplates',
+                                         'chargingTariffTemplates', 'energyMeterTemplates', 'EVSEGroups', 'chargingStationGroups', 'chargingPoolGroups',
+                                         'chargingTariffGroups', 'energyMeterGroups', 'chargingTariffOffers', 'parkingSpaces' ],
+    EMobilityProvider:                 [ 'EVSEGroups', 'chargingStationGroups', 'chargingPoolGroups', 'chargingTariffOffers' ],
+    GridOperator:                      [ 'gridConnectionPoints', 'energyMeterTemplates', 'energyMeterGroups' ],
+    ParkingOperator:                   [ 'parkingGarages', 'parkingSpaces', 'parkingSensors', 'parkingSpaceTemplates', 'parkingSpaceGroups', 'parkingProducts' ],
+    TransparencySoftwareManufacturer:  [ 'transparencySoftware' ],
+    ConformityAssessmentBody:          [ 'transparencySoftwareCertificates' ],
+};
+
+/**
+ * Entities a party embeds and changes on its own, without runtime status and timestamps: the releases of a transparency
+ * software manufacturer and the certificates of a conformity assessment body (TransparencySoftwareManufacturer.md,
+ * ConformityAssessmentBody.md).
+ */
+interface PartyChildType {
+    readonly parentType:  string;
+    readonly parents:     string;
+    readonly property:    string;
+    readonly what:        string;
+    readonly usage:       KeyUsage;
+    readonly changeable:  readonly string[];
+}
+
+const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
+
+    TransparencySoftware: {
+        parentType:  'TransparencySoftwareManufacturer',
+        parents:     'transparencySoftwareManufacturers',
+        property:    'transparencySoftware',
+        what:        'transparency software release',
+        usage:       KeyUsages.Software,
+        changeable:  [ 'name', 'version', 'openSourceLicenses', 'logo', 'howToUse', 'moreInformation', 'sourceCodeRepository',
+                       'supportUntil', 'declarationOfConformity', 'softwareBillOfMaterials' ],
+    },
+
+    TransparencySoftwareCertificate: {
+        parentType:  'ConformityAssessmentBody',
+        parents:     'conformityAssessmentBodies',
+        property:    'transparencySoftwareCertificates',
+        what:        'transparency software certificate',
+        usage:       KeyUsages.Certificates,
+        changeable:  [ 'legislation', 'chargingStationModel', 'chargingStationModelVersion', 'chargingStationManufacturerId', 'documentNumber',
+                       'documentURL', 'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'notBefore', 'notAfter' ],
+    },
+
+};
+
+/**
+ * Energy meter templates and groups: children of the charging station operator or the grid operator embedding them, which
+ * an `Add` names as its parent (`TryApplyEnergyMeterChildChange` of the C# implementation).
+ */
+interface EnergyMeterChildType {
+    readonly property:    string;
+    readonly what:        string;
+    readonly changeable:  readonly string[];
+}
+
+const ENERGY_METER_CHILD_TYPES: Readonly<Record<string, EnergyMeterChildType>> = {
+
+    EnergyMeterTemplate: {
+        property:    'energyMeterTemplates',
+        what:        'energy meter template',
+        changeable:  [ 'name', 'description', 'dataSource', 'customData', 'role', 'manufacturerId', 'modelId', 'modelURL', 'hardwareVersion',
+                       'firmwareVersion', 'transparencySoftwareStatus', 'signatureMethods' ],
+    },
+
+    EnergyMeterGroup: {
+        property:    'energyMeterGroups',
+        what:        'energy meter group',
+        changeable:  [ 'name', 'description', 'dataSource', 'energyMeterIds', 'customData' ],
+    },
+
+};
+
+/** Identifications of parties and their releases and certificates are compared case-insensitively, as their C# types do. */
+const sameId = (left: string, right: string): boolean =>
+    left.toUpperCase() === right.toUpperCase();
 
 /** Charging tariffs, templates and groups: children of their charging station operator itself. */
 const OPERATOR_CHILD_ARRAYS: Readonly<Record<string, string>> = {
@@ -66,17 +148,52 @@ const TARIFF_TYPES = new Set([ 'ChargingTariff', 'ChargingTariffTemplate', 'Char
 const INFRASTRUCTURE_TYPES = new Set([ ...Object.keys(OPERATOR_CHILD_ARRAYS), 'ChargingPool', 'ChargingStation', 'EVSE' ]);
 
 
-/** Removes `@context` from every object it embeds: embedded, an object names no context (1.1). */
-function embedded(value: JSONValue): JSONValue {
+const idOf = (value: JSONValue | undefined): string =>
+    isObject(value) && typeof value['@id'] === 'string' ? value['@id'] : '';
 
-    if (isArray(value))
-        return value.map(embedded);
+/**
+ * The arrays the C# implementation keeps in an order of its own, whatever order a change gives them in, each element once
+ * (`Ordered` of POIPublicKey, EnergyMeter, EnergyMeterPublicKey and RoamingNetworkSigningKeyCertificate): it writes them
+ * so, and so they are part of the content.
+ */
+const ORDERED_ARRAYS: Readonly<Record<string, { readonly key: (item: JSONValue) => string, readonly order: (left: JSONValue, right: JSONValue) => number }>> = {
+    signingKeys:             { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
+    identityKeys:            { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
+    energyMeters:            { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
+    publicKeys:              { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
+    signingKeyCertificates:  {
+        key:    item => `${idOf(isObject(item) ? item['signingKey'] : undefined)}/${isObject(item) ? String(item['keyId']) : ''}`,
+        order:  (left, right) => ordinal(idOf(isObject(left)  ? left['signingKey']  : undefined), idOf(isObject(right) ? right['signingKey'] : undefined)) ||
+                                 ordinal(isObject(left) ? String(left['keyId']) : '', isObject(right) ? String(right['keyId']) : ''),
+    },
+};
+
+/**
+ * A value a change puts into the content, as the C# implementation keeps it: without `@context` in what it embeds
+ * (embedded, an object names no context, 1.1), its ordered arrays in their order.
+ */
+function embedded(value: JSONValue, property?: string): JSONValue {
+
+    if (isArray(value)) {
+
+        const items    = value.map(item => embedded(item));
+        const ordered  = property === undefined ? undefined : ORDERED_ARRAYS[property];
+
+        if (ordered === undefined || !items.every(isObject))
+            return items;
+
+        if (new Set(items.map(ordered.key)).size !== items.length)
+            throw new POIError(`An element of '${property}' must not be given twice!`);
+
+        return items.sort(ordered.order);
+
+    }
 
     if (isObject(value)) {
         const result: JSONObject = {};
-        for (const [property, item] of Object.entries(value))
-            if (property !== '@context')
-                set(result, property, embedded(item));
+        for (const [name, item] of Object.entries(value))
+            if (name !== '@context')
+                set(result, name, embedded(item, name));
         return result;
     }
 
@@ -202,7 +319,7 @@ function checkOldValue(change: Change, current: JSONValue | undefined, index: nu
 
     const matches = change.oldValue === null
                         ? current === undefined
-                        : current !== undefined && sameValue(embedded(change.oldValue), embedded(current));
+                        : current !== undefined && sameValue(embedded(change.oldValue, change.propertyName), embedded(current, change.propertyName));
 
     if (!matches)
         throw new POIError(change.propertyName !== undefined && (change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty')
@@ -228,7 +345,7 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
     else {
         if (change.newValue === undefined)
             throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
-        set(entity, property, embedded(change.newValue));
+        set(entity, property, embedded(change.newValue, property));
     }
 
     entity['lastChange'] = lastChange;
@@ -406,6 +523,239 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
 }
 
 
+/** The party of a type embedding a release or a certificate of an identification, and where. */
+function partyChildOf(content: JSONObject, type: PartyChildType, childId: string): { party: JSONObject, children: JSONArray, child: JSONObject } | undefined {
+
+    for (const party of objectsOf(get(content, type.parents))) {
+        const children = get(party, type.property);
+        const child    = objectsOf(children).find(item => typeof item['@id'] === 'string' && sameId(item['@id'], childId));
+        if (child !== undefined)
+            return { party, children: children as JSONArray, child };
+    }
+
+    return undefined;
+
+}
+
+/** The party of a type an identification names, in any spelling its identification considers equal. */
+function partyNamed(content: JSONObject, type: string, id: string | undefined): JSONObject | undefined {
+    const property = NETWORK_ARRAYS[type];
+    return property === undefined || id === undefined
+               ? undefined
+               : objectsOf(get(content, property)).find(party => typeof party['@id'] === 'string' && sameId(party['@id'], id));
+}
+
+
+/**
+ * Applies a change of a release of a transparency software manufacturer or of a certificate of a conformity assessment
+ * body (`TryApplyTransparencySoftwareChange`, `TryApplyTransparencySoftwareCertificateChange`): added to the party an `Add`
+ * names as its parent, changed and removed in the one embedding it; the party changes with it.
+ */
+function applyPartyChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+
+    const type   = PARTY_CHILD_TYPES[change.entityType]!;
+    const what   = `${type.what} '${change.entityId}'`;
+    const found  = partyChildOf(content, type, change.entityId);
+    let   party: JSONObject;
+
+    if (change.kind === 'Add') {
+
+        if (found !== undefined)
+            throw new POIError(`Change ${index}: the ${what} already exists, at the ${type.parentType} '${String(found.party['@id'])}'!`);
+
+        const parent = change.parentEntityType === type.parentType ? partyNamed(content, type.parentType, change.parentEntityId) : undefined;
+
+        if (parent === undefined)
+            throw new POIError(`Change ${index}: the ${what} to add needs its ${type.parentType}, an existing one!`);
+
+        party = parent;
+
+    }
+
+    else {
+
+        if (found === undefined)
+            throw new POIError(`Change ${index}: the ${what} does not exist!`);
+
+        if (change.parentEntityType !== undefined &&
+           (change.parentEntityType !== type.parentType || change.parentEntityId === undefined || !sameId(change.parentEntityId, String(found.party['@id']))))
+            throw new POIError(`Change ${index}: the ${what} belongs to ${type.parentType} '${String(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
+
+        party = found.party;
+
+    }
+
+    const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+
+    checkOldValue(change, isProperty ? get(found!.child, change.propertyName ?? '') : found?.child, index, what);
+
+    switch (change.kind) {
+
+        // Releases and certificates have no timestamps of their own.
+        case 'UpdateProperty':
+        case 'RemoveProperty': {
+
+            const property = change.propertyName ?? '';
+
+            if (!type.changeable.includes(property))
+                throw new POIError(`Change ${index}: the property '${property}' of a ${type.what} can not be changed!`);
+
+            if (change.kind === 'RemoveProperty') {
+                if (get(found!.child, property) === undefined)
+                    throw new POIError(`Change ${index}: the property '${property}' of the ${what} does not exist!`);
+                delete found!.child[property];
+            }
+            else {
+                if (change.newValue === undefined)
+                    throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
+                set(found!.child, property, embedded(change.newValue, property));
+            }
+
+            break;
+
+        }
+
+        case 'Add': {
+
+            if (!isObject(change.newValue) || typeof change.newValue['@id'] !== 'string' || !sameId(change.newValue['@id'], change.entityId))
+                throw new POIError(`Change ${index}: the ${type.what} to add must be a JSON object with the identification '${change.entityId}'!`);
+
+            const added    = embedded(clone(change.newValue)) as JSONObject;
+            const children = get(party, type.property);
+
+            if (children === undefined)
+                set(party, type.property, [ added ]);
+            else if (isArray(children))
+                insertOrdered(children, added);
+            else
+                throw new POIError(`Change ${index}: '${type.property}' of ${type.parentType} '${String(party['@id'])}' is no array!`);
+
+            break;
+
+        }
+
+        case 'Remove': {
+            const children = found!.children;
+            children.splice(children.indexOf(found!.child), 1);
+            if (children.length === 0)
+                delete party[type.property];
+            break;
+        }
+
+        default:
+            throw new POIError(`Change ${index}: ${change.kind} of a ${type.what} is not supported by this library yet!`);
+
+    }
+
+    // The party embedding it changed with it, at the time of the change set.
+    party['lastChange'] = createdAt;
+
+}
+
+
+/** The party embedding an energy meter template or group: a charging station operator, or else a grid operator. */
+function energyMeterChildOf(content: JSONObject, type: EnergyMeterChildType, childId: string): { party: JSONObject, partyType: string, children: JSONArray, child: JSONObject } | undefined {
+
+    for (const [partyType, parties] of [ [ 'ChargingStationOperator', 'chargingStationOperators' ], [ 'GridOperator', 'gridOperators' ] ] as const)
+        for (const party of objectsOf(get(content, parties))) {
+            const children = get(party, type.property);
+            const child    = objectsOf(children).find(item => typeof item['@id'] === 'string' && sameId(item['@id'], childId));
+            if (child !== undefined)
+                return { party, partyType, children: children as JSONArray, child };
+        }
+
+    return undefined;
+
+}
+
+/**
+ * Applies a change of an energy meter template or group: added to the charging station operator or grid operator an `Add`
+ * names as its parent, changed and removed in the one embedding it, with its timestamps; the party changes with it.
+ */
+function applyEnergyMeterChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+
+    const type   = ENERGY_METER_CHILD_TYPES[change.entityType]!;
+    const what   = `${type.what} '${change.entityId}'`;
+    const found  = energyMeterChildOf(content, type, change.entityId);
+    let   party: JSONObject;
+
+    if (change.kind === 'Add') {
+
+        if (found !== undefined)
+            throw new POIError(`Change ${index}: the ${what} already exists!`);
+
+        const parent = change.parentEntityType === 'ChargingStationOperator' || change.parentEntityType === 'GridOperator'
+                           ? partyNamed(content, change.parentEntityType, change.parentEntityId)
+                           : undefined;
+
+        if (parent === undefined)
+            throw new POIError(`Change ${index}: the ${what} to add needs its ChargingStationOperator or GridOperator, an existing one!`);
+
+        party = parent;
+
+    }
+
+    else {
+
+        if (found === undefined)
+            throw new POIError(`Change ${index}: the ${what} does not exist!`);
+
+        if (change.parentEntityType !== undefined &&
+           (change.parentEntityType !== found.partyType || change.parentEntityId === undefined || !sameId(change.parentEntityId, String(found.party['@id']))))
+            throw new POIError(`Change ${index}: the ${what} belongs to ${found.partyType} '${String(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
+
+        party = found.party;
+
+    }
+
+    const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+
+    checkOldValue(change, isProperty ? get(found!.child, change.propertyName ?? '') : found?.child, index, what);
+
+    switch (change.kind) {
+
+        case 'UpdateProperty':
+        case 'RemoveProperty':
+            if (!type.changeable.includes(change.propertyName ?? ''))
+                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of an ${type.what} can not be changed!`);
+            applyProperty(found!.child, change, index, what, createdAt);
+            break;
+
+        case 'Add': {
+
+            const added    = entityToAdd(change, index, what, createdAt);
+            const children = get(party, type.property);
+
+            if (children === undefined)
+                set(party, type.property, [ added ]);
+            else if (isArray(children))
+                insertOrdered(children, added);
+            else
+                throw new POIError(`Change ${index}: '${type.property}' of '${String(party['@id'])}' is no array!`);
+
+            break;
+
+        }
+
+        case 'Remove': {
+            const children = found!.children;
+            children.splice(children.indexOf(found!.child), 1);
+            if (children.length === 0)
+                delete party[type.property];
+            break;
+        }
+
+        default:
+            throw new POIError(`Change ${index}: ${change.kind} of an ${type.what} is not supported by this library yet!`);
+
+    }
+
+    // The party embedding it changed with it, at the time of the change set.
+    party['lastChange'] = createdAt;
+
+}
+
+
 function applyNetworkChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
     const what = `roaming network '${String(content['@id'])}'`;
@@ -467,27 +817,101 @@ function partiesOf(network: RoamingNetwork): Map<string, PartyKeys> {
 }
 
 
-/** Who must sign a change, as the table of section 4.1 says. */
+/**
+ * Who must sign a change, as the table of section 4.1 says. A party signs with a signing key that may sign the usage, with
+ * an identity key, or with either; an identity key of the roaming network operator recovers the keys of every party.
+ */
+type OwnerKeys = 'signing' | 'identity' | 'signingOrIdentity';
+
 type Owner =
-    | { readonly kind: 'rno' }
-    | { readonly kind: 'party', readonly type: string, readonly id: string, readonly usage: KeyUsage, readonly identity: boolean };
+    | { readonly kind: 'rno', readonly keys: OwnerKeys }
+    | { readonly kind: 'party', readonly type: string, readonly id: string, readonly usage: KeyUsage, readonly keys: OwnerKeys };
 
 
-function ownerOf(content: JSONObject, change: Change, index: number): Owner {
+function ownerOf(content: JSONObject, change: Change, index: number, addedEnergyMeterChildren: Map<string, { type: string, id: string }>): Owner {
 
-    if (change.entityType === 'RoamingNetwork' || change.entityType === 'RoamingNetworkOperator' ||
-        change.entityType === 'ChargingStationManufacturer' || change.entityType === 'EnergyMeterManufacturer' ||
-        change.entityType === 'TransparencySoftware' || change.entityType === 'TransparencySoftwareCertificate')
-        return { kind: 'rno' };
+    // The roaming network operator: its keys and its quorum by its identity keys, the certificates of its signing keys by
+    // either kind, everything else by its signing keys.
+    if (change.entityType === 'RoamingNetworkOperator')
+        return {
+            kind:  'rno',
+            keys:  change.propertyName === 'signingKeyCertificates'                                        ? 'signingOrIdentity'
+                 : [ 'signingKeys', 'identityKeys', 'minConsensus' ].includes(change.propertyName ?? '')  ? 'identity'
+                 :                                                                                          'signing',
+        };
+
+    if (change.entityType === 'RoamingNetwork' || change.entityType === 'ChargingStationManufacturer' || change.entityType === 'EnergyMeterManufacturer')
+        return { kind: 'rno', keys: 'signing' };
 
     if (PARTIES.has(change.entityType)) {
 
         if (change.kind === 'Add' || change.kind === 'Remove')
-            return { kind: 'rno' };
+            return { kind: 'rno', keys: 'signing' };
 
-        // Its keys are signed by its identity keys; everything else of its own by a signing key for the party.
-        const keys = change.propertyName === 'signingKeys' || change.propertyName === 'identityKeys';
-        return { kind: 'party', type: change.entityType, id: change.entityId, usage: KeyUsages.Party, identity: keys };
+        // As its keys name it: a change may name it in every spelling its identification considers equal.
+        const id = String(partyNamed(content, change.entityType, change.entityId)?.['@id'] ?? change.entityId);
+
+        // Signing keys are rotated by the signing keys they replace or by an identity key, identity keys only by an
+        // identity key; everything else of its own by a signing key for the party.
+        return {
+            kind:   'party',
+            type:   change.entityType,
+            id,
+            usage:  KeyUsages.Party,
+            keys:   change.propertyName === 'signingKeys'  ? 'signingOrIdentity'
+                  : change.propertyName === 'identityKeys' ? 'identity'
+                  :                                          'signing',
+        };
+
+    }
+
+    // A release of its transparency software manufacturer, a certificate of the conformity assessment body issuing it.
+    const childType = PARTY_CHILD_TYPES[change.entityType];
+
+    if (childType !== undefined) {
+
+        let party: JSONObject | undefined;
+
+        if (change.kind === 'Add') {
+            if (change.parentEntityType !== childType.parentType || change.parentEntityId === undefined)
+                throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its ${childType.parentType} as its parent!`);
+            party = partyNamed(content, childType.parentType, change.parentEntityId);
+        }
+        else
+            party = partyChildOf(content, childType, change.entityId)?.party;
+
+        if (party === undefined)
+            throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' is unknown!`);
+
+        return { kind: 'party', type: childType.parentType, id: String(party['@id']), usage: childType.usage, keys: 'signing' };
+
+    }
+
+    // An energy meter template or group of the charging station operator or grid operator embedding it, or adding it, also
+    // by an earlier change of the same change set.
+    const energyMeterChild = ENERGY_METER_CHILD_TYPES[change.entityType];
+
+    if (energyMeterChild !== undefined) {
+
+        const key = `${change.entityType}:${change.entityId.toUpperCase()}`;
+        let owner: { type: string, id: string } | undefined;
+
+        if (change.kind === 'Add') {
+            if ((change.parentEntityType !== 'ChargingStationOperator' && change.parentEntityType !== 'GridOperator') || change.parentEntityId === undefined)
+                throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its ChargingStationOperator or GridOperator as its parent!`);
+            const party = partyNamed(content, change.parentEntityType, change.parentEntityId);
+            owner = { type: change.parentEntityType, id: String(party?.['@id'] ?? change.parentEntityId) };
+            addedEnergyMeterChildren.set(key, owner);
+        }
+        else {
+            const found = energyMeterChildOf(content, energyMeterChild, change.entityId);
+            owner = addedEnergyMeterChildren.get(key) ?? (found === undefined ? undefined : { type: found.partyType, id: String(found.party['@id']) });
+        }
+
+        if (owner === undefined)
+            throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' belongs to no charging station operator and no grid operator!`);
+
+        return { kind: 'party', type: owner.type, id: owner.id, usage: KeyUsages.Infrastructure, keys: 'signing' };
 
     }
 
@@ -499,11 +923,11 @@ function ownerOf(content: JSONObject, change: Change, index: number): Owner {
             throw new POIError(`Change ${index}: the charging station operator of the ${change.entityType} '${change.entityId}' does not exist!`);
 
         return {
-            kind:      'party',
-            type:      'ChargingStationOperator',
-            id:        String(operator['@id']),
-            usage:     TARIFF_TYPES.has(change.entityType) ? KeyUsages.Tariffs : KeyUsages.Infrastructure,
-            identity:  false,
+            kind:   'party',
+            type:   'ChargingStationOperator',
+            id:     String(operator['@id']),
+            usage:  TARIFF_TYPES.has(change.entityType) ? KeyUsages.Tariffs : KeyUsages.Infrastructure,
+            keys:   'signing',
         };
 
     }
@@ -515,6 +939,54 @@ function ownerOf(content: JSONObject, change: Change, index: number): Owner {
 
 function describeChange(change: Change, index: number): string {
     return `Change ${index}: ${change.kind} of the ${change.entityType} '${change.entityId}'`;
+}
+
+
+/**
+ * A party is added with at least one signing and one identity key, a grid operator or a conformity assessment body not
+ * taking part with none at all, and without the children it adds on its own; it always keeps at least one of each kind
+ * (`TryCheckPartyChange`).
+ */
+function checkPartyChange(change: Change, index: number): void {
+
+    if (change.entityType !== 'RoamingNetworkOperator' && !PARTIES.has(change.entityType))
+        return;
+
+    if (change.kind === 'Add') {
+
+        const party = change.newValue;
+
+        if (!isObject(party))
+            return;
+
+        const withoutKeys = (change.entityType === 'GridOperator' || change.entityType === 'ConformityAssessmentBody') &&
+                            get(party, 'signingKeys') === undefined && get(party, 'identityKeys') === undefined;
+
+        if (!withoutKeys)
+            for (const property of [ 'signingKeys', 'identityKeys' ]) {
+                const keys = get(party, property);
+                if (!isArray(keys) || keys.length === 0)
+                    throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' must be added with its ${property}!`);
+            }
+
+        const child = (PARTY_CHILDREN[change.entityType] ?? []).find(property => {
+            const children = get(party, property);
+            return isArray(children) && children.length > 0;
+        });
+
+        if (child !== undefined)
+            throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' must be added without its ${child}: they are its own to add!`);
+
+        return;
+
+    }
+
+    const keyProperty = change.propertyName === 'signingKeys' || change.propertyName === 'identityKeys' ||
+                       (change.entityType === 'RoamingNetworkOperator' && change.propertyName === 'signingKeyCertificates');
+
+    if (keyProperty && (change.kind === 'RemoveProperty' || (change.kind === 'UpdateProperty' && !(isArray(change.newValue) && change.newValue.length > 0))))
+        throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' must keep at least one of its ${change.propertyName ?? ''}!`);
+
 }
 
 
@@ -532,6 +1004,9 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
     const rnoSigning    = rno?.signingKeys ?? [];
     const rnoIdentity   = rno?.identityKeys ?? [];
     const minConsensus  = rno?.minConsensus ?? 1;
+
+    // Energy meter templates and groups an earlier change of this change set adds, by their owners.
+    const addedEnergyMeterChildren = new Map<string, { type: string, id: string }>();
 
     // The identity keys its changes enter anew: each must sign it.
     const newIdentityKeys: POIPublicKey[] = [];
@@ -594,25 +1069,31 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
     const signedValid = (key: POIPublicKey): boolean =>
         valid.has(key.id) && key.isValidAt(createdAt);
 
-    // The holders of the roaming network operator signing with keys that may sign what it owns.
-    const rnoHolders = (identity: boolean): Set<string> =>
-        new Set([ ...(identity ? [] : rnoSigning.filter(key => key.maySign(KeyUsages.Party))), ...rnoIdentity ]
+    // The holders of the roaming network operator signing with keys of the kinds named, its signing keys only those that may
+    // sign what it owns.
+    const rnoHolders = (keys: OwnerKeys, usage: KeyUsage = KeyUsages.Party): Set<string> =>
+        new Set([ ...(keys !== 'identity' ? rnoSigning.filter(key => key.maySign(usage))           : []),
+                  ...(keys !== 'signing'  ? rnoIdentity                                            : []) ]
                     .filter(signedValid)
                     .map(key => key.holderOrUnnamed));
 
     changeSet.changes.forEach((change, index) => {
 
-        const owner = ownerOf(before.content, change, index);
+        checkPartyChange(change, index);
+
+        const owner = ownerOf(before.content, change, index, addedEnergyMeterChildren);
 
         if (owner.kind === 'rno') {
 
             if (rno === undefined)
                 throw new POIError(`${describeChange(change, index)}: the roaming network has no roaming network operator!`);
 
-            if (rnoHolders(false).size < minConsensus)
+            const kind = owner.keys === 'identity' ? 'identity keys' : owner.keys === 'signing' ? 'signing keys' : 'signing or identity keys';
+
+            if (rnoHolders(owner.keys).size < minConsensus)
                 throw new POIError(minConsensus > 1
-                                       ? `${describeChange(change, index)} needs signatures by signing keys of ${minConsensus} holders of the roaming network operator '${rno.id}'!`
-                                       : `${describeChange(change, index)} needs a signature by a signing key of the roaming network operator '${rno.id}'!`);
+                                       ? `${describeChange(change, index)} needs signatures by ${kind} of ${minConsensus} holders of the roaming network operator '${rno.id}'!`
+                                       : `${describeChange(change, index)} needs a signature by one of the ${kind} of the roaming network operator '${rno.id}'!`);
 
             return;
 
@@ -623,20 +1104,18 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         if (party === undefined)
             throw new POIError(`${describeChange(change, index)}: the ${owner.type} '${owner.id}' does not exist!`);
 
-        // A party without signing keys is changed by the roaming network operator in its place; an identity key of the
-        // roaming network operator counts for both kinds of keys of every party, for recovery.
-        const byParty = owner.identity
-                            ? party.identityKeys.some(signedValid)
-                            : party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key));
+        // A party without signing keys is changed by the roaming network operator in its place (`SignerOf`); identity
+        // keys of the roaming network operator recover both kinds of keys of every party, and nothing else of it.
+        const bySigningKey   = owner.keys !== 'identity'  && party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key));
+        const byIdentityKey  = owner.keys !== 'signing'   && party.identityKeys.some(signedValid);
+        const byRecovery     = owner.keys !== 'signing'   && rnoHolders('identity').size >= minConsensus && rnoIdentity.some(signedValid);
+        const byRNO          = owner.keys === 'signing'   && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus;
 
-        const byRecovery = rnoHolders(true).size >= minConsensus && rnoIdentity.some(signedValid);
-        const byRNO      = party.signingKeys.length === 0 && !owner.identity && rnoHolders(false).size >= minConsensus;
-
-        if (!byParty && !byRecovery && !byRNO) {
+        if (!bySigningKey && !byIdentityKey && !byRecovery && !byRNO) {
 
             const mayAnyway = party.signingKeys.some(signedValid);
 
-            throw new POIError(owner.identity
+            throw new POIError(owner.keys === 'identity'
                                    ? `${describeChange(change, index)} needs a signature by an identity key of the ${owner.type} '${owner.id}'!`
                                    : mayAnyway
                                          ? `${describeChange(change, index)} needs a signature by a signing key of the ${owner.type} '${owner.id}' that may sign '${owner.usage}'!`
@@ -702,6 +1181,12 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
         else if (NETWORK_ARRAYS[change.entityType] !== undefined)
             applyNetworkArrayChange(content, change, index, createdAt);
+
+        else if (PARTY_CHILD_TYPES[change.entityType] !== undefined)
+            applyPartyChildChange(content, change, index, createdAt);
+
+        else if (ENERGY_METER_CHILD_TYPES[change.entityType] !== undefined)
+            applyEnergyMeterChildChange(content, change, index, createdAt);
 
         else if (INFRASTRUCTURE_TYPES.has(change.entityType))
             applyInfrastructureChange(content, change, index, createdAt);

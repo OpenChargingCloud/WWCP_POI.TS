@@ -248,7 +248,9 @@ export class ChargingStationProof {
         const leafETag = commitProof.eTags.find(eTag => eTag.format === 'effectiveTree' && eTag.algorithm === this.hashAlgorithm);
 
         if (leafETag === undefined || !bytesEqual(leafETag.digest, calculated.eTag.digest))
-            throw new POIError(`The proof leads to ${etagToText(calculated.eTag)}, not to the effectiveTree ETag of its commit!`);
+            throw new POIError(leafETag === undefined
+                                   ? `The commit names no effectiveTree ETag of ${this.hashAlgorithm}, the hash algorithm of the proof!`
+                                   : `The proof leads to ${etagToText(calculated.eTag)}, not to ${etagToText(leafETag)}!`);
 
         return calculated;
 
