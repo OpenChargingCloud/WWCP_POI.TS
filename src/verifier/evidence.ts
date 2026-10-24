@@ -16,7 +16,7 @@
  */
 
 import { onlyProperties, parseTimestamp, requireArray, requireObject, requireString, toTimestamp } from '../common.ts';
-import { get, type JSONValue }              from '../json/value.ts';
+import { asText, get, type JSONValue }              from '../json/value.ts';
 import { Checkpoint, CheckpointProof }      from '../history/checkpoint.ts';
 import { ChargingStationProof }             from '../proofs/stationProof.ts';
 import { PriceStatement, PriceStatementProof } from '../proofs/priceStatement.ts';
@@ -155,7 +155,7 @@ export function verifyEvidence(evidence: Evidence,
             throw new POIError(`The checkpoint '${statementProof.checkpointId}' of the proof of a price statement is not part of the evidence!`);
 
         statementProof.verify(namedBy);
-        statementProof.priceStatement.verify(station.roamingNetwork.id, String(station.operator['@id']), station.operatorSigningKeys);
+        statementProof.priceStatement.verify(station.roamingNetwork.id, asText(station.operator['@id']), station.operatorSigningKeys);
 
         const kept = evidence.priceStatements.map(item => PriceStatement.parse(item)).find(item => item.sameSignedContent(statementProof.priceStatement));
 

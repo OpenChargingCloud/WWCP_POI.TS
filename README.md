@@ -34,7 +34,7 @@ What a review of the C# implementation found while porting it is in [docs/csharp
 npm install @open-charging-cloud/wwcp-poi
 ```
 
-ESM, Node 20.19 or newer, browsers and React Native alike: no `node:*` module, no `Buffer`, no WebCrypto. The
+ESM, Node 22.18 or newer, browsers and React Native alike: no `node:*` module, no `Buffer`, no WebCrypto. The
 cryptography is [`@vanaheimr/cose`](https://github.com/Vanaheimr/COSE.TS) on the `@noble` family, the CBOR codec
 [`@vanaheimr/metrological-cbor`](https://github.com/Vanaheimr/MetrologicalCBOR.TS).
 
@@ -186,8 +186,26 @@ refused as well.
 ## Tests
 
 ```bash
-npm test
+npm run verify
 ```
+
+`verify` runs what CI runs: the type checks (as Node and as a browser sees `src/`), ESLint with the rules of
+ChargyCore.TS, and `npm test`, which is
+
+- `npm run test:node`: the tests below, in Node;
+- `npm run build` and `npm run test:bundle`: what `dist/` holds, as an app gets it: the bundle imports only the
+  dependencies `package.json` names and neither `node:*` modules, `Buffer` nor `process`; an app imports it by the name
+  of the package in plain Node and gets its declared types with TypeScript (`nodenext` and `bundler`); `npm pack`
+  publishes nothing but `dist/` and the documents;
+- `npm run test:browser`: a trust anchor, a commit, a station proof of ML-DSA attestations, a price and the evidence of
+  a session, checked in Chromium (Vitest browser mode with Playwright; once: `npx playwright install chromium`).
+
+GitHub Actions run it on every push and pull request (`.github/workflows/ci.yml`): Ubuntu on Node 22.18, the minimum
+`package.json` names, and on Node 26, Windows on Node 24. Every night (`.github/workflows/nightly.yml`) the same suite
+runs again, and, informational, with the dependencies the lockfile does not pin, with the newest releases of
+`@vanaheimr/cose` and `@vanaheimr/metrological-cbor`, as `npm audit`, and against the C# implementation as it is: the
+examples of WWCP_POI at the commits the RoamingHubCLI pins, run with .NET and checked with `examples/validate-examples.ts`,
+which turns red the day WWCP_POI moves on and this port needs work.
 
 The test vectors are in `tests/vectors/csharp-801bbce`: what one run of the C# examples of WWCP_POI at commit `801bbce`
 published (public data only; its output is `csharp-output.log` there), and in `proofs/`, what
@@ -205,6 +223,7 @@ the commits of epoch 2 up to the head, and the ECDSA twin of a price statement.
   checks the meter.
 - `tests/chargingStation.test.ts`, `tests/client.test.ts`: proofs of charging stations of epoch 2, as an app checks them.
 - `tests/replay.test.ts`: the whole history of `QA`, both epochs, commit by commit, with every checkpoint.
+- `tests/build/bundle.test.js`, `tests/browser/browser.test.ts`: the bundle and the browser, as above.
 
 To check a run of your own of the C# examples, with its new keys:
 

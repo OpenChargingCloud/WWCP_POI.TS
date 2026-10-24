@@ -15,7 +15,7 @@ import { hash }                          from '../src/crypto/hash.ts';
 
 const content = parseJSONObject('{"@context":"https://open.charging.cloud/contexts/wwcp/roamingNetwork/v1","@id":"rn1","chargingStationOperators":[{"@id":"DE*GEF","chargingPools":[{"@id":"DE*GEF*P1","chargingStations":[{"@id":"DE*GEF*S1","EVSEs":[{"@id":"DE*GEF*E1*1","created":"2026-01-01T00:00:00.000Z","lastChange":"2026-01-01T00:00:00.000Z","maxPower":22000,"maxVoltage":230.5}],"created":"2026-01-01T00:00:00.000Z","lastChange":"2026-01-01T00:00:00.000Z"}],"created":"2026-01-01T00:00:00.000Z","lastChange":"2026-01-01T00:00:00.000Z"}],"created":"2026-01-01T00:00:00.000Z","lastChange":"2026-01-01T00:00:00.000Z","name":{"en":"Charging Station Operator \'DE*GEF\'"}}],"created":"2026-01-01T00:00:00.000Z","lastChange":"2026-01-01T00:00:00.000Z","name":{"en":"Example"}}');
 
-const ed25519 = (base64: string) => CoseKey.fromOkpPublicKey(CoseCurves.Ed25519, fromBase64(base64));
+const ed25519 = (base64: string): CoseKey => CoseKey.fromOkpPublicKey(CoseCurves.Ed25519, fromBase64(base64));
 
 
 describe('SPECIFICATION.md section 6', () => {
@@ -43,8 +43,8 @@ describe('SPECIFICATION.md section 6', () => {
         verifySignature('Ed25519', ed25519('d3bocLkzVPKgskwj8qNsxOgOIjIYwbl5Jv3QGDlqK5s='), new TextEncoder().encode(leaderInput),
                         'x/h7//+MgkH18ljzmyXAIoirilwduHRjK9j/9/vKZIOPyO2Ir1eSbvfFkj1kSy9TwTIeMdqLAU22aOj7g1cGAA==');
 
-        expect(() => verifySignature('Ed25519', ed25519('d3bocLkzVPKgskwj8qNsxOgOIjIYwbl5Jv3QGDlqK5s='), new TextEncoder().encode(leaderInput + ' '),
-                                     'x/h7//+MgkH18ljzmyXAIoirilwduHRjK9j/9/vKZIOPyO2Ir1eSbvfFkj1kSy9TwTIeMdqLAU22aOj7g1cGAA==')).toThrow();
+        expect(() => { verifySignature('Ed25519', ed25519('d3bocLkzVPKgskwj8qNsxOgOIjIYwbl5Jv3QGDlqK5s='), new TextEncoder().encode(leaderInput + ' '),
+                                       'x/h7//+MgkH18ljzmyXAIoirilwduHRjK9j/9/vKZIOPyO2Ir1eSbvfFkj1kSy9TwTIeMdqLAU22aOj7g1cGAA=='); }).toThrow();
 
         const attestationInput = '{"@context":"https://open.charging.cloud/contexts/wwcp/roamingNetwork/attestation/v1","algorithm":"Ed25519","commitId":"498e076a90b8d71254c017a80d164442abaa99b4d11d4deb9b8c86576917c29a","eTag":["effectiveTree","sha256","hex","84acb445aa41df13e83b7af61f25a8387dc65c0c7e83b29b907e9ed06045b44a"],"keyId":"rno","revision":0,"roamingNetworkId":"rn1","role":"roamingNetworkOperator","signedAt":"2026-10-17T18:00:00.000Z","signer":"DE*RNO","validUntil":"2026-10-17T18:15:00.000Z"}';
         verifySignature('Ed25519', ed25519('Kay64UG8yvCyLhqU000LxzYeUm0L/hLIl5S8kyKWbdc='), new TextEncoder().encode(attestationInput),

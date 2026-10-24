@@ -84,7 +84,7 @@ export class RoamingNetworkOperator {
         const certificatesJSON = get(json, 'signingKeyCertificates');
         const certificates     = certificatesJSON === undefined
                                      ? []
-                                     : (() => {
+                                     : ((): SigningKeyCertificate[] => {
                                            if (!isArray(certificatesJSON) || certificatesJSON.length === 0)
                                                throw new POIError('The signingKeyCertificates of a roaming network operator must be a nonempty array!');
                                            return certificatesJSON.map(certificate => SigningKeyCertificate.parse(certificate));
@@ -213,7 +213,7 @@ export class RoamingNetwork {
             if (!isArray(treeHashAlgorithmsJSON) || treeHashAlgorithmsJSON.length === 0 ||
                 !treeHashAlgorithmsJSON.every(isHashAlgorithm) || new Set(treeHashAlgorithmsJSON).size !== treeHashAlgorithmsJSON.length)
                 throw new POIError(`The treeHashAlgorithms of the roaming network '${id}' are at least one of sha256, sha384 and sha512, none twice!`);
-            treeHashAlgorithms = treeHashAlgorithmsJSON as HashAlgorithm[];
+            treeHashAlgorithms = treeHashAlgorithmsJSON;
         }
 
         const operatorJSON = get(json, 'operator');
@@ -231,7 +231,8 @@ export class RoamingNetwork {
                 throw new POIError(`The ETags of the roaming network '${id}' do not match its content: it lists ${given.length}, not ${expected.length}!`);
 
             given.forEach((eTag, index) => {
-                if (!sameETag(eTag, expected[index]!))
+                const other = expected[index];
+                if (other === undefined || !sameETag(eTag, other))
                     throw new POIError(`The ETags of the roaming network '${id}' do not match its content: the ${eTag.format} ETag (${eTag.algorithm}) differs!`);
             });
 

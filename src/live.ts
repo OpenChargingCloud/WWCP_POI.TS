@@ -72,9 +72,9 @@ export function parseStatusUpdate(value: JSONValue | undefined): StatusUpdate {
 
     const statusKind  = kind as RuntimeStatusKind;
     const checkValue  = (item: JSONValue | undefined, what: string): JSONValue => {
-        if (statusKind === 'energyStatus' || statusKind === 'priceStatus' ? !isObject(item) : typeof item !== 'string' || item.trim() === '')
+        if (item === undefined || (statusKind === 'energyStatus' || statusKind === 'priceStatus' ? !isObject(item) : typeof item !== 'string' || item.trim() === ''))
             throw new POIError(`Missing or invalid ${what}!`);
-        return item!;
+        return item;
     };
 
     const entityType = requireString(json, 'entityType', 'The entity type of a status update');
@@ -110,18 +110,17 @@ export type LiveFrame =
 /** Reads a frame, as text from the WebSocket or as JSON; numbers stay decimals as POI reads them. */
 export function parseFrame(value: string | JSONValue): LiveFrame {
 
-    const frame  = requireArray(typeof value === 'string' ? parseJSON(value) : value, 'A frame of the WebSocket');
-    const type   = frame[0];
-    const id     = frame[1];
+    const frame                       = requireArray(typeof value === 'string' ? parseJSON(value) : value, 'A frame of the WebSocket');
+    const [ type, id, third, fourth ] = frame;
 
     if (typeof id !== 'string')
         throw new POIError('The identification of a frame must be a text!');
 
-    if (type === 3 && frame.length === 3)
-        return { type: 'response', id, payload: frame[2]! };
+    if (type === 3 && frame.length === 3 && third !== undefined)
+        return { type: 'response', id, payload: third };
 
-    if ((type === 2 || type === 6) && frame.length === 4 && typeof frame[2] === 'string')
-        return { type: type === 2 ? 'request' : 'push', id, action: frame[2], payload: frame[3]! };
+    if ((type === 2 || type === 6) && frame.length === 4 && typeof third === 'string' && fourth !== undefined)
+        return { type: type === 2 ? 'request' : 'push', id, action: third, payload: fourth };
 
     throw new POIError('A frame of the WebSocket is [2, id, action, payload], [3, id, payload] or [6, id, action, payload]!');
 

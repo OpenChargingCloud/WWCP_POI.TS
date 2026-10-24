@@ -68,7 +68,7 @@ export class KeyStatement {
         if (identityKeys.length === 0)
             throw new POIError('A key statement requires its identityKeys!');
 
-        if (identityKeys.some((key, index) => index > 0 && identityKeys[index - 1]!.id >= key.id))
+        if (identityKeys.some((key, index) => { const before = identityKeys[index - 1]; return before !== undefined && before.id >= key.id; }))
             throw new POIError('The identity keys of a key statement are written in the order of their @ids!');
 
         const minConsensus  = requireInteger  (json, 'minConsensus', 1, 255, 'The minConsensus of a key statement');
@@ -148,8 +148,10 @@ export class KeyStatement {
         const required  = Math.max(options.minConsensus ?? 1, this.minConsensus);
         const holders   = new Set<string>();
 
-        if (this.signatures.length === 1 && required === 1 && !trusted.has(this.signatures[0]!.keyId))
-            throw new POIError(`The key statement is signed by the key '${this.signatures[0]!.keyId}', which is not trusted!`);
+        const [ only ] = this.signatures;
+
+        if (only !== undefined && this.signatures.length === 1 && required === 1 && !trusted.has(only.keyId))
+            throw new POIError(`The key statement is signed by the key '${only.keyId}', which is not trusted!`);
 
         for (const signature of this.signatures) {
 

@@ -47,8 +47,10 @@ export function merkleRootOfLeafHashes(algorithm: HashAlgorithm, leafHashes: rea
     if (leafHashes.length === 0)
         return hash(algorithm, new Uint8Array(0));
 
-    if (leafHashes.length === 1)
-        return leafHashes[0]!;
+    const [ only ] = leafHashes;
+
+    if (only !== undefined && leafHashes.length === 1)
+        return only;
 
     const k = split(leafHashes.length);
 

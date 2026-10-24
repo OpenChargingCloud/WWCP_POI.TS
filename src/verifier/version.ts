@@ -71,7 +71,7 @@ export function verifyVersion(anchor:      TrustAnchor,
     const trust = OperatorTrust.of(anchor, network, at);
 
     // f)
-    const signedBy = trust.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit');
+    const signedBy = trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
 
     // g)
     return {

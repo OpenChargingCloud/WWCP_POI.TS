@@ -17,7 +17,7 @@
 
 import { checkContext, onlyProperties, optionalString, requireArray, requireInteger, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }        from '../json/canonical.ts';
-import { get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toHex, isLowerHex }         from '../encoding/text.ts';
 import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
@@ -77,7 +77,7 @@ export function roleSignatureBytes(context: string, signature: RoleSignature, pr
         algorithm:   signature.algorithm,
         keyId:       signature.keyId,
         role:        signature.role,
-        signedAt:    String(signature.json['signedAt']),
+        signedAt:    asText(signature.json['signedAt']),
     };
 
     if (signature.signer !== undefined)

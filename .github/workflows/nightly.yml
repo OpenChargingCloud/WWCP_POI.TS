@@ -1,0 +1,299 @@
+name: Nightly
+
+# The counterpart to ci.yml. That workflow gates every push: does this commit work with the dependency tree we ship?
+# Everything below changes without anyone touching this repository - a new advisory, a new upstream release, a new
+# runner image, and above all the C# implementation of WWCP POI, which this library has to calculate byte for byte as
+# it does - so none of it belongs in a gate, where a red would block a merge for reasons that have nothing to do with it.
+#
+# Scheduled workflows run on the default branch only, and GitHub disables them after 60 days without any activity in
+# the repository: if this stops reporting, that is the first thing to check.
+on:
+  schedule:
+    # 02:47 UTC. Not on the hour, when GitHub's scheduler is busiest and delays runs by tens of minutes.
+    - cron: '47 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Exactly what the gate runs, on the same three legs: a test that fails only sometimes shows up over many runs, and a
+  # change of the runner images reaches us on a day nobody pushed. Fatal: a red here is a real regression.
+  full-suite:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: '22.18'
+            leg: ubuntu-node-22.18
+          - os: ubuntu-latest
+            node: '26'
+            leg: ubuntu-node-26
+          - os: windows-latest
+            node: '24'
+            leg: windows-node-24
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
+
+      - name: Typecheck and lint
+        run: npm run typecheck && npm run lint
+
+      - name: Test (Node)
+        run: npm run test:node -- --reporter=default --reporter=junit --outputFile.junit=artifacts/node-${{ matrix.leg }}.xml
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (bundle)
+        run: npm run test:bundle -- --reporter=default --reporter=junit --outputFile.junit=artifacts/bundle-${{ matrix.leg }}.xml
+
+      - name: Test (browser)
+        run: npm run test:browser -- --reporter=default --reporter=junit --outputFile.junit=artifacts/browser-${{ matrix.leg }}.xml
+
+      - name: Examples
+        run: npm run examples
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-${{ matrix.leg }}
+          path: artifacts/*.xml
+
+  # The same suite, installed without the lockfile: every range resolves to the newest release it allows, so that an
+  # upstream break shows up before a lockfile refresh pulls it in. @noble/hashes carries every digest, ETag and Merkle
+  # tree. One leg only, as what is tested is the dependency graph, not the platform. Informational: a red here means
+  # somebody else published something, worth knowing, but not "our code broke".
+  floating-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      # --no-package-lock, so that the resolution is not written back; no 'npm ci', which would reinstate exactly the
+      # versions this job exists to ignore.
+      - name: Install the newest permitted dependencies
+        run: npm install --no-package-lock
+
+      - name: Report resolved versions
+        run: node .github/scripts/dependency-versions.mjs 'Dependency versions with the lockfile ignored' 'Ranges resolved to the newest release they allow. Drift is expected; it becomes interesting when the suite below goes red.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck and lint
+        run: npm run typecheck && npm run lint
+
+      - name: Test (Node)
+        run: npm run test:node -- --reporter=default --reporter=junit --outputFile.junit=artifacts/node-floating.xml
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (bundle)
+        run: npm run test:bundle -- --reporter=default --reporter=junit --outputFile.junit=artifacts/bundle-floating.xml
+
+      - name: Test (browser)
+        run: npm run test:browser -- --reporter=default --reporter=junit --outputFile.junit=artifacts/browser-floating.xml
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-floating
+          path: artifacts/*.xml
+
+  # The codecs of Vanaheimr in their newest releases, also beyond the range package.json allows: below 1.0.0 a caret range
+  # takes patch releases only, so the job above never sees a new minor release of @vanaheimr/cose (COSE keys, their
+  # thumbprints, every signature) or @vanaheimr/metrological-cbor (the deterministic CBOR of the cbor ETags), the two
+  # libraries whose every byte this one depends on. Informational, as above: a red here says the next update of the
+  # ranges needs work, before anybody starts it.
+  newest-codecs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: npm
+
+      - name: Install dependencies, and the newest codecs of Vanaheimr
+        run: |
+          npm ci
+          npm install --no-save --no-package-lock @vanaheimr/cose@latest @vanaheimr/metrological-cbor@latest
+
+      - name: Report resolved versions
+        run: node .github/scripts/dependency-versions.mjs 'The newest codecs of Vanaheimr' 'The lockfile, but @vanaheimr/cose and @vanaheimr/metrological-cbor in their newest releases, also beyond the range package.json allows.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (Node)
+        run: npm run test:node -- --reporter=default --reporter=junit --outputFile.junit=artifacts/node-newest-codecs.xml
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (browser)
+        run: npm run test:browser -- --reporter=default --reporter=junit --outputFile.junit=artifacts/browser-newest-codecs.xml
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-newest-codecs
+          path: artifacts/*.xml
+
+  # The C# implementation as it is today: the examples A1 to A13 of WWCP_POI at the commits the RoamingHubCLI pins, run
+  # with .NET, and what they published checked with this library, as examples/validate-examples.ts does. The test
+  # vectors of this repository are one run of a fixed commit; this job notices the day the C# implementation moves on
+  # and this port no longer calculates what it publishes - new entities, other ETags, other messages - which is when the
+  # port needs work and new test vectors. Informational: a red here says WWCP_POI moved, not that this commit broke.
+  csharp-interop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: WWCP_POI.TS
+
+      - uses: actions/checkout@v7
+        with:
+          repository: OpenChargingCloud/RoamingHubCLI
+          path: RoamingHubCLI
+
+      # Only the libraries the examples build with, side by side as their project files expect them, at the commits the
+      # RoamingHubCLI pins together; its other submodules are not needed.
+      - name: Check out WWCP_POI and the libraries it builds with
+        working-directory: RoamingHubCLI
+        run: git submodule update --init --depth 1 libs/WWCP_POI libs/Hermod libs/Styx libs/WWCP_Node libs/Norn libs/Urdr
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: WWCP_POI.TS/package-lock.json
+
+      - name: Build the C# examples
+        working-directory: RoamingHubCLI/libs/WWCP_POI/examples/csharp
+        run: dotnet build --configuration Release
+
+      # They write the private keys, what they publish and the history next to themselves, and open two servers on
+      # 127.0.0.1 (example A12).
+      - name: Run the C# examples A1 to A13
+        working-directory: RoamingHubCLI/libs/WWCP_POI/examples/csharp
+        shell: bash
+        run: dotnet run --configuration Release --no-build | tee "$GITHUB_WORKSPACE/csharp-output.log"
+
+      - name: Install this library
+        working-directory: WWCP_POI.TS
+        run: npm ci
+
+      # Right after the run: the attestations of the station proofs it published last 15 minutes.
+      - name: Check what the C# examples published
+        working-directory: WWCP_POI.TS
+        shell: bash
+        run: npm run examples -- "$GITHUB_WORKSPACE/RoamingHubCLI/libs/WWCP_POI/examples/csharp" | tee "$GITHUB_WORKSPACE/validate-output.log"
+
+      - name: Summary
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          {
+            echo '## The C# examples of WWCP_POI, checked with this library'
+            echo
+            echo "- RoamingHubCLI: \`$(git -C RoamingHubCLI log -1 --format='%h %s')\`"
+            echo "- WWCP_POI: \`$(git -C RoamingHubCLI/libs/WWCP_POI log -1 --format='%h %s')\`"
+            echo "- the test vectors of this repository: \`$(grep -o "csharp-[0-9a-f]*" WWCP_POI.TS/tests/at.ts)\`"
+            echo
+            echo '```'
+            tail -n 3 validate-output.log 2>/dev/null || echo 'The check did not run.'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the outputs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-csharp-interop
+          path: |
+            csharp-output.log
+            validate-output.log
+
+  # npm audit against the tree we ship. Not in the gate: the advisory database changes daily, and a merge must not turn
+  # red for findings that have nothing to do with it. The counters are the thing to watch: a number that moves.
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit
+        run: |
+          npm audit --omit=dev --json > audit-prod.json  || true
+          npm audit            --json > audit-all.json   || true
+          node -e '
+            const fs = require("fs");
+            const render = (file, title) => {
+              let report;
+              try { report = JSON.parse(fs.readFileSync(file, "utf8")); }
+              catch { return `### ${title}\n\nCould not be read.\n`; }
+              const counts = report.metadata?.vulnerabilities ?? {};
+              const rows   = Object.values(report.vulnerabilities ?? {})
+                                   .map(v => `| \`${v.name}\` | ${v.severity} | ${v.fixAvailable ? "yes" : "**no**"} |`);
+              return `### ${title}\n\n`
+                   + `critical ${counts.critical ?? 0} · high ${counts.high ?? 0} · `
+                   + `moderate ${counts.moderate ?? 0} · low ${counts.low ?? 0}\n\n`
+                   + (rows.length ? `| Package | Severity | Fix available |\n| --- | --- | --- |\n${rows.join("\n")}\n` : `Nothing reported.\n`);
+            };
+            console.log("## npm audit\n");
+            console.log(render("audit-prod.json", "Runtime dependencies"));
+            console.log(render("audit-all.json",  "Including build-time dependencies"));
+          ' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload audit reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-audit
+          path: audit-*.json

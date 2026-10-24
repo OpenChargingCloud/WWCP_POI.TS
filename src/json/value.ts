@@ -50,6 +50,21 @@ export const isNumber = (value: JSONValue | undefined): value is number | Decima
     typeof value === 'number' || value instanceof Decimal;
 
 
+/**
+ * The value as text, for identifications and messages: a string as it is, a number, a boolean and null as `String` writes
+ * them, a decimal as it reads, arrays and objects as their JSON, not as `[object Object]`.
+ */
+export function asText(value: JSONValue | undefined): string {
+    if (typeof value === 'string')
+        return value;
+    if (value === undefined || value === null || typeof value === 'number' || typeof value === 'boolean')
+        return String(value);
+    if (value instanceof Decimal)
+        return value.toString();
+    return JSON.stringify(value);
+}
+
+
 /** A property of an object, without inheriting anything from its prototype. */
 export function get(object: JSONObject, property: string): JSONValue | undefined {
     return Object.prototype.hasOwnProperty.call(object, property) ? object[property] : undefined;
@@ -64,6 +79,11 @@ export function set(object: JSONObject, property: string, value: JSONValue): voi
     else
         object[property] = value;
 
+}
+
+/** Removes a property, also one named `__proto__`. */
+export function unset(object: JSONObject, property: string): void {
+    Reflect.deleteProperty(object, property);
 }
 
 

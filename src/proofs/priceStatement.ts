@@ -213,7 +213,8 @@ export class PriceStatement {
 export function verifyPriceStatementChain(statements: readonly PriceStatement[]): void {
 
     statements.forEach((statement, index) => {
-        if (index > 0 && !statement.follows(statements[index - 1]!))
+        const before = statements[index - 1];
+        if (before !== undefined && !statement.follows(before))
             throw new POIError(`The price statement ${statement.sequence} of the ${statement.entityType} '${statement.entityId}' does not follow the one before!`);
     });
 
@@ -259,7 +260,7 @@ export function verifyCheckpointPriceStatements(checkpoint: Checkpoint, statemen
 
 /** Reads the statements of a checkpoint, as `GET ~/history/checkpoints/{checkpointId}/priceStatements` gives them. */
 export const parsePriceStatements = (value: JSONValue | undefined): PriceStatement[] =>
-    requireArray(value, 'The price statements').map(PriceStatement.parse);
+    requireArray(value, 'The price statements').map(statement => PriceStatement.parse(statement));
 
 
 /**

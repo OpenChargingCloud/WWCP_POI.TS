@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, readJSON, readText } from './helpers.ts';
+import { AT, asText, defined, readJSON, readText } from './helpers.ts';
 import { anchor, anchorPQ, checkpoint, commits, following, witnesses, witnessesPQ } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -24,7 +24,7 @@ const POST_QUANTUM = [ 'ML-DSA-65', 'ML-DSA-87' ];
 /** A checkpoint with only the signatures of the given algorithms: a verifier checks those it can. */
 function onlyOf(json: JSONObject, algorithms: (algorithm: string) => boolean): JSONObject {
     const copy = clone(json);
-    copy['signatures'] = (copy['signatures'] as JSONObject[]).filter(signature => algorithms(String(signature['algorithm'])));
+    copy['signatures'] = (copy['signatures'] as JSONObject[]).filter(signature => algorithms(asText(signature['algorithm'])));
     return copy;
 }
 
@@ -48,13 +48,13 @@ describe('Example A11: a verifier trusting only the old locks', () => {
         expect(epoch1.head.commit.revision).toBe(16);
         expect(final.id).toBe('0b4391780648d82fde3ef5b268f1af938ef890b60f3b7e99af02443633c65d24');
         expect(final.isFinal).toBe(true);
-        expect(final.next!.number).toBe(2);
-        expect(final.next!.profiles.toString()).toBe('sha512, ML-DSA-65, ML-DSA-87');
+        expect(defined(final.next).number).toBe(2);
+        expect(defined(final.next).profiles.toString()).toBe('sha512, ML-DSA-65, ML-DSA-87');
         expect(verifyCheckpointSignatures(final, verifier.trust, { witnesses, requiredWitnesses: 2 }).witnessedBy).toEqual([ 'calibration.example', 'association.example' ]);
         expect(epoch1.epochStatus).toBe('closing');
 
         // Epoch 1 takes no commit after it.
-        const firstOfEpoch2 = commits('published/QA-epoch-2-commits-since-genesis.json')[0]!;
+        const firstOfEpoch2 = defined(commits('published/QA-epoch-2-commits-since-genesis.json')[0]);
         expect(() => epoch1.append(firstOfEpoch2))
             .toThrow("The epoch 1 of the roaming network 'QA' is closed by its final checkpoint '0b4391780648d82fde3ef5b268f1af938ef890b60f3b7e99af02443633c65d24': what follows belongs to the epoch 2!");
 
@@ -77,8 +77,8 @@ describe('Example A11: a verifier trusting only the old locks', () => {
 
         const first = epoch2.takeCheckpoint(readJSON('published/QA-epoch-2-checkpoint-0.json'));
 
-        expect(first.previous!.checkpointId).toBe(final.id);
-        expect(first.previous!.epoch).toBe(1);
+        expect(defined(first.previous).checkpointId).toBe(final.id);
+        expect(defined(first.previous).epoch).toBe(1);
 
         const withOldKeys = Checkpoint.parse(onlyOf(readJSON('published/QA-epoch-2-checkpoint-0.json') as JSONObject, algorithm => !POST_QUANTUM.includes(algorithm)));
         const oldSigned   = verifyCheckpointSignatures(withOldKeys, genesisTrust, { witnesses, requiredWitnesses: 2 });
@@ -110,7 +110,7 @@ describe('Example A11: a verifier trusting only the old locks', () => {
         const commit1 = clone(commits('published/QA-epoch-2-commits-since-genesis.json')[0] as JSONObject);
 
         // The signatures of a change set are not part of the identification of its commit: an ES512 one is refused by the epoch.
-        ((commit1['changeSet'] as JSONObject)['signatures'] as JSONObject[])[0]!['algorithm'] = 'ES512';
+        defined(((commit1['changeSet'] as JSONObject)['signatures'] as JSONObject[])[0])['algorithm'] = 'ES512';
         expect(() => genesis.append(commit1)).toThrow(/^The signature algorithm 'ES512' of a signature of the change set of the commit '[0-9a-f]{128}' is not one of the epoch 2, ML-DSA-65, ML-DSA-87!$/);
 
     });
@@ -127,7 +127,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
 
         const verifier  = following(anchorPQ, RoamingNetwork.parse(snapshot0['roamingNetwork']), witnessesPQ, 2);
         const joined    = History.fromSnapshot(snapshot0, verifier);
-        const first     = joined.checkpoints[0]!;
+        const first     = defined(joined.checkpoints[0]);
 
         expect(joined.epoch.number).toBe(2);
         expect(joined.head.commit.revision).toBe(2);
@@ -139,14 +139,15 @@ describe('Example A11: a verifier trusting only the new locks', () => {
         const statements = parsePriceStatements(readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'));
         verifyCheckpointPriceStatements(first, statements);
 
-        const statement = statements.find(item => item.entityId === 'DE*GEF*E1*1')!;
+        const statement = defined(statements.find(item => item.entityId === 'DE*GEF*E1*1'));
         expect(statement.sequence).toBe(3);
         expect(statement.algorithm).toBe('ML-DSA-65');
-        expect(statement.after).toBe(first.previous!.checkpointId);
-        expect(String((((statement.prices[0]!['elements'] as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!)['price'])).toBe('0.59');
+        expect(statement.after).toBe(defined(first.previous).checkpointId);
+        const element = defined((defined(statement.prices[0])['elements'] as JSONObject[])[0]);
+        expect(asText(defined((element['priceComponents'] as JSONObject[])[0])['price'])).toBe('0.59');
 
         // Signed by the ML-DSA tariffs key of DE*GEF.
-        const signingKeys = POIPublicKey.parseAll(joined.head.network.chargingStationOperator('DE*GEF')!['signingKeys'], 'the signing keys of DE*GEF');
+        const signingKeys = POIPublicKey.parseAll(defined(joined.head.network.chargingStationOperator('DE*GEF'))['signingKeys'], 'the signing keys of DE*GEF');
         expect(statement.verify('QA', 'DE*GEF', signingKeys).usages).toEqual([ 'priceStatements', 'tariffs' ]);
 
     });
@@ -157,7 +158,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
         const joined    = History.fromSnapshot(snapshot0);
 
         // c) A commit of epoch 1, the last one, given as one of epoch 2.
-        const ofEpoch1 = commits('published/QA-commits-since-checkpoint-5.json').at(-1)!;
+        const ofEpoch1 = defined(commits('published/QA-commits-since-checkpoint-5.json').at(-1));
         expect(() => joined.append(ofEpoch1)).toThrow("The commit '48449019fb609c58f9f1e739096eabda1ba6c1d87991918fbf7cf22979b68b20' is one of the epoch 1, but this history is of the epoch 2!");
 
         // d) A genesis of epoch 2 of another version, of another name: its ETags are not those of its content.
@@ -172,7 +173,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
 
         // The genesis commit names the epoch and its profiles; every later commit of epoch 2 names the epoch.
         const genesis = Commit.parse((readJSON('published/QA-epoch-2-genesis.json') as JSONObject)['commit']);
-        expect(genesis.profiles!.toString()).toBe('sha512, ML-DSA-65, ML-DSA-87');
+        expect(defined(genesis.profiles).toString()).toBe('sha512, ML-DSA-65, ML-DSA-87');
         expect(Commit.parse(commits('published/QA-epoch-2-commits-since-genesis.json')[0]).epoch).toBe(2);
 
     });

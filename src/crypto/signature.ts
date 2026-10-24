@@ -44,7 +44,7 @@ export function signatureAlgorithm(name: string): CoseAlgorithm {
                           ? algorithmByName(name)
                           : null;
 
-    if (algorithm === null || algorithm.name !== name)
+    if (algorithm?.name !== name)
         throw new POIError(`Unknown or noncanonical signature algorithm '${name}'!`);
 
     return algorithm;
@@ -70,7 +70,7 @@ function publicKeyBytes(key: CoseKey, algorithm: CoseAlgorithm): Uint8Array {
         case 'mldsa':
             if (key.keyType !== KEY_TYPE_AKP || key.pub === null)
                 throw new POIError(`The algorithm '${algorithm.name}' needs an algorithm key pair!`);
-            if (key.algorithm === null || key.algorithm.name !== algorithm.name)
+            if (key.algorithm?.name !== algorithm.name)
                 throw new POIError(`The algorithm '${algorithm.name}' differs from the one of its key, '${key.algorithm?.name ?? 'none'}'!`);
             return key.pub;
 
@@ -112,7 +112,7 @@ export function verifySignature(algorithmName: string,
         throw new POIError('The signature value must be nonempty canonical standard Base64!');
 
     const keyBytes = publicKeyBytes(publicKey, algorithm);
-    let   valid    = false;
+    let   valid:     boolean;
 
     try {
         valid = verifyWith(algorithm, publicKey.curve, input, signature, keyBytes);

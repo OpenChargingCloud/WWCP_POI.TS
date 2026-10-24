@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, readJSON } from './helpers.ts';
+import { AT, asText, defined, readJSON } from './helpers.ts';
 import { anchorPQ } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -37,7 +37,7 @@ describe('Example A12: the traffic report and the atlas', () => {
             'DE*GEF*E1*1 priceStatus: {"prices":[{"chargingTariffId":"DE*GEF*T_DC","elements":[{"priceComponents":[{"price":0.49,"stepSize":1,"type":"ENERGY"}]}]}]}',
             'DE*GEF*E1*1 status: available',
         ]);
-        expect(statuses[0]!.oldValue).toBe('available');
+        expect(defined(statuses[0]).oldValue).toBe('available');
 
         const before = live['headBefore'] as JSONObject;
         const after  = live['headAfter']  as JSONObject;
@@ -48,17 +48,17 @@ describe('Example A12: the traffic report and the atlas', () => {
 
     it('checks the commit pushed against the trust anchor of epoch 2: the head of the mirror (b)', () => {
 
-        const push    = pushes.find(item => item.type === 'push' && item.action === 'commit')!;
+        const push    = defined(pushes.find(item => item.type === 'push' && item.action === 'commit'));
         const commit  = Commit.parse(push.payload);
         const mirror  = History.fromSnapshot(snapshot);
         const trust   = OperatorTrust.of(anchorPQ, mirror.head.network, AT);
 
-        const signedBy = trust.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit');
+        const signedBy = trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
 
         expect(commit.revision).toBe(3);
         expect(commit.epoch).toBe(2);
         expect(commit.description).toBe('The DC charging tariff: 0.65 €/kWh');
-        expect(((commit.changeSet!['signatures'] as JSONObject[]).map(signature => signature['algorithm']))).toEqual([ 'ML-DSA-65' ]);
+        expect(((defined(commit.changeSet)['signatures'] as JSONObject[]).map(signature => signature['algorithm']))).toEqual([ 'ML-DSA-65' ]);
         expect([ ...signedBy ].sort()).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(commit.signatures.map(signature => signature.algorithm)).toEqual([ 'ML-DSA-65', 'ML-DSA-65', 'ML-DSA-65' ]);
         expect(commit.id).toBe(mirror.head.commit.id);
@@ -74,9 +74,9 @@ describe('Example A12: the traffic report and the atlas', () => {
 
         // The runtime status the mirror serves next to its head: not part of the version, without it the same version.
         const status = RuntimeStatus.fromSnapshot(snapshot);
-        const now    = status.get('EVSE', 'DE*GEF*E1*1', 'status')!;
+        const now    = defined(status.get('EVSE', 'DE*GEF*E1*1', 'status'));
 
-        expect(`${String(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-10-24T16:57:10.978Z');
+        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-10-24T16:57:10.978Z');
 
         const withoutStatus = clone(snapshot);
         delete withoutStatus['runtimeStatus'];
@@ -85,7 +85,7 @@ describe('Example A12: the traffic report and the atlas', () => {
         // A report that comes late, of five minutes ago: its status stays.
         const late = parseStatusUpdate({ entityId: 'DE*GEF*E1*1', entityType: 'EVSE', kind: 'status', timestamp: '2026-10-24T16:52:10.978Z', value: 'available' });
         expect(status.apply(late)).toBe('Outdated');
-        expect(status.get('EVSE', 'DE*GEF*E1*1')!.value).toBe('charging');
+        expect(defined(status.get('EVSE', 'DE*GEF*E1*1')).value).toBe('charging');
 
         // No checkpoint holds runtime status.
         expect(get(readJSON('published/QA-epoch-2-checkpoint-0-snapshot.json') as JSONObject, 'runtimeStatus')).toBeUndefined();

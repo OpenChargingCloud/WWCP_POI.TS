@@ -106,7 +106,7 @@ export function sameETag(left: ETag, right: ETag): boolean {
 /** Whether two lists of ETags are the same, in the same order. */
 export function sameETags(left: readonly ETag[], right: readonly ETag[]): boolean {
     return left.length === right.length &&
-           left.every((etag, index) => sameETag(etag, right[index]!));
+           left.every((etag, index) => { const other = right[index]; return other !== undefined && sameETag(etag, other); });
 }
 
 

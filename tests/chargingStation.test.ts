@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, readJSON, readText } from './helpers.ts';
+import { AT, asText, defined, readJSON, readText } from './helpers.ts';
 import { anchor as anchorOfEpoch1, anchorPQ } from './qa.ts';
 
 import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
@@ -32,14 +32,15 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(station.chargingStation['@id']).toBe('DE*GEF*S1');
         expect(station.chargingStation['maxPower']).toBe(300000);
         expect(station.evses.map(evse => evse['@id'])).toEqual([ 'DE*GEF*E1*1', 'DE*GEF*E1*2' ]);
-        expect(station.evses[0]!['chargingConnectors']).toEqual([ { '@id': '1', type: 'IEC_62196_T2_COMBO', format: 'CABLE' } ]);
-        expect(station.tariffs.get('DE*GEF*E1*1')!.map(tariff => tariff['@id'])).toEqual([ 'DE*GEF*T_DC' ]);
+        expect(defined(station.evses[0])['chargingConnectors']).toEqual([ { '@id': '1', type: 'IEC_62196_T2_COMBO', format: 'CABLE' } ]);
+        expect(defined(station.tariffs.get('DE*GEF*E1*1')).map(tariff => tariff['@id'])).toEqual([ 'DE*GEF*T_DC' ]);
         expect(station.operatorSigningKeys).toHaveLength(3);
 
         // The model of the station and those of its energy meters, as their manufacturers state them.
-        expect(`${String(station.manufacturer!.manufacturer['@id'])} ${String(station.manufacturer!.model!['@id'])} ${String(station.manufacturer!.model!['numberOfEVSEs'])} EVSEs`).toBe('GraphDefined GD-DC300 2 EVSEs');
-        expect(get(station.manufacturer!.manufacturer, 'chargingStationModels')).toBeUndefined();
-        expect([ ...station.energyMeterModels ].map(([ meterId, { manufacturer, model } ]) => `${meterId}: ${String(manufacturer['@id'])} ${String(model!['@id'])}`))
+        const madeBy = defined(station.manufacturer);
+        expect(`${asText(madeBy.manufacturer['@id'])} ${asText(defined(madeBy.model)['@id'])} ${asText(defined(madeBy.model)['numberOfEVSEs'])} EVSEs`).toBe('GraphDefined GD-DC300 2 EVSEs');
+        expect(get(madeBy.manufacturer, 'chargingStationModels')).toBeUndefined();
+        expect([ ...station.energyMeterModels ].map(([ meterId, { manufacturer, model } ]) => `${meterId}: ${asText(manufacturer['@id'])} ${asText(defined(model)['@id'])}`))
             .toEqual([ 'DE*GEF*M1*1: KERNBERG KDM-500', 'DE*GEF*M1*2: KERNBERG KDM-500' ]);
         expect(station.warnings).toEqual([]);
 
@@ -49,10 +50,10 @@ describe('The proof of a charging station, as an app checks it', () => {
 
         const proof     = readJSON('proofs/QA-proof-station-DE_GEF_S6.json') as JSONObject;
         const network   = proof['roamingNetwork'] as JSONObject;
-        const leavesOf  = (array: JSONObject, models: string) => (get(array, '@leaves') as JSONObject[]).map(leaf => {
+        const leavesOf  = (array: JSONObject, models: string): string[] => (get(array, '@leaves') as JSONObject[]).map(leaf => {
                               const manufacturer = leaf['@entity'] as JSONObject;
                               const given        = get(manufacturer, models) as JSONObject;
-                              return `${String(manufacturer['@id'])}: ${(get(given, '@leaves') as JSONObject[]).map(model => String((model['@entity'] as JSONObject)['@id'])).join(', ')} of ${String(get(given, '@size'))}`;
+                              return `${asText(manufacturer['@id'])}: ${(get(given, '@leaves') as JSONObject[]).map(model => asText((model['@entity'] as JSONObject)['@id'])).join(', ')} of ${asText(get(given, '@size'))}`;
                           });
 
         // The AC station DE*GEF*S6 is a GD-AC44 with meters SM-3: the DC models are pruned, as is KERNBERG.
@@ -60,8 +61,8 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(leavesOf(network['energyMeterManufacturers'] as JSONObject, 'energyMeterModels')).toEqual([ 'SAALE: SM-3 of 1' ]);
 
         const s6 = verifyChargingStation(anchor, proof, { at: AT });
-        expect(String(s6.manufacturer!.model!['@id'])).toBe('GD-AC44');
-        expect([ ...s6.energyMeterModels.values() ].map(({ model }) => String(model!['@id']))).toEqual([ 'SM-3', 'SM-3' ]);
+        expect(asText(defined(s6.manufacturer?.model)['@id'])).toBe('GD-AC44');
+        expect([ ...s6.energyMeterModels.values() ].map(({ model }) => asText(defined(model)['@id']))).toEqual([ 'SM-3', 'SM-3' ]);
 
     });
 
@@ -70,7 +71,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         const s6 = verifyChargingStation(anchor, readJSON('proofs/QA-proof-station-DE_GEF_S6.json'), { at: AT });
         expect(s6.chargingStation['maxPower']).toBe(22000);
         expect(s6.evses.map(evse => evse['maxPower'])).toEqual([ 11000, 11000 ]);
-        expect(s6.tariffs.get('DE*GEF*E6*1')!.map(tariff => tariff['@id'])).toEqual([ 'DE*GEF*T_AC' ]);
+        expect(defined(s6.tariffs.get('DE*GEF*E6*1')).map(tariff => tariff['@id'])).toEqual([ 'DE*GEF*T_AC' ]);
 
         const e3 = verifyChargingStation(anchor, readJSON('proofs/QA-proof-evse-DE_GEF_E3_2.json'), { at: AT, evseId: 'DE*GEF*E3*2' });
         expect(e3.chargingStation['@id']).toBe('DE*GEF*S3');
@@ -81,12 +82,14 @@ describe('The proof of a charging station, as an app checks it', () => {
 
         const station  = verifyChargingStation(anchor, readJSON('proofs/QA-proof-station-DE_GEF_S1.json'), { at: AT });
         const prices   = verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: AT });
-        const price    = prices.get('EVSE:DE*GEF*E1*1')!;
+        const price    = defined(prices.get('EVSE:DE*GEF*E1*1'));
 
         expect(price.statement.sequence).toBe(3);
         expect(price.statement.algorithm).toBe('ML-DSA-65');
-        expect(price.statement.prices[0]!['chargingTariffId']).toBe('DE*GEF*T_DC');
-        expect(String(((price.statement.prices[0]!['elements'] as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!['price'])).toBe('0.59');
+        const tariff   = defined(price.statement.prices[0]);
+        expect(tariff['chargingTariffId']).toBe('DE*GEF*T_DC');
+        const element  = defined((tariff['elements'] as JSONObject[])[0]);
+        expect(asText(defined((element['priceComponents'] as JSONObject[])[0])['price'])).toBe('0.59');
 
         // After its validUntil there is no current price.
         expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-24T18:00:00.000Z' }).size).toBe(0);

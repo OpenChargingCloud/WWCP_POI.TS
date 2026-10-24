@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, readJSON, readText } from './helpers.ts';
+import { AT, defined, readJSON, readText } from './helpers.ts';
 
 import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -104,7 +104,7 @@ describe('Example A1: checking QA from its trust anchor', () => {
 
         // f) a signature changed.
         const badSignature = clone(commit);
-        const signature    = (badSignature['signatures'] as JSONObject[])[0]!;
+        const signature    = defined((badSignature['signatures'] as JSONObject[])[0]);
         signature['signedAt'] = '2026-10-24T16:56:00.000Z';
         expect(() => verifyVersion(anchor, network, badSignature, AT)).toThrow(/signature is invalid/);
 

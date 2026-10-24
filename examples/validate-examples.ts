@@ -15,17 +15,30 @@ import { join }                     from 'node:path';
 
 import {
     ArchiveSegment, Checkpoint, CheckpointProof, History, OperatorTrust, POIPublicKey, PriceStatement, PriceStatementProof,
-    RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, get, parseArchiveSegmentInfo, parseEvidence,
-    parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, toTimestamp, verifyChargingStation,
-    verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence, verifyPriceStatements,
-    verifySegmentLine, verifyVersion,
+    RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, get, isArray, isObject, parseArchiveSegmentInfo,
+    parseEvidence, parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, toTimestamp,
+    verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence,
+    verifyPriceStatements, verifySegmentLine, verifyVersion,
     type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type TrustedWitness,
 } from '../src/index.ts';
 
 
+/** What the examples published, or a clear error where they did not. */
+function defined<T>(value: T | null | undefined, what: string): T {
+    if (value === undefined || value === null)
+        throw new Error(`there is no ${what}`);
+    return value;
+}
+
+/** A value of a document as text: a string or a number as it is, an object or an array as JSON. */
+function show(value: JSONValue | undefined): string {
+    return isObject(value) || isArray(value) ? JSON.stringify(value) : String(value);
+}
+
+
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
-const at         = atIndex >= 0 ? args[atIndex + 1]! : undefined;
+const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
 const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-801bbce');
 const time       = at ?? (directory.includes('csharp-801bbce') ? '2026-10-24T17:03:00.000Z' : new Date().toISOString());
 
@@ -67,12 +80,12 @@ console.log(`Checking ${directory}, at ${time}`);
 const anchor     = TrustAnchor.parse(text('published/QA-trustAnchor.txt'));
 const witnesses  = parseTrustedWitnesses(json('trusted/witnesses.json'));
 const genesis    = json('published/QA-genesis.json') as JSONObject;
-const first      = verifyVersion(anchor, genesis['roamingNetwork']!, genesis['commit']!, time);
+const first      = verifyVersion(anchor, defined(genesis['roamingNetwork'], 'roaming network in the genesis'), defined(genesis['commit'], 'commit in the genesis'), time);
 const trust      = first.trust;
 
 /** As example A4: commits signed as the roaming network operator by its quorum, checkpoints as well. */
 const byOperator: HistoryOptions = {
-    verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit'); },
+    verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
     verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust); },
 };
 
@@ -80,12 +93,12 @@ const byOperator: HistoryOptions = {
 function following(trustAnchor: TrustAnchor, root: RoamingNetwork, trusted: readonly TrustedWitness[]): HistoryOptions & { readonly trust: OperatorTrust } {
     let current = OperatorTrust.of(trustAnchor, root, time);
     return {
-        get trust() { return current; },
-        verifyCommit: (commit, _before, after) => {
-            current.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit');
+        get trust(): OperatorTrust { return current; },
+        verifyCommit: (commit, _before, after): void => {
+            current.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
             current = current.followedBy(after, time);
         },
-        verifyCheckpoint: checkpoint => { verifyCheckpointSignatures(checkpoint, current, { witnesses: trusted, requiredWitnesses: trusted.length }); },
+        verifyCheckpoint: (checkpoint): void => { verifyCheckpointSignatures(checkpoint, current, { witnesses: trusted, requiredWitnesses: trusted.length }); },
     };
 }
 
@@ -94,7 +107,7 @@ const commits    = (name: string): JSONArray  => json(name) as JSONArray;
 
 // QA as examples A8 and A9 left it: revision 13 of epoch 1, the version of checkpoint 4.
 const snapshot4  = json('published/QA-checkpoint-4-snapshot.json') as JSONObject;
-const head       = verifyVersion(anchor, snapshot4['roamingNetwork']!, snapshot4['commit']!, time);
+const head       = verifyVersion(anchor, defined(snapshot4['roamingNetwork'], 'roaming network in the snapshot of checkpoint 4'), defined(snapshot4['commit'], 'commit in the snapshot of checkpoint 4'), time);
 
 
 step('Example A1: checking QA from its trust anchor', () => {
@@ -122,7 +135,7 @@ step('Example A2: the charging station operator DE*GEF and the manufacturers', (
 
     if (has('DE-GEF/operator.json')) {
         const sent    = json('DE-GEF/operator.json') as JSONObject;
-        const ids     = (keys: JSONValue | undefined) => POIPublicKey.parseAll(keys, 'keys').map(key => key.id).sort().join(', ');
+        const ids     = (keys: JSONValue | undefined): string => POIPublicKey.parseAll(keys, 'keys').map(key => key.id).sort().join(', ');
         if (ids(gef['signingKeys']) !== ids(sent['signingKeys']) || ids(gef['identityKeys']) !== ids(sent['identityKeys']))
             throw new Error("QA names 'DE*GEF' with other keys than it sent");
     }
@@ -136,8 +149,8 @@ step('Example A2: the charging station operator DE*GEF and the manufacturers', (
     // The manufacturers, parties of their own, with the models they stated.
     for (const [kind, property, models] of [ [ 'Charging station manufacturer', 'chargingStationManufacturers', 'chargingStationModels' ], [ 'Energy meter manufacturer    ', 'energyMeterManufacturers', 'energyMeterModels' ] ] as const)
         for (const manufacturer of (get(head.network.content, property) as JSONObject[] | undefined) ?? [])
-            console.log(`${kind} ${String(manufacturer['@id'])}: ${String((manufacturer['name'] as JSONObject)['en'])}, models ` +
-                        ((get(manufacturer, models) as JSONObject[] | undefined) ?? []).map(model => `${String(model['@id'])} (versions ${((model['versions'] as string[] | undefined) ?? []).join('/')})`).join(', '));
+            console.log(`${kind} ${show(manufacturer['@id'])}: ${show((manufacturer['name'] as JSONObject)['en'])}, models ` +
+                        ((get(manufacturer, models) as JSONObject[] | undefined) ?? []).map(model => `${show(model['@id'])} (versions ${((model['versions'] as string[] | undefined) ?? []).join('/')})`).join(', '));
 
 });
 
@@ -145,23 +158,23 @@ step('Example A2: the charging station operator DE*GEF and the manufacturers', (
 /** The pools of DE*GEF as they are at runtime. */
 function showPools(network: RoamingNetwork, meters: boolean, ...numbers: number[]): void {
 
-    const operator = (get(network.effectiveContent, 'chargingStationOperators') as JSONObject[]).find(item => item['@id'] === 'DE*GEF')!;
+    const operator = defined((get(network.effectiveContent, 'chargingStationOperators') as JSONObject[]).find(item => item['@id'] === 'DE*GEF'), "charging station operator 'DE*GEF'");
     const pools    = ((get(operator, 'chargingPools') as JSONObject[] | undefined) ?? []).filter(pool => numbers.length === 0 || numbers.some(n => pool['@id'] === `DE*GEF*P${n}`));
 
     if (pools.length === 0)
         console.log(`no pool ${numbers.join(' or ')} yet`);
 
     for (const pool of pools) {
-        console.log(`${String(pool['@id'])}  ${String((pool['name'] as JSONObject)['en'])}`);
+        console.log(`${show(pool['@id'])}  ${show((pool['name'] as JSONObject)['en'])}`);
         for (const station of get(pool, 'chargingStations') as JSONObject[]) {
-            console.log(`  ${String(station['@id'])}  ${Number(station['maxPower']) / 1000} kW: ` +
-                        (get(station, 'EVSEs') as JSONObject[]).map(evse => `${String(evse['@id'])} ${String((evse['currentTypes'] as string[])[0])} ${Number(evse['maxPower']) / 1000} kW`).join(', '));
+            console.log(`  ${show(station['@id'])}  ${Number(station['maxPower']) / 1000} kW: ` +
+                        (get(station, 'EVSEs') as JSONObject[]).map(evse => `${show(evse['@id'])} ${show((evse['currentTypes'] as string[])[0])} ${Number(evse['maxPower']) / 1000} kW`).join(', '));
             if (meters)
                 for (const evse of get(station, 'EVSEs') as JSONObject[]) {
                     const meter = evse['energyMeter'] as JSONObject | undefined;
                     if (meter !== undefined)
-                        console.log(`    ${String(meter['@id'])}  ${String(meter['manufacturerId'])} ${String(meter['modelId'])}, serial ${String(meter['serialNumber'])}, ` +
-                                    `${((meter['signatureMethods'] as string[] | undefined) ?? []).join(', ')}, key ${String(((meter['publicKeys'] as JSONObject[] | undefined) ?? [])[0]?.['@id'] ?? '').slice(0, 8)}…`);
+                        console.log(`    ${show(meter['@id'])}  ${show(meter['manufacturerId'])} ${show(meter['modelId'])}, serial ${show(meter['serialNumber'])}, ` +
+                                    `${((meter['signatureMethods'] as string[] | undefined) ?? []).join(', ')}, key ${show(((meter['publicKeys'] as JSONObject[] | undefined) ?? [])[0]?.['@id'] ?? '').slice(0, 8)}…`);
                 }
         }
     }
@@ -188,7 +201,7 @@ step('Example A4: the first checkpoint, and joining from it', () => {
         console.log(`Appended revision ${version.commit.revision}: ${version.commit.description ?? ''}`);
     }
 
-    const proof = CheckpointProof.parse(json(`published/QA-proof-revision-${proofRevisions[0]!}.json`));
+    const proof = CheckpointProof.parse(json(`published/QA-proof-revision-${defined(proofRevisions[0], 'proof of a revision')}.json`));
     proof.verify(checkpoint0);
     console.log(`The proof of the commit of revision ${proof.revision} in checkpoint 0: valid`);
 
@@ -203,7 +216,7 @@ step('Example A4: the first checkpoint, and joining from it', () => {
 
 step('Example A5: a correction between two checkpoints', () => {
 
-    const line = [ checkpoint(0), checkpoint(1), checkpoint(2) ];
+    const line: [ Checkpoint, Checkpoint, Checkpoint ] = [ checkpoint(0), checkpoint(1), checkpoint(2) ];
     verifyCheckpointLine(line);
 
     for (const item of line)
@@ -214,12 +227,13 @@ step('Example A5: a correction between two checkpoints', () => {
     const history = History.fromSnapshot(json('published/QA-checkpoint-0-snapshot.json'), byOperator);
     for (const commit of [ ...commits('published/QA-commits-since-checkpoint-0.json'), ...commits('published/QA-commits-since-checkpoint-1.json') ])
         history.append(commit);
-    history.takeCheckpoint(line[1]!);
-    history.takeCheckpoint(line[2]!);
-    console.log(`Revisions ${line[0]!.revision + 1} to ${line[2]!.revision} taken commit by commit, checkpoints 1 and 2 taken: their ETags and those of the versions reached the same`);
+    history.takeCheckpoint(line[1]);
+    history.takeCheckpoint(line[2]);
+    console.log(`Revisions ${line[0].revision + 1} to ${line[2].revision} taken commit by commit, checkpoints 1 and 2 taken: their ETags and those of the versions reached the same`);
     showPools(history.head.network, false, 3, 4);
 
-    refused(`The proof of revision ${proofRevisions.at(-1)!} in checkpoint 1`, () => CheckpointProof.parse(json(`published/QA-proof-revision-${proofRevisions.at(-1)!}.json`)).verify(line[1]!));
+    const revision = defined(proofRevisions.at(-1), 'proof of a revision');
+    refused(`The proof of revision ${revision} in checkpoint 1`, () => { CheckpointProof.parse(json(`published/QA-proof-revision-${revision}.json`)).verify(line[1]); });
 
 });
 
@@ -256,8 +270,9 @@ step('Example A7: compaction with an archive', () => {
         console.log(`Segment ${info.number}, from revision ${info.fromRevision}: its end and checkpoint ${index}: ETags the same, the root of its commits the same`);
     });
 
-    CheckpointProof.parse(json(`published/QA-proof-revision-${proofRevisions[0]!}-archived.json`)).verify(checkpoint(0));
-    console.log(`The proof of revision ${proofRevisions[0]!}, from the archive, in checkpoint 0: valid`);
+    const revision = defined(proofRevisions[0], 'proof of a revision');
+    CheckpointProof.parse(json(`published/QA-proof-revision-${revision}-archived.json`)).verify(checkpoint(0));
+    console.log(`The proof of revision ${revision}, from the archive, in checkpoint 0: valid`);
 
 });
 
@@ -266,7 +281,7 @@ step('Example A8: price statements, named by checkpoints', () => {
 
     const checkpoint4  = checkpoint(4);
     const statements   = parsePriceStatements(json('published/QA-checkpoint-4-priceStatements.json'));
-    const gef          = head.network.chargingStationOperator('DE*GEF')!;
+    const gef          = defined(head.network.chargingStationOperator('DE*GEF'), "charging station operator 'DE*GEF'");
     const signingKeys  = POIPublicKey.parseAll(gef['signingKeys'], 'signing keys');
 
     verifyCheckpointLine([ checkpoint(3), checkpoint4 ]);
@@ -278,13 +293,13 @@ step('Example A8: price statements, named by checkpoints', () => {
 
     const current = PriceStatement.parse((json('published/QA-priceStatements-DE_GEF_E1_1.json') as JSONArray)[0]);
     current.verify('QA', 'DE*GEF', signingKeys);
-    console.log(`EVSE ${current.entityId}, sequence ${current.sequence}: ${String(current.prices[0]!['chargingTariffId'])}, signed by ${current.signer}`);
+    console.log(`EVSE ${current.entityId}, sequence ${current.sequence}: ${show(defined(current.prices[0], 'price in the price statement')['chargingTariffId'])}, signed by ${current.signer}`);
 
     const proof = PriceStatementProof.parse(json('published/QA-priceStatementProof-E1_1-0.json'));
     proof.verify(checkpoint4);
     console.log(`The proof of ${proof.priceStatement.entityId}, sequence ${proof.priceStatement.sequence}, in checkpoint 4: valid`);
 
-    refused('Joined with a statement less', () => verifyCheckpointPriceStatements(checkpoint4, statements.slice(1)));
+    refused('Joined with a statement less', () => { verifyCheckpointPriceStatements(checkpoint4, statements.slice(1)); });
 
 });
 
@@ -312,7 +327,7 @@ if (has('driver/evidence-DE_GEF_E1_1.json'))
         for (const { checkpoint: item, signatures } of verified.checkpoints)
             console.log(`Checkpoint ${item.sequence}: revision ${item.revision}, signed by ${signatures.signedBy.join(', ')}, witnessed by ${signatures.witnessedBy.join(', ')}`);
 
-        const price = verified.prices.get(`EVSE:${evidence.evseId}`)!;
+        const price = defined(verified.prices.get(`EVSE:${evidence.evseId}`), `price statement of the EVSE ${evidence.evseId}`);
         const named = verified.statementCheckpoints.get(price.digest);
 
         console.log(`At ${evidence.chargingStarted}, when charging began: the station proof attested, the price statement valid`);
@@ -323,10 +338,10 @@ if (has('driver/evidence-DE_GEF_E1_1.json'))
         const station  = verified.station;
         const meter    = station.evses.find(evse => evse['@id'] === evidence.evseId)?.['energyMeter'] as JSONObject | undefined;
         const madeBy   = station.manufacturer;
-        const meterBy  = meter === undefined ? undefined : station.energyMeterModels.get(String(meter['@id']));
-        console.log(`${String(station.chargingStation['@id'])}: ${String((madeBy?.manufacturer['name'] as JSONObject | undefined)?.['en'])} ${String(madeBy?.model?.['@id'])}`);
+        const meterBy  = meter === undefined ? undefined : station.energyMeterModels.get(show(meter['@id']));
+        console.log(`${show(station.chargingStation['@id'])}: ${show((madeBy?.manufacturer['name'] as JSONObject | undefined)?.['en'])} ${show(madeBy?.model?.['@id'])}`);
         if (meter !== undefined)
-            console.log(`${String(meter['@id'])}, the energy meter of ${evidence.evseId}: ${String((meterBy?.manufacturer['name'] as JSONObject | undefined)?.['en'])} ${String(meterBy?.model?.['@id'])}, serial ${String(meter['serialNumber'])}`);
+            console.log(`${show(meter['@id'])}, the energy meter of ${evidence.evseId}: ${show((meterBy?.manufacturer['name'] as JSONObject | undefined)?.['en'])} ${show(meterBy?.model?.['@id'])}, serial ${show(meter['serialNumber'])}`);
 
     });
 
@@ -342,7 +357,8 @@ if (has('published/QA-checkpoint-6.json'))
             epoch1.append(commit);
 
         const final  = epoch1.takeCheckpoint(checkpoint(6));
-        console.log(`Old trust: revision ${epoch1.head.commit.revision}, checkpoint ${final.sequence}, final; next: epoch ${final.next!.number}, ${final.next!.profiles.toString()}`);
+        const next   = defined(final.next, 'next epoch in the final checkpoint');
+        console.log(`Old trust: revision ${epoch1.head.commit.revision}, checkpoint ${final.sequence}, final; next: epoch ${next.number}, ${next.profiles.toString()}`);
 
         const epoch2     = epoch1.startNextEpoch();
         const published  = (json('published/QA-epoch-2-genesis.json') as JSONObject)['commit'] as JSONObject;
@@ -368,10 +384,11 @@ if (has('published/QA-checkpoint-6.json'))
         const snapshot0    = json('published/QA-epoch-2-checkpoint-0-snapshot.json') as JSONObject;
         const pq           = following(anchorPQ, RoamingNetwork.parse(snapshot0['roamingNetwork']), witnessesPQ);
         const joined       = History.fromSnapshot(snapshot0, pq);
-        console.log(`New trust: joined epoch ${joined.epoch.number} from checkpoint ${joined.checkpoints[0]!.sequence}, revision ${joined.head.commit.revision}, ${joined.head.commit.id.length} hexadecimal digits`);
+        const joinedAt     = defined(joined.checkpoints[0], 'checkpoint joined from');
+        console.log(`New trust: joined epoch ${joined.epoch.number} from checkpoint ${joinedAt.sequence}, revision ${joined.head.commit.revision}, ${joined.head.commit.id.length} hexadecimal digits`);
 
-        verifyCheckpointPriceStatements(joined.checkpoints[0]!, parsePriceStatements(json('published/QA-epoch-2-checkpoint-0-priceStatements.json')));
-        refused('A commit of epoch 1', () => joined.append(commits('published/QA-commits-since-checkpoint-5.json').at(-1)!));
+        verifyCheckpointPriceStatements(joinedAt, parsePriceStatements(json('published/QA-epoch-2-checkpoint-0-priceStatements.json')));
+        refused('A commit of epoch 1', () => joined.append(defined(commits('published/QA-commits-since-checkpoint-5.json').at(-1), 'commit of epoch 1')));
 
     });
 
@@ -393,12 +410,12 @@ if (has('driver/live.json'))
 
         if (commit !== undefined) {
             const pushed   = mirror.head.commit.id === (commit.payload as JSONObject)['@id'] ? mirror.head.commit : undefined;
-            const signedBy = OperatorTrust.of(anchorPQ, mirror.head.network, time).verifyOperatorSignatures(mirror.head.commit.signatures, (signature, key) => mirror.head.commit.verifySignature(signature, key), 'the commit');
+            const signedBy = OperatorTrust.of(anchorPQ, mirror.head.network, time).verifyOperatorSignatures(mirror.head.commit.signatures, (signature, key) => { mirror.head.commit.verifySignature(signature, key); }, 'the commit');
             console.log(`The commit pushed: revision ${mirror.head.commit.revision}, signed by ${[ ...signedBy ].join(', ')}, checked against the trust anchor of epoch 2; the head of the mirror: ${pushed !== undefined}`);
         }
 
         const status = RuntimeStatus.fromSnapshot(snapshot).get('EVSE', 'DE*GEF*E1*1');
-        console.log(`The live snapshot: DE*GEF*E1*1 ${String(status?.value)} since ${status === undefined ? '-' : toTimestamp(status.timestamp)}; outside the version, unsigned`);
+        console.log(`The live snapshot: DE*GEF*E1*1 ${show(status?.value)} since ${status === undefined ? '-' : toTimestamp(status.timestamp)}; outside the version, unsigned`);
 
     });
 
@@ -408,23 +425,23 @@ if (has('published/QA-DE-GEF-E1-1-proof.json'))
 
         const anchorPQ  = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
         const proof     = json('published/QA-DE-GEF-E1-1-proof.json') as JSONObject;
-        const attested  = at ?? String(((proof['attestations'] as JSONObject[])[0]!)['signedAt']);
+        const attested  = at ?? show(defined((proof['attestations'] as JSONObject[])[0], 'attestation in the station proof')['signedAt']);
         const station   = verifyChargingStation(anchorPQ, proof, { at: attested, evseId: 'DE*GEF*E1*1' });
 
         console.log(`The station proof, revision ${station.revision}, at ${attested}: attested by ${station.attestedBy.join(', ')}`);
 
         for (const software of station.transparencySoftware) {
-            const name = (value: JSONValue | undefined) => typeof value === 'object' && value !== null ? String(Object.values(value as JSONObject)[0]) : String(value);
+            const name = (value: JSONValue | undefined): string => show(isObject(value) ? Object.values(value)[0] : value);
             console.log(`${software.energyMeterId}: ${software.legalStatus ?? ''}`);
-            console.log(`  ${name(software.release['name'])} ${String(software.release['version'])}, by ${name(software.manufacturer['name'])}, ${String(software.manufacturer['craRole'] ?? '')}`);
+            console.log(`  ${name(software.release['name'])} ${show(software.release['version'])}, by ${name(software.manufacturer['name'])}, ${show(software.manufacturer['craRole'] ?? '')}`);
             if (software.certificate !== undefined)
-                console.log(`  ${String(software.certificate['@id'])} for the ${String(software.certificate['chargingStationModel'])} ${String(software.certificate['chargingStationModelVersion'])} under the ${String(software.certificate['legislation'])}, by the ${String(software.body?.['@id'])}; keys of its own: ${software.bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for the model of the station: ${software.forThisModel ? 'yes' : 'no'}`);
+                console.log(`  ${show(software.certificate['@id'])} for the ${show(software.certificate['chargingStationModel'])} ${show(software.certificate['chargingStationModelVersion'])} under the ${show(software.certificate['legislation'])}, by the ${show(software.body?.['@id'])}; keys of its own: ${software.bodyHasKeys === true ? 'yes' : 'no, the roaming network operator stated it'}; for the model of the station: ${software.forThisModel === true ? 'yes' : 'no'}`);
         }
 
         // The model of the station, as its manufacturer states it: a certificate is for one of its versions, the station names none.
-        const model = station.manufacturer?.model;
-        if (model !== undefined)
-            console.log(`The station ${String(station.chargingStation['@id'])} is a ${String(model['@id'])} of ${String(station.manufacturer!.manufacturer['@id'])}, versions ${((model['versions'] as string[] | undefined) ?? []).join('/')}`);
+        const madeBy = station.manufacturer;
+        if (madeBy?.model !== undefined)
+            console.log(`The station ${show(station.chargingStation['@id'])} is a ${show(madeBy.model['@id'])} of ${show(madeBy.manufacturer['@id'])}, versions ${((madeBy.model['versions'] as string[] | undefined) ?? []).join('/')}`);
         for (const warning of station.warnings)
             console.log(`warning: ${warning}`);
 
@@ -439,7 +456,7 @@ if (has('proofs/QA-proof-station-DE_GEF_S1.json'))
         console.log(`At ${time}: ${station.roamingNetwork.name ?? ''} (revision ${station.revision}), attested by ${station.attestedBy.join(', ')}`);
 
         for (const evse of station.evses)
-            console.log(`  ${String(evse['@id'])}, ${Number(evse['maxPower']) / 1000} kW: ${(station.tariffs.get(String(evse['@id'])) ?? []).map(tariff => String(tariff['@id'])).join(', ')}`);
+            console.log(`  ${show(evse['@id'])}, ${Number(evse['maxPower']) / 1000} kW: ${(station.tariffs.get(show(evse['@id'])) ?? []).map(tariff => show(tariff['@id'])).join(', ')}`);
 
         const prices = verifyPriceStatements(station, json('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: time });
         for (const [entity, price] of prices)

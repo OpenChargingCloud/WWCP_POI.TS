@@ -1,4 +1,4 @@
-import { AT, readJSON, readText } from './helpers.ts';
+import { AT, defined, readJSON, readText } from './helpers.ts';
 
 import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -30,13 +30,13 @@ export const trust        = OperatorTrust.of(anchor, genesis, AT);
 
 /** As example A4: commits signed as the roaming network operator by its quorum, checkpoints as well. */
 export const byOperator: HistoryOptions = {
-    verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit'); },
+    verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
     verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust); },
 };
 
 /** As example A6: and by both witnesses a verifier trusts. */
 export const byOperatorAndWitnesses: HistoryOptions = {
-    verifyCommit:      byOperator.verifyCommit!,
+    verifyCommit:      defined(byOperator.verifyCommit),
     verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust, { witnesses, requiredWitnesses: 2 }); },
 };
 
@@ -66,14 +66,14 @@ export function following(trustAnchor: TrustAnchor, root: RoamingNetwork, truste
     let current = OperatorTrust.of(trustAnchor, root, AT);
 
     return {
-        get trust() {
+        get trust(): OperatorTrust {
             return current;
         },
-        verifyCommit: (commit, _before, after) => {
-            current.verifyOperatorSignatures(commit.signatures, (signature, key) => commit.verifySignature(signature, key), 'the commit');
+        verifyCommit: (commit, _before, after): void => {
+            current.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
             current = current.followedBy(after, AT);
         },
-        verifyCheckpoint: checkpoint => {
+        verifyCheckpoint: (checkpoint): void => {
             verifyCheckpointSignatures(checkpoint, current, { witnesses: trustedWitnesses, requiredWitnesses });
         },
     };

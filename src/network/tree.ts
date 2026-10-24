@@ -22,7 +22,7 @@ import { leafHash, merkleRootOfLeafHashes, merkleTreeHeadToJSON, parseAuditPath,
 import { DIGEST_LENGTH, type HashAlgorithm }        from '../crypto/hash.ts';
 import { bytesEqual }                               from '../encoding/text.ts';
 import type { ETag }                                from '../etags.ts';
-import { POIError }                                 from '../errors.ts';
+import { POIError, required }                       from '../errors.ts';
 
 
 /** The kinds of entities that have child arrays (SPECIFICATION.md section 8.2); every other one is a leaf. */
@@ -154,7 +154,7 @@ export function skeleton(entity: JSONObject, kind: TreeNodeKind, algorithm: Hash
         result ??= { ...entity };
 
         set(result, property, merkleTreeHeadToJSON({
-            root: merkleRootOfLeafHashes(algorithm, (children as JSONObject[]).map(child => entityDigest(child, childKind, algorithm))),
+            root: merkleRootOfLeafHashes(algorithm, children.map(child => entityDigest(child, childKind, algorithm))),
             size: children.length,
         }));
 
@@ -275,7 +275,7 @@ export function prunedDigest(entity: JSONObject, kind: TreeNodeKind, algorithm: 
 
             }
 
-            head = { root: root!, size };
+            head = { root: required(root, `The partial child array ${where} must give at least one leaf!`), size };
             set(attested, property, given);
 
         }

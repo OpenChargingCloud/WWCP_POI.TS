@@ -19,7 +19,7 @@ import { cbor, decodeDeterministicCbor, encodeCbor, type CborValue } from '../en
 import { fromBase45, fromHex, toBase45, toHex } from '../encoding/text.ts';
 import { checkContext, requireArray, requireObject, requireString, CONTEXT_PREFIX } from '../common.ts';
 import { get, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
-import { POIError } from '../errors.ts';
+import { POIError, required } from '../errors.ts';
 
 
 export const TRUST_ANCHOR_CONTEXT    = CONTEXT_PREFIX + 'roamingNetwork/trustAnchor/v2';
@@ -103,25 +103,27 @@ export class TrustAnchor {
         const query       = queryAt < 0 || url[queryAt] !== '?' ? '' : url.slice(queryAt + 1, fragmentAt < 0 ? url.length : fragmentAt);
         const parameters  = query.split('&').filter(parameter => parameter.length > 0).map(parameter => {
                                 const at = parameter.indexOf('=');
-                                return at < 0 ? [ parameter ] : [ parameter.slice(0, at), parameter.slice(at + 1) ];
+                                return at < 0 ? { name: parameter, value: undefined } : { name: parameter.slice(0, at), value: parameter.slice(at + 1) };
                             });
 
-        const keys         = parameters.filter(parameter => parameter.length === 2 && parameter[0] === 'keys');
-        const minConsensus = parameters.filter(parameter => parameter.length === 2 && parameter[0] === 'minConsensus');
-        const alsoAt       = parameters.filter(parameter => parameter.length === 2 && parameter[0] === 'alsoAt');
+        /** The values of the parameters of a name; a parameter without `=` names no value. */
+        const valuesOf = (name: string): string[] =>
+            parameters.flatMap(parameter => parameter.name === name && parameter.value !== undefined ? [ parameter.value ] : []);
 
-        if (keys.length !== 1)
+        const [ keys, ...moreKeys ]           = valuesOf('keys');
+        const [ minConsensus, ...moreQuorums ] = valuesOf('minConsensus');
+        const alsoAt                          = valuesOf('alsoAt');
+
+        if (keys === undefined || moreKeys.length > 0)
             throw new POIError('A trust anchor names the identity keys once: ?keys=…!');
 
-        let quorum = 1;
-
-        if (minConsensus.length > 1 ||
-           (minConsensus.length === 1 && (!/^[1-9][0-9]{0,2}$/.test(minConsensus[0]![1]!) || (quorum = Number(minConsensus[0]![1])) > 255)))
+        if (moreQuorums.length > 0 || (minConsensus !== undefined && (!/^[1-9][0-9]{0,2}$/.test(minConsensus) || Number(minConsensus) > 255)))
             throw new POIError('A trust anchor names its minConsensus at most once, as a whole number from 1 to 255!');
 
-        const urls = [ networkURL, ...alsoAt.map(parameter => decodeURIComponent(parameter[1]!)) ];
-        const ids  = decodeURIComponent(keys[0]![1]!).split(',');
-        const id   = checkTrustAnchor(urls, ids, quorum);
+        const quorum = minConsensus === undefined ? 1 : Number(minConsensus);
+        const urls   = [ networkURL, ...alsoAt.map(value => decodeURIComponent(value)) ];
+        const ids    = decodeURIComponent(keys).split(',');
+        const id     = checkTrustAnchor(urls, ids, quorum);
 
         return new TrustAnchor(id, urls, ids, quorum, {}, {});
 
@@ -318,12 +320,13 @@ function checkTrustAnchor(urls: readonly string[], keys: readonly string[], minC
         if (match === null)
             throw new POIError(`The URL '${url}' of a trust anchor is no http or https URL of a roaming network, ~/RNs/{RN_Id}, without a query!`);
 
-        const segments = (match[3] ?? '').replace(/\/+$/, '').split('/');
+        const segments  = (match[3] ?? '').replace(/\/+$/, '').split('/');
+        const last      = segments.at(-1);
 
-        if (segments.length < 2 || segments[segments.length - 2] !== 'RNs' || segments[segments.length - 1]!.length === 0)
+        if (segments.length < 2 || segments.at(-2) !== 'RNs' || last === undefined || last.length === 0)
             throw new POIError(`The URL '${url}' of a trust anchor is not the one of a roaming network, ~/RNs/{RN_Id}, without a query!`);
 
-        const urlNetworkId = decodeURIComponent(segments[segments.length - 1]!);
+        const urlNetworkId = decodeURIComponent(last);
 
         if (networkId === undefined)
             networkId = urlNetworkId;
@@ -339,6 +342,6 @@ function checkTrustAnchor(urls: readonly string[], keys: readonly string[], minC
     if (minConsensus < 1 || minConsensus > keys.length)
         throw new POIError(`The minConsensus ${minConsensus} of a trust anchor needs as many identity keys, not ${keys.length}!`);
 
-    return networkId!;
+    return required(networkId, 'A trust anchor names at least one URL of its roaming network!');
 
 }

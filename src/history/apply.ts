@@ -16,13 +16,13 @@
  */
 
 import { ordinal }                        from '../json/canonical.ts';
-import { clone, get, isArray, isObject, sameValue, set, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, clone, get, isArray, isObject, sameValue, set, unset, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toTimestamp }                    from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import type { Change, ChangeSet }         from './changeSet.ts';
-import { POIError }                       from '../errors.ts';
+import { POIError, required }             from '../errors.ts';
 
 
 // Applying a change set to a version (SPECIFICATION.md sections 4 and 4.1), as RoamingNetwork.ChangeSets.cs,
@@ -53,6 +53,7 @@ const REGISTRY_PROPERTIES      = [ 'name', 'description', 'dataSource', 'address
 const PARTY_PROPERTIES         = [ ...REGISTRY_PROPERTIES, 'signingKeys', 'identityKeys' ];
 const CONTACT_PROPERTIES       = [ 'dataLicenses', 'logos', 'geoLocation', 'telephone', 'eMailAddress', 'termsAndConditions' ];
 const MANUFACTURER_PROPERTIES  = [ ...PARTY_PROPERTIES, ...CONTACT_PROPERTIES ];
+const RNO_PROPERTIES           = [ ...REGISTRY_PROPERTIES, 'identityKeys', 'eMailAddress', 'hotlineEMailAddress', 'minConsensus', 'keyStatement', 'signingKeyCertificates' ];
 
 /**
  * The parties and the roaming network operator in words, and the properties of theirs a change set can update or remove
@@ -60,8 +61,7 @@ const MANUFACTURER_PROPERTIES  = [ ...PARTY_PROPERTIES, ...CONTACT_PROPERTIES ];
  * timestamps, nor the children they change on their own.
  */
 const PARTY_REGISTRIES: Readonly<Record<string, { readonly what: string, readonly article: string, readonly changeable: readonly string[] }>> = {
-    RoamingNetworkOperator:            { what: 'roaming network operator',            article: 'a',  changeable: [ ...REGISTRY_PROPERTIES, 'identityKeys', 'eMailAddress', 'hotlineEMailAddress',
-                                                                                                                   'minConsensus', 'keyStatement', 'signingKeyCertificates' ] },
+    RoamingNetworkOperator:            { what: 'roaming network operator',            article: 'a',  changeable: RNO_PROPERTIES },
     ChargingStationOperator:           { what: 'charging station operator',           article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'brands' ] },
     EMobilityProvider:                 { what: 'e-mobility provider',                 article: 'an', changeable: MANUFACTURER_PROPERTIES },
     GridOperator:                      { what: 'grid operator',                       article: 'a',  changeable: PARTY_PROPERTIES },
@@ -214,9 +214,9 @@ const ORDERED_ARRAYS: Readonly<Record<string, { readonly key: (item: JSONValue) 
     energyMeters:            { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
     publicKeys:              { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
     signingKeyCertificates:  {
-        key:    item => `${idOf(isObject(item) ? item['signingKey'] : undefined)}/${isObject(item) ? String(item['keyId']) : ''}`,
+        key:    item => `${idOf(isObject(item) ? item['signingKey'] : undefined)}/${isObject(item) ? asText(item['keyId']) : ''}`,
         order:  (left, right) => ordinal(idOf(isObject(left)  ? left['signingKey']  : undefined), idOf(isObject(right) ? right['signingKey'] : undefined)) ||
-                                 ordinal(isObject(left) ? String(left['keyId']) : '', isObject(right) ? String(right['keyId']) : ''),
+                                 ordinal(isObject(left) ? asText(left['keyId']) : '', isObject(right) ? asText(right['keyId']) : ''),
     },
 };
 
@@ -255,8 +255,8 @@ function embedded(value: JSONValue, property?: string): JSONValue {
 
 /** Inserts an entity into an array of entities in the ordinal order of their identifications. */
 function insertOrdered(array: JSONArray, entity: JSONObject): void {
-    const id    = String(entity['@id']);
-    const index = array.findIndex(item => isObject(item) && ordinal(String(item['@id']), id) > 0);
+    const id    = asText(entity['@id']);
+    const index = array.findIndex(item => isObject(item) && ordinal(asText(item['@id']), id) > 0);
     array.splice(index < 0 ? array.length : index, 0, entity);
 }
 
@@ -266,21 +266,19 @@ const objectsOf = (value: JSONValue | undefined): JSONObject[] =>
 
 /** Where an infrastructure entity is: the object, the array holding it, and its parent. */
 interface Found {
-    readonly entity:      JSONObject | undefined;
-    readonly container:   JSONArray  | undefined;
-    readonly holder:      JSONObject | undefined;
-    readonly property:    string     | undefined;
-    readonly parentType:  string     | undefined;
-    readonly parentId:    string     | undefined;
+    readonly entity:      JSONObject;
+    readonly container:   JSONArray;
+    readonly holder:      JSONObject;
+    readonly property:    string;
+    readonly parentType:  string;
+    readonly parentId:    string;
 }
-
-const NOT_FOUND: Found = { entity: undefined, container: undefined, holder: undefined, property: undefined, parentType: undefined, parentId: undefined };
 
 
 /** Finds an infrastructure entity within its charging station operator (`Find` of the C# implementation). */
-function find(operator: JSONObject, entityType: string, entityId: string): Found {
+function find(operator: JSONObject, entityType: string, entityId: string): Found | undefined {
 
-    const operatorId  = String(operator['@id']);
+    const operatorId  = asText(operator['@id']);
     const childArray  = OPERATOR_CHILD_ARRAYS[entityType];
 
     if (childArray !== undefined) {
@@ -288,7 +286,7 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
         for (const child of objectsOf(children))
             if (child['@id'] === entityId)
                 return { entity: child, container: children as JSONArray, holder: operator, property: childArray, parentType: 'ChargingStationOperator', parentId: operatorId };
-        return NOT_FOUND;
+        return undefined;
     }
 
     const pools = get(operator, 'chargingPools');
@@ -307,7 +305,7 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
 
             if (entityType === 'ChargingStation') {
                 if (station['@id'] === entityId)
-                    return { entity: station, container: stations as JSONArray, holder: pool, property: 'chargingStations', parentType: 'ChargingPool', parentId: String(pool['@id']) };
+                    return { entity: station, container: stations as JSONArray, holder: pool, property: 'chargingStations', parentType: 'ChargingPool', parentId: asText(pool['@id']) };
                 continue;
             }
 
@@ -315,13 +313,13 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
 
             for (const evse of objectsOf(evses))
                 if (evse['@id'] === entityId)
-                    return { entity: evse, container: evses as JSONArray, holder: station, property: 'EVSEs', parentType: 'ChargingStation', parentId: String(station['@id']) };
+                    return { entity: evse, container: evses as JSONArray, holder: station, property: 'EVSEs', parentType: 'ChargingStation', parentId: asText(station['@id']) };
 
         }
 
     }
 
-    return NOT_FOUND;
+    return undefined;
 
 }
 
@@ -332,8 +330,8 @@ function operatorOf(content: JSONObject, entityId: string): JSONObject | undefin
     let found: JSONObject | undefined;
 
     for (const operator of objectsOf(get(content, 'chargingStationOperators'))) {
-        const id = String(operator['@id']);
-        if (entityId.startsWith(id + '*') && (found === undefined || id.length > String(found['@id']).length))
+        const id = asText(operator['@id']);
+        if (entityId.startsWith(id + '*') && (found === undefined || id.length > asText(found['@id']).length))
             found = operator;
     }
 
@@ -349,7 +347,7 @@ function touchParents(operator: JSONObject, parentType: string | undefined, pare
 
         const parent = find(operator, parentType, parentId);
 
-        if (parent.entity === undefined)
+        if (parent === undefined)
             break;
 
         parent.entity['lastChange'] = lastChange;
@@ -392,7 +390,7 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
     if (change.kind === 'RemoveProperty') {
         if (get(entity, property) === undefined)
             throw new POIError(`Change ${index}: the property '${property}' of the ${what} does not exist!`);
-        delete entity[property];
+        unset(entity, property);
     }
     else {
         if (change.newValue === undefined)
@@ -433,57 +431,60 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
 
     const found = find(operator, change.entityType, change.entityId);
 
-    if (found.entity !== undefined && change.parentEntityType !== undefined &&
+    if (found !== undefined && change.parentEntityType !== undefined &&
        (change.parentEntityType !== found.parentType || change.parentEntityId !== found.parentId))
         throw new POIError(`Change ${index}: the ${what} belongs to ${found.parentType} '${found.parentId}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
 
-    if (change.kind !== 'Add' && found.entity === undefined)
+    if (change.kind !== 'Add' && found === undefined)
         throw new POIError(`Change ${index}: the ${what} does not exist!`);
+
+    // Every change but an Add changes an entity that exists.
+    const existing = (): Found => required(found, `Change ${index}: the ${what} does not exist!`);
 
     const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
 
-    checkOldValue(change, isProperty ? get(found.entity!, change.propertyName ?? '') : found.entity, index, what);
+    checkOldValue(change, isProperty ? get(existing().entity, change.propertyName ?? '') : found?.entity, index, what);
 
-    let parentType  = found.parentType;
-    let parentId    = found.parentId;
+    let parentType  = found?.parentType;
+    let parentId    = found?.parentId;
 
     switch (change.kind) {
 
         case 'UpdateProperty':
         case 'RemoveProperty':
-            applyProperty(found.entity!, change, index, what, createdAt);
+            applyProperty(existing().entity, change, index, what, createdAt);
             break;
 
         case 'Add': {
 
-            if (found.entity !== undefined)
+            if (found !== undefined)
                 throw new POIError(`Change ${index}: the ${what} already exists!`);
 
             const added = entityToAdd(change, index, what, createdAt);
 
             // The parent it is added to: its operator, charging pool or charging station.
             parentType  = change.parentEntityType ?? 'ChargingStationOperator';
-            parentId    = change.parentEntityId   ?? String(operator['@id']);
+            parentId    = change.parentEntityId   ?? asText(operator['@id']);
 
             let holder: JSONObject | undefined;
             let property: string;
 
             if (OPERATOR_CHILD_ARRAYS[change.entityType] !== undefined || change.entityType === 'ChargingPool') {
                 if (parentType !== 'ChargingStationOperator' || parentId !== operator['@id'])
-                    throw new POIError(`Change ${index}: the ${what} is added to its charging station operator '${String(operator['@id'])}', not to ${parentType} '${parentId}'!`);
+                    throw new POIError(`Change ${index}: the ${what} is added to its charging station operator '${asText(operator['@id'])}', not to ${parentType} '${parentId}'!`);
                 holder   = operator;
                 property = OPERATOR_CHILD_ARRAYS[change.entityType] ?? 'chargingPools';
             }
             else if (change.entityType === 'ChargingStation') {
                 if (parentType !== 'ChargingPool')
                     throw new POIError(`Change ${index}: a charging station is added to a charging pool!`);
-                holder   = find(operator, 'ChargingPool', parentId).entity;
+                holder   = find(operator, 'ChargingPool', parentId)?.entity;
                 property = 'chargingStations';
             }
             else {
                 if (parentType !== 'ChargingStation')
                     throw new POIError(`Change ${index}: an EVSE is added to a charging station!`);
-                holder   = find(operator, 'ChargingStation', parentId).entity;
+                holder   = find(operator, 'ChargingStation', parentId)?.entity;
                 property = 'EVSEs';
             }
 
@@ -504,10 +505,10 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
         }
 
         case 'Remove': {
-            const container = found.container!;
-            container.splice(container.indexOf(found.entity!), 1);
+            const { entity, container, holder, property } = existing();
+            container.splice(container.indexOf(entity), 1);
             if (container.length === 0)
-                delete found.holder![found.property!];
+                unset(holder, property);
             break;
         }
 
@@ -524,12 +525,12 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
 
 function applyNetworkArrayChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
-    const property  = NETWORK_ARRAYS[change.entityType]!;
-    const registry  = PARTY_REGISTRIES[change.entityType]!;
+    const property  = required(NETWORK_ARRAYS[change.entityType],   `Change ${index}: ${change.entityType} is no party!`);
+    const registry  = required(PARTY_REGISTRIES[change.entityType], `Change ${index}: ${change.entityType} is no party!`);
     const what      = `${registry.what} '${change.entityId}'`;
 
     if (change.parentEntityType !== undefined && (change.parentEntityType !== 'RoamingNetwork' || change.parentEntityId !== content['@id']))
-        throw new POIError(`Change ${index}: ${registry.article} ${registry.what} of this roaming network belongs to RoamingNetwork '${String(content['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
+        throw new POIError(`Change ${index}: ${registry.article} ${registry.what} of this roaming network belongs to RoamingNetwork '${asText(content['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
 
     const array   = get(content, property);
     const entity  = objectsOf(array).find(item => item['@id'] === change.entityId);
@@ -542,13 +543,15 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
     if (isProperty && !registry.changeable.includes(change.propertyName ?? ''))
         throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of ${registry.article} ${registry.what} can not be changed!`);
 
-    checkOldValue(change, isProperty ? get(entity!, change.propertyName ?? '') : entity, index, what);
+    const existing = (): JSONObject => required(entity, `Change ${index}: the ${what} does not exist!`);
+
+    checkOldValue(change, isProperty ? get(existing(), change.propertyName ?? '') : entity, index, what);
 
     switch (change.kind) {
 
         case 'UpdateProperty':
         case 'RemoveProperty':
-            applyProperty(entity!, change, index, what, createdAt);
+            applyProperty(existing(), change, index, what, createdAt);
             break;
 
         case 'Add': {
@@ -568,7 +571,7 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
             const items = array as JSONArray;
             items.splice(items.indexOf(entity), 1);
             if (items.length === 0)
-                delete content[property];
+                unset(content, property);
             break;
         }
 
@@ -628,7 +631,7 @@ function partyChildIn(content: JSONObject, type: PartyChildType, change: Change,
  */
 function applyPartyChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
-    const type   = PARTY_CHILD_TYPES[change.entityType]!;
+    const type   = required(PARTY_CHILD_TYPES[change.entityType], `Change ${index}: ${change.entityType} is no child of a party!`);
     const what   = `${type.what} '${change.entityId}'`;
 
     if (type.inParent !== undefined) {
@@ -636,10 +639,10 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
         const { party, found } = partyChildIn(content, type, change, index);
 
         if (change.kind === 'Add' && found !== undefined)
-            throw new POIError(`Change ${index}: the ${what} already exists, at the ${type.inParent} '${String(party['@id'])}'!`);
+            throw new POIError(`Change ${index}: the ${what} already exists, at the ${type.inParent} '${asText(party['@id'])}'!`);
 
         if (change.kind !== 'Add' && found === undefined)
-            throw new POIError(`Change ${index}: the ${what} of the ${type.inParent} '${String(party['@id'])}' does not exist!`);
+            throw new POIError(`Change ${index}: the ${what} of the ${type.inParent} '${asText(party['@id'])}' does not exist!`);
 
         applyPartyChild(type, party, found, change, index, what, createdAt);
         return;
@@ -652,7 +655,7 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
     if (change.kind === 'Add') {
 
         if (found !== undefined)
-            throw new POIError(`Change ${index}: the ${what} already exists, at the ${type.parentType} '${String(found.party['@id'])}'!`);
+            throw new POIError(`Change ${index}: the ${what} already exists, at the ${type.parentType} '${asText(found.party['@id'])}'!`);
 
         const parent = change.parentEntityType === type.parentType ? partyNamed(content, type.parentType, change.parentEntityId) : undefined;
 
@@ -669,8 +672,8 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
             throw new POIError(`Change ${index}: the ${what} does not exist!`);
 
         if (change.parentEntityType !== undefined &&
-           (change.parentEntityType !== type.parentType || change.parentEntityId === undefined || !sameId(change.parentEntityId, String(found.party['@id']))))
-            throw new POIError(`Change ${index}: the ${what} belongs to ${type.parentType} '${String(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
+           (change.parentEntityType !== type.parentType || change.parentEntityId === undefined || !sameId(change.parentEntityId, asText(found.party['@id']))))
+            throw new POIError(`Change ${index}: the ${what} belongs to ${type.parentType} '${asText(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
 
         party = found.party;
 
@@ -684,9 +687,10 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
 function applyPartyChild(type: PartyChildType, party: JSONObject, found: { children: JSONArray, child: JSONObject } | undefined, change: Change, index: number,
                          what: string, createdAt: string): void {
 
-    const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+    const isProperty  = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+    const existing    = (): { children: JSONArray, child: JSONObject } => required(found, `Change ${index}: the ${what} does not exist!`);
 
-    checkOldValue(change, isProperty ? get(found!.child, change.propertyName ?? '') : found?.child, index, what);
+    checkOldValue(change, isProperty ? get(existing().child, change.propertyName ?? '') : found?.child, index, what);
 
     switch (change.kind) {
 
@@ -694,20 +698,21 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
         case 'UpdateProperty':
         case 'RemoveProperty': {
 
-            const property = change.propertyName ?? '';
+            const property  = change.propertyName ?? '';
+            const child     = existing().child;
 
             if (!type.changeable.includes(property))
                 throw new POIError(`Change ${index}: the property '${property}' of a ${type.what} can not be changed!`);
 
             if (change.kind === 'RemoveProperty') {
-                if (get(found!.child, property) === undefined)
+                if (get(child, property) === undefined)
                     throw new POIError(`Change ${index}: the property '${property}' of the ${what} does not exist!`);
-                delete found!.child[property];
+                unset(child, property);
             }
             else {
                 if (change.newValue === undefined)
                     throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
-                set(found!.child, property, embedded(change.newValue, property));
+                set(child, property, embedded(change.newValue, property));
             }
 
             break;
@@ -727,17 +732,17 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             else if (isArray(children))
                 insertOrdered(children, added);
             else
-                throw new POIError(`Change ${index}: '${type.property}' of ${type.parentType} '${String(party['@id'])}' is no array!`);
+                throw new POIError(`Change ${index}: '${type.property}' of ${type.parentType} '${asText(party['@id'])}' is no array!`);
 
             break;
 
         }
 
         case 'Remove': {
-            const children = found!.children;
-            children.splice(children.indexOf(found!.child), 1);
+            const { children, child } = existing();
+            children.splice(children.indexOf(child), 1);
             if (children.length === 0)
-                delete party[type.property];
+                unset(party, type.property);
             break;
         }
 
@@ -773,7 +778,7 @@ function energyMeterChildOf(content: JSONObject, type: EnergyMeterChildType, chi
  */
 function applyEnergyMeterChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
-    const type   = ENERGY_METER_CHILD_TYPES[change.entityType]!;
+    const type   = required(ENERGY_METER_CHILD_TYPES[change.entityType], `Change ${index}: ${change.entityType} is no energy meter template or group!`);
     const what   = `${type.what} '${change.entityId}'`;
     const found  = energyMeterChildOf(content, type, change.entityId);
     let   party: JSONObject;
@@ -800,16 +805,17 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
             throw new POIError(`Change ${index}: the ${what} does not exist!`);
 
         if (change.parentEntityType !== undefined &&
-           (change.parentEntityType !== found.partyType || change.parentEntityId === undefined || !sameId(change.parentEntityId, String(found.party['@id']))))
-            throw new POIError(`Change ${index}: the ${what} belongs to ${found.partyType} '${String(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
+           (change.parentEntityType !== found.partyType || change.parentEntityId === undefined || !sameId(change.parentEntityId, asText(found.party['@id']))))
+            throw new POIError(`Change ${index}: the ${what} belongs to ${found.partyType} '${asText(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
 
         party = found.party;
 
     }
 
-    const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+    const isProperty  = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+    const existing    = (): { children: JSONArray, child: JSONObject } => required(found, `Change ${index}: the ${what} does not exist!`);
 
-    checkOldValue(change, isProperty ? get(found!.child, change.propertyName ?? '') : found?.child, index, what);
+    checkOldValue(change, isProperty ? get(existing().child, change.propertyName ?? '') : found?.child, index, what);
 
     switch (change.kind) {
 
@@ -817,7 +823,7 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
         case 'RemoveProperty':
             if (!type.changeable.includes(change.propertyName ?? ''))
                 throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of an ${type.what} can not be changed!`);
-            applyProperty(found!.child, change, index, what, createdAt);
+            applyProperty(existing().child, change, index, what, createdAt);
             break;
 
         case 'Add': {
@@ -830,17 +836,17 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
             else if (isArray(children))
                 insertOrdered(children, added);
             else
-                throw new POIError(`Change ${index}: '${type.property}' of '${String(party['@id'])}' is no array!`);
+                throw new POIError(`Change ${index}: '${type.property}' of '${asText(party['@id'])}' is no array!`);
 
             break;
 
         }
 
         case 'Remove': {
-            const children = found!.children;
-            children.splice(children.indexOf(found!.child), 1);
+            const { children, child } = existing();
+            children.splice(children.indexOf(child), 1);
             if (children.length === 0)
-                delete party[type.property];
+                unset(party, type.property);
             break;
         }
 
@@ -857,7 +863,7 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
 
 function applyNetworkChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
-    const what = `roaming network '${String(content['@id'])}'`;
+    const what = `roaming network '${asText(content['@id'])}'`;
 
     if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
         throw new POIError(`Change ${index}: ${change.kind} of the roaming network itself is not possible!`);
@@ -865,7 +871,7 @@ function applyNetworkChange(content: JSONObject, change: Change, index: number, 
     if (![ 'name', 'description', 'dataSource', 'dataLicenses', 'treeHashAlgorithms', 'customData' ].includes(change.propertyName ?? ''))
         throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a roaming network can not be changed!`);
 
-    checkOldValue(change, get(content, change.propertyName!), index, what);
+    checkOldValue(change, get(content, change.propertyName ?? ''), index, what);
     applyProperty(content, change, index, what, createdAt);
 
 }
@@ -881,7 +887,7 @@ function applyOperatorChange(content: JSONObject, change: Change, index: number,
     if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
         throw new POIError(`Change ${index}: the roaming network operator is neither added nor removed!`);
 
-    if (!PARTY_REGISTRIES['RoamingNetworkOperator']!.changeable.includes(change.propertyName ?? ''))
+    if (!RNO_PROPERTIES.includes(change.propertyName ?? ''))
         throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a roaming network operator can not be changed!`);
 
     checkOldValue(change, get(operator, change.propertyName ?? ''), index, `roaming network operator '${change.entityId}'`);
@@ -907,11 +913,11 @@ function partiesOf(network: RoamingNetwork): Map<string, PartyKeys> {
     for (const [type, property] of Object.entries(NETWORK_ARRAYS))
         if (PARTIES.has(type))
             for (const party of objectsOf(get(network.content, property)))
-                parties.set(`${type}:${String(party['@id'])}`, {
+                parties.set(`${type}:${asText(party['@id'])}`, {
                     type,
-                    id:            String(party['@id']),
-                    signingKeys:   POIPublicKey.parseAll(get(party, 'signingKeys'),  `signing keys of the ${type} '${String(party['@id'])}'`),
-                    identityKeys:  POIPublicKey.parseAll(get(party, 'identityKeys'), `identity keys of the ${type} '${String(party['@id'])}'`),
+                    id:            asText(party['@id']),
+                    signingKeys:   POIPublicKey.parseAll(get(party, 'signingKeys'),  `signing keys of the ${type} '${asText(party['@id'])}'`),
+                    identityKeys:  POIPublicKey.parseAll(get(party, 'identityKeys'), `identity keys of the ${type} '${asText(party['@id'])}'`),
                 });
 
     return parties;
@@ -951,7 +957,7 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
             return { kind: 'rno', keys: 'signing' };
 
         // As its keys name it: a change may name it in every spelling its identification considers equal.
-        const id = String(partyNamed(content, change.entityType, change.entityId)?.['@id'] ?? change.entityId);
+        const id = asText(partyNamed(content, change.entityType, change.entityId)?.['@id'] ?? change.entityId);
 
         // Signing keys are rotated by the signing keys they replace or by an identity key, identity keys only by an
         // identity key; everything else of its own by a signing key for the party.
@@ -992,7 +998,7 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
         if (party === undefined)
             throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' is unknown!`);
 
-        return { kind: 'party', type: childType.parentType, id: String(party['@id']), usage: childType.usage, keys: 'signing' };
+        return { kind: 'party', type: childType.parentType, id: asText(party['@id']), usage: childType.usage, keys: 'signing' };
 
     }
 
@@ -1009,12 +1015,12 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
             if ((change.parentEntityType !== 'ChargingStationOperator' && change.parentEntityType !== 'GridOperator') || change.parentEntityId === undefined)
                 throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its ChargingStationOperator or GridOperator as its parent!`);
             const party = partyNamed(content, change.parentEntityType, change.parentEntityId);
-            owner = { type: change.parentEntityType, id: String(party?.['@id'] ?? change.parentEntityId) };
+            owner = { type: change.parentEntityType, id: asText(party?.['@id'] ?? change.parentEntityId) };
             addedEnergyMeterChildren.set(key, owner);
         }
         else {
             const found = energyMeterChildOf(content, energyMeterChild, change.entityId);
-            owner = addedEnergyMeterChildren.get(key) ?? (found === undefined ? undefined : { type: found.partyType, id: String(found.party['@id']) });
+            owner = addedEnergyMeterChildren.get(key) ?? (found === undefined ? undefined : { type: found.partyType, id: asText(found.party['@id']) });
         }
 
         if (owner === undefined)
@@ -1034,7 +1040,7 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
         return {
             kind:   'party',
             type:   'ChargingStationOperator',
-            id:     String(operator['@id']),
+            id:     asText(operator['@id']),
             usage:  TARIFF_TYPES.has(change.entityType) ? KeyUsages.Tariffs : KeyUsages.Infrastructure,
             keys:   'signing',
         };
@@ -1094,7 +1100,7 @@ function checkPartyChange(change: Change, index: number): void {
                        (change.entityType === 'RoamingNetworkOperator' && change.propertyName === 'signingKeyCertificates');
 
     if (keyProperty && (change.kind === 'RemoveProperty' || (change.kind === 'UpdateProperty' && !(isArray(change.newValue) && change.newValue.length > 0))))
-        throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' must keep at least one of its ${change.propertyName ?? ''}!`);
+        throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' must keep at least one of its ${change.propertyName}!`);
 
 }
 

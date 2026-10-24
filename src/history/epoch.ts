@@ -86,7 +86,7 @@ export class EpochProfiles {
             if (!isArray(algorithmsJSON) || !algorithmsJSON.every(name => typeof name === 'string'))
                 throw new POIError('The signature algorithms of an epoch must be a JSON array of COSE names!');
 
-            for (const name of algorithmsJSON as string[]) {
+            for (const name of algorithmsJSON) {
                 signatureAlgorithm(name);
                 if (!algorithms.includes(name))
                     algorithms.push(name);

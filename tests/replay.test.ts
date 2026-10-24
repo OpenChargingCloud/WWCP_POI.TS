@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readJSON } from './helpers.ts';
+import { defined, readJSON } from './helpers.ts';
 import { anchor, checkpoint, commits, commitsOfEpoch1, following, genesis, witnesses } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -50,7 +50,7 @@ describe('Replaying the history of QA commit by commit, through both epochs', ()
 
         // Its trust followed OCC from the identity keys of the trust anchor of epoch 1 to those of epoch 2.
         expect([ ...verifier.trust.keyStatement.identityKeys.map(key => key.id) ].sort())
-            .toEqual([ ...epoch2.head.network.operator!.keyStatement!.identityKeys.map(key => key.id) ].sort());
+            .toEqual([ ...defined(epoch2.head.network.operator?.keyStatement).identityKeys.map(key => key.id) ].sort());
 
     });
 

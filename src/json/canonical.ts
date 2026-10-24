@@ -26,7 +26,7 @@ import { POIError }                        from '../errors.ts';
  * paragraph separators, private use characters, unassigned code points and noncharacters, and the byte order mark.
  * Which code points are unassigned depends on the Unicode version of the runtime, as in .NET (Styx section 5).
  */
-const ESCAPED = /[\p{Cc}\p{Co}\p{Cn}\p{Zl}\p{Zp}﻿]|(?! )\p{Zs}/u;
+const ESCAPED = /[\p{Cc}\p{Co}\p{Cn}\p{Zl}\p{Zp}\uFEFF]|(?! )\p{Zs}/u;
 
 const SHORT_ESCAPES: Record<number, string> = {
     0x08: '\\b',
@@ -80,7 +80,7 @@ export function canonicalString(text: string): string {
             continue;
         }
 
-        const character = text[index]!;
+        const character = text.charAt(index);
 
         result += ESCAPED.test(character)
                       ? hex4(codeUnit)
@@ -138,7 +138,7 @@ export function canonicalJSON(value: JSONValue): string {
         return '[' + value.map(canonicalJSON).join(',') + ']';
 
     if (isObject(value))
-        return '{' + Object.keys(value).sort(ordinal).map(property => canonicalString(property) + ':' + canonicalJSON(value[property]!)).join(',') + '}';
+        return '{' + Object.entries(value).sort(([left], [right]) => ordinal(left, right)).map(([property, item]) => canonicalString(property) + ':' + canonicalJSON(item)).join(',') + '}';
 
     throw new POIError(`A ${typeof value} can not be written as canonical JSON!`);
 
@@ -161,10 +161,10 @@ export function prettyJSON(value: JSONValue, indent = '  ', prefix = ''): string
     }
 
     if (isObject(value)) {
-        const properties = Object.keys(value);
+        const properties = Object.entries(value);
         if (properties.length === 0)
             return '{}';
-        return '{\n' + properties.map(property => prefix + indent + JSON.stringify(property) + ': ' + prettyJSON(value[property]!, indent, prefix + indent)).join(',\n') + '\n' + prefix + '}';
+        return '{\n' + properties.map(([property, item]) => prefix + indent + JSON.stringify(property) + ': ' + prettyJSON(item, indent, prefix + indent)).join(',\n') + '\n' + prefix + '}';
     }
 
     if (typeof value === 'string')

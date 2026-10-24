@@ -76,7 +76,7 @@ export class Decimal {
             throw new POIError(`'${text}' is no JSON number!`);
 
         const negative   = match[1] === '-';
-        const integral   = match[2]!;
+        const integral   = match[2] ?? '';
         const fraction   = match[3] ?? '';
         const exponent   = match[4] !== undefined ? Number.parseInt(match[4], 10) : 0;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, readText } from './helpers.ts';
+import { AT, defined, readText } from './helpers.ts';
 import { anchorPQ } from './qa.ts';
 
 import { POIClient, type Fetch } from '../src/client.ts';
@@ -33,7 +33,7 @@ describe('POIClient', () => {
                          ? url.startsWith('https://forged.example/') ? proof.replace('"maxPower": 300000', '"maxPower": 400000') : proof
                          : statements;
 
-        return { ok: true, status: 200, text: async () => body };
+        return Promise.resolve({ ok: true, status: 200, text: async () => Promise.resolve(body) });
 
     };
 
@@ -44,7 +44,7 @@ describe('POIClient', () => {
 
         expect(checked.source).toBe('https://open.charging.cloud/RNs/QA');
         expect(checked.station.chargingStation['@id']).toBe('DE*GEF*S1');
-        expect(checked.prices.get('EVSE:DE*GEF*E1*1')!.statement.sequence).toBe(3);
+        expect(defined(checked.prices.get('EVSE:DE*GEF*E1*1')).statement.sequence).toBe(3);
         expect(requested).toContain('https://open.charging.cloud/RNs/QA/EVSEs/DE*GEF*E1*1/proof');
         expect(requested).toContain('https://open.charging.cloud/RNs/QA/EVSEs/DE*GEF*E1*1/priceStatements');
 

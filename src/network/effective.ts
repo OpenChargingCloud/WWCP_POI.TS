@@ -16,7 +16,7 @@
  */
 
 import { canonicalJSON, ordinal }                 from '../json/canonical.ts';
-import { clone, get, isArray, isObject, set, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, clone, get, isArray, isObject, set, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { parseTimestamp, toTimestamp }            from '../common.ts';
 import { POIError }                               from '../errors.ts';
 
@@ -146,7 +146,7 @@ function templatesOf(member: JSONObject, templates: ReadonlyMap<string, JSONObje
         return [];
 
     if (!isArray(ids) || ids.some(id => typeof id !== 'string'))
-        throw new POIError(`The templateIds of '${String(member['@id'])}' must be an array of texts!`);
+        throw new POIError(`The templateIds of '${asText(member['@id'])}' must be an array of texts!`);
 
     return (ids as string[]).flatMap(id => {
         const template = templates.get(id);
@@ -156,7 +156,7 @@ function templatesOf(member: JSONObject, templates: ReadonlyMap<string, JSONObje
 }
 
 const lastChangeOf = (entity: JSONObject): number =>
-    parseTimestamp(String(get(entity, 'lastChange')), `The lastChange of '${String(entity['@id'])}'`);
+    parseTimestamp(asText(get(entity, 'lastChange')), `The lastChange of '${asText(entity['@id'])}'`);
 
 const latest = (...times: Array<number | undefined>): number =>
     Math.max(...times.filter((time): time is number => time !== undefined));
@@ -238,7 +238,7 @@ function effectiveEnergyMeters(meters: JSONValue | undefined, templates: Readonl
 
     const lastChanges: number[] = [];
 
-    const effective = (meters as JSONObject[]).map(meter => {
+    const effective = meters.map(meter => {
         const result = effectiveEnergyMeter(meter, templates);
         if (result !== meter)
             lastChanges.push(lastChangeOf(result));
@@ -288,7 +288,7 @@ const objects = (value: JSONValue | undefined, what: string): JSONObject[] => {
         return [];
     if (!isArray(value) || !value.every(isObject))
         throw new POIError(`The ${what} must be an array of objects!`);
-    return value as JSONObject[];
+    return value;
 };
 
 
@@ -305,138 +305,130 @@ export function effectiveChargingStationOperator(operator: JSONObject): JSONObje
     const tariffTemplates    = mapOf(operator, 'chargingTariffTemplates');
     const meterTemplates     = mapOf(operator, 'energyMeterTemplates');
 
-    let   changed            = false;
     const result             = clone(operator);
 
+    /** Whether a mapping changed anything: an entity without anything to apply is given back as it is. */
+    const anyChanged = (effective: readonly JSONObject[], given: readonly JSONObject[]): boolean =>
+        effective.some((entity, index) => entity !== given[index]);
+
     // Charging pools, their charging stations and EVSEs.
-    const pools = objects(get(operator, 'chargingPools'), 'charging pools');
+    const pools           = objects(get(operator, 'chargingPools'), 'charging pools');
+    const effectivePools  = pools.map(pool => {
 
-    if (pools.length > 0) {
+        const ofPool            = templatesOf(pool, poolTemplates);
+        const stations          = objects(get(pool, 'chargingStations'), 'charging stations');
 
-        set(result, 'chargingPools', pools.map(pool => {
+        const effectiveStations = stations.map(station => {
 
-            const ofPool            = templatesOf(pool, poolTemplates);
-            const stations          = objects(get(pool, 'chargingStations'), 'charging stations');
-            let   anyStation        = false;
+            const ofStation   = templatesOf(station, stationTemplates);
+            const evses       = objects(get(station, 'EVSEs'), 'EVSEs');
 
-            const effectiveStations = stations.map(station => {
+            const effectiveEVSEs = evses.map(evse => {
 
-                const ofStation   = templatesOf(station, stationTemplates);
-                const evses       = objects(get(station, 'EVSEs'), 'EVSEs');
-                let   anyEVSE     = false;
+                const ownTariffs  = get(evse, 'chargingTariffIds');
+                const ofEVSE      = templatesOf(evse, evseTemplates);
+                const tariff      = isArray(ownTariffs) && ownTariffs.length > 0
+                                        ? undefined
+                                        : tariffOf(ofEVSE) ?? tariffOf(ofStation) ?? tariffOf(ofPool);
 
-                const effectiveEVSEs = evses.map(evse => {
+                if (!hasTemplates(evse) && tariff === undefined && !hasTemplates(get(evse, 'energyMeter')))
+                    return evse;
 
-                    const ownTariffs  = get(evse, 'chargingTariffIds');
-                    const ofEVSE      = templatesOf(evse, evseTemplates);
-                    const tariff      = isArray(ownTariffs) && ownTariffs.length > 0
-                                            ? undefined
-                                            : tariffOf(ofEVSE) ?? tariffOf(ofStation) ?? tariffOf(ofPool);
+                const effective  = applyTemplates(evse, ofEVSE, EVSE_RULES);
+                const meter      = get(evse, 'energyMeter');
+                let   meterTime: number | undefined;
 
-                    if (!hasTemplates(evse) && tariff === undefined && !hasTemplates(get(evse, 'energyMeter')))
-                        return evse;
+                if (tariff !== undefined)
+                    set(effective, 'chargingTariffIds', [ tariff.id ]);
 
-                    anyEVSE = true;
+                if (isObject(meter)) {
+                    const effectiveMeter = effectiveEnergyMeter(meter, meterTemplates);
+                    set(effective, 'energyMeter', effectiveMeter);
+                    if (effectiveMeter !== meter)
+                        meterTime = lastChangeOf(effectiveMeter);
+                }
 
-                    const effective  = applyTemplates(evse, ofEVSE, EVSE_RULES);
-                    const meter      = get(evse, 'energyMeter');
-                    let   meterTime: number | undefined;
-
-                    if (tariff !== undefined)
-                        set(effective, 'chargingTariffIds', [ tariff.id ]);
-
-                    if (isObject(meter)) {
-                        const effectiveMeter = effectiveEnergyMeter(meter, meterTemplates);
-                        set(effective, 'energyMeter', effectiveMeter);
-                        if (effectiveMeter !== meter)
-                            meterTime = lastChangeOf(effectiveMeter);
-                    }
-
-                    set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(evse), ...ofEVSE.map(lastChangeOf), tariff?.lastChange, meterTime)));
-
-                    return effective;
-
-                });
-
-                const meters = effectiveEnergyMeters(get(station, 'energyMeters'), meterTemplates);
-
-                if (!hasTemplates(station) && !anyEVSE && meters.lastChanges.length === 0)
-                    return station;
-
-                anyStation = true;
-
-                const effective = applyTemplates(station, ofStation, CHARGING_STATION_RULES);
-
-                if (effectiveEVSEs.length > 0)
-                    set(effective, 'EVSEs', effectiveEVSEs);
-
-                if (meters.meters !== undefined)
-                    set(effective, 'energyMeters', meters.meters);
-
-                set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(station), ...ofStation.map(lastChangeOf), ...effectiveEVSEs.map(lastChangeOf), ...meters.lastChanges)));
+                set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(evse), ...ofEVSE.map(lastChangeOf), tariff?.lastChange, meterTime)));
 
                 return effective;
 
             });
 
-            const meters = effectiveEnergyMeters(get(pool, 'energyMeters'), meterTemplates);
+            const meters = effectiveEnergyMeters(get(station, 'energyMeters'), meterTemplates);
 
-            if (!hasTemplates(pool) && !anyStation && meters.lastChanges.length === 0)
-                return pool;
+            if (!hasTemplates(station) && !anyChanged(effectiveEVSEs, evses) && meters.lastChanges.length === 0)
+                return station;
 
-            changed = true;
+            const effective = applyTemplates(station, ofStation, CHARGING_STATION_RULES);
 
-            const effective = applyTemplates(pool, ofPool, CHARGING_POOL_RULES);
-
-            if (effectiveStations.length > 0)
-                set(effective, 'chargingStations', effectiveStations);
+            if (effectiveEVSEs.length > 0)
+                set(effective, 'EVSEs', effectiveEVSEs);
 
             if (meters.meters !== undefined)
                 set(effective, 'energyMeters', meters.meters);
 
-            set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(pool), ...ofPool.map(lastChangeOf), ...effectiveStations.map(lastChangeOf), ...meters.lastChanges)));
+            set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(station), ...ofStation.map(lastChangeOf), ...effectiveEVSEs.map(lastChangeOf), ...meters.lastChanges)));
 
             return effective;
 
-        }));
+        });
 
-    }
+        const meters = effectiveEnergyMeters(get(pool, 'energyMeters'), meterTemplates);
+
+        if (!hasTemplates(pool) && !anyChanged(effectiveStations, stations) && meters.lastChanges.length === 0)
+            return pool;
+
+        const effective = applyTemplates(pool, ofPool, CHARGING_POOL_RULES);
+
+        if (effectiveStations.length > 0)
+            set(effective, 'chargingStations', effectiveStations);
+
+        if (meters.meters !== undefined)
+            set(effective, 'energyMeters', meters.meters);
+
+        set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(pool), ...ofPool.map(lastChangeOf), ...effectiveStations.map(lastChangeOf), ...meters.lastChanges)));
+
+        return effective;
+
+    });
+
+    if (pools.length > 0)
+        set(result, 'chargingPools', effectivePools);
 
     // Charging tariffs, with the properties of their templates.
-    const tariffs = objects(get(operator, 'chargingTariffs'), 'charging tariffs');
+    const tariffs           = objects(get(operator, 'chargingTariffs'), 'charging tariffs');
+    const effectiveTariffs  = tariffs.map(tariff => {
+
+        const ofTariff = templatesOf(tariff, tariffTemplates);
+
+        if (!hasTemplates(tariff)) {
+            if (get(tariff, 'currency') === undefined || !isArray(get(tariff, 'elements')) || (get(tariff, 'elements') as JSONArray).length === 0)
+                throw new POIError(`The charging tariff '${asText(tariff['@id'])}' has no currency or no elements, neither of its own nor of its templates!`);
+            return tariff;
+        }
+
+        const effective  = applyTemplates(tariff, ofTariff, CHARGING_TARIFF_RULES);
+        const own        = get(tariff, 'elements');
+
+        if (!isArray(own) || own.length === 0) {
+            const elements = ofTariff.map(template => get(template, 'elements')).find(elements => isArray(elements) && elements.length > 0);
+            if (elements !== undefined)
+                set(effective, 'elements', clone(elements));
+        }
+
+        if (get(effective, 'currency') === undefined || !isArray(get(effective, 'elements')))
+            throw new POIError(`The charging tariff '${asText(tariff['@id'])}' has no currency or no elements, neither of its own nor of its templates!`);
+
+        set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(tariff), ...ofTariff.map(lastChangeOf))));
+
+        return effective;
+
+    });
 
     if (tariffs.length > 0)
-        set(result, 'chargingTariffs', tariffs.map(tariff => {
+        set(result, 'chargingTariffs', effectiveTariffs);
 
-            const ofTariff = templatesOf(tariff, tariffTemplates);
-
-            if (!hasTemplates(tariff)) {
-                if (get(tariff, 'currency') === undefined || !isArray(get(tariff, 'elements')) || (get(tariff, 'elements') as JSONArray).length === 0)
-                    throw new POIError(`The charging tariff '${String(tariff['@id'])}' has no currency or no elements, neither of its own nor of its templates!`);
-                return tariff;
-            }
-
-            changed = true;
-
-            const effective  = applyTemplates(tariff, ofTariff, CHARGING_TARIFF_RULES);
-            const own        = get(tariff, 'elements');
-
-            if (!isArray(own) || own.length === 0) {
-                const elements = ofTariff.map(template => get(template, 'elements')).find(elements => isArray(elements) && elements.length > 0);
-                if (elements !== undefined)
-                    set(effective, 'elements', clone(elements));
-            }
-
-            if (get(effective, 'currency') === undefined || !isArray(get(effective, 'elements')))
-                throw new POIError(`The charging tariff '${String(tariff['@id'])}' has no currency or no elements, neither of its own nor of its templates!`);
-
-            set(effective, 'lastChange', toTimestamp(latest(lastChangeOf(tariff), ...ofTariff.map(lastChangeOf))));
-
-            return effective;
-
-        }));
-
-    return changed ? result : operator;
+    return anyChanged(effectivePools, pools) || anyChanged(effectiveTariffs, tariffs) ? result : operator;
 
 }
 
@@ -447,13 +439,13 @@ function refuseUnsupportedTemplates(network: JSONObject): void {
     for (const parkingOperator of objects(get(network, 'parkingOperators'), 'parking operators'))
         for (const space of objects(get(parkingOperator, 'parkingSpaces'), 'parking spaces'))
             if (hasTemplates(space))
-                throw new POIError(`The parking space '${String(space['@id'])}' takes properties of templates, which this library does not calculate yet!`);
+                throw new POIError(`The parking space '${asText(space['@id'])}' takes properties of templates, which this library does not calculate yet!`);
 
     for (const gridOperator of objects(get(network, 'gridOperators'), 'grid operators'))
         for (const point of objects(get(gridOperator, 'gridConnectionPoints'), 'grid connection points'))
             for (const meter of objects(get(point, 'energyMeters'), 'energy meters'))
                 if (hasTemplates(meter))
-                    throw new POIError(`The energy meter '${String(meter['@id'])}' of the grid connection point '${String(point['@id'])}' takes properties of templates, which this library does not calculate yet!`);
+                    throw new POIError(`The energy meter '${asText(meter['@id'])}' of the grid connection point '${asText(point['@id'])}' takes properties of templates, which this library does not calculate yet!`);
 
 }
 

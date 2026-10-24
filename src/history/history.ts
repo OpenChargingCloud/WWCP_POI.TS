@@ -24,7 +24,7 @@ import { Checkpoint }                     from './checkpoint.ts';
 import { ChangeSet }                      from './changeSet.ts';
 import { applyChangeSet }                 from './apply.ts';
 import { FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, type Epoch, type EpochLink } from './epoch.ts';
-import { POIError }                       from '../errors.ts';
+import { POIError, required }             from '../errors.ts';
 
 
 /** A version with the commit leading to it. */
@@ -58,7 +58,8 @@ export class History {
     private readonly checkpointList:  Checkpoint[] = [];
     private nextEpochStarted = false;
 
-    private constructor(root:                      Version,
+    private constructor(/** The version the history started from. */
+                        public readonly root:      Version,
                         /** The epoch of this history, the first one unless its snapshot names another (11.3). */
                         public readonly epoch:     Epoch,
                         /** The final checkpoint of the epoch before, which the first checkpoint of this one names (11.3). */
@@ -68,14 +69,9 @@ export class History {
     }
 
 
-    /** The version the history started from. */
-    public get root(): Version {
-        return this.versions[0]!;
-    }
-
     /** The latest version. */
     public get head(): Version {
-        return this.versions.at(-1)!;
+        return this.versions.at(-1) ?? this.root;
     }
 
     /** Every version since the root, in their order. */
@@ -91,7 +87,7 @@ export class History {
     /** The final checkpoint of the epoch, once taken (11.2). */
     public get finalCheckpoint(): Checkpoint | undefined {
         const latest = this.checkpointList.at(-1);
-        return latest?.isFinal ? latest : undefined;
+        return latest?.isFinal === true ? latest : undefined;
     }
 
     public get epochStatus(): EpochStatus {
@@ -372,7 +368,7 @@ export class History {
 
         const final = this.finalCheckpoint;
 
-        if (final === undefined || final.next === undefined)
+        if (final?.next === undefined)
             throw new POIError(`The epoch ${this.epoch.number} has no final checkpoint yet!`);
 
         const version = this.versionOf(final.commitId);
@@ -380,7 +376,7 @@ export class History {
         if (version === undefined)
             throw new POIError(`The version of the final checkpoint '${final.id}' is not held here!`);
 
-        const genesis = Commit.genesisOf(final.roamingNetworkId, final.json['eTags']!, final.next);
+        const genesis = Commit.genesisOf(final.roamingNetworkId, required(final.json['eTags'], `The final checkpoint '${final.id}' names no ETags!`), final.next);
 
         if (!version.network.matchesCommitETags(genesis.eTags))
             throw new POIError(`The version of the final checkpoint '${final.id}' does not lead to its ETags under the profiles of the epoch ${final.next.number}!`);
@@ -396,8 +392,9 @@ export class History {
     public startNextEpoch(options: HistoryOptions = this.options): History {
 
         const genesis  = this.nextEpochGenesis();
-        const final    = this.finalCheckpoint!;
-        const next     = new History(genesis, final.next!, { epoch: final.epoch, checkpointId: final.id, eTags: final.eTags }, options);
+        const final    = required(this.finalCheckpoint,  `The epoch ${this.epoch.number} has no final checkpoint yet!`);
+        const epoch    = required(final.next,            `The epoch ${this.epoch.number} has no final checkpoint yet!`);
+        const next     = new History(genesis, epoch, { epoch: final.epoch, checkpointId: final.id, eTags: final.eTags }, options);
 
 
         this.nextEpochStarted = true;

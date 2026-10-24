@@ -16,7 +16,7 @@
  */
 
 import { firstText, timeOf }                from '../common.ts';
-import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import type { ETag }                        from '../etags.ts';
 import { POIPublicKey }                     from '../keys.ts';
 import { ChargingStationProof }             from '../proofs/stationProof.ts';
@@ -162,7 +162,7 @@ function transparencySoftwareOf(attested: JSONObject, station: JSONObject, model
     for (const meter of energyMeters)
         for (const assignment of objects(get(meter, 'transparencySoftwareStatus'))) {
 
-            const meterId        = String(meter['@id']);
+            const meterId        = asText(meter['@id']);
             const releaseId      = textOf(assignment, 'transparencySoftwareId');
             const certificateId  = textOf(assignment, 'certificateId');
             const release        = releases.find(item => item.release['@id'] === releaseId);
@@ -226,12 +226,14 @@ export function verifyChargingStation(anchor:   TrustAnchor,
                       (options.chargingStationId === undefined || station['@id'] === options.chargingStationId) &&
                       (options.evseId            === undefined || objects(get(station, 'EVSEs')).some(evse => evse['@id'] === options.evseId)));
 
-    if (match.length !== 1)
+    const [ only ] = match;
+
+    if (only === undefined || match.length !== 1)
         throw new POIError(match.length === 0
                                ? `The proof gives no charging station${options.chargingStationId !== undefined ? ` '${options.chargingStationId}'` : ''}${options.evseId !== undefined ? ` of the EVSE '${options.evseId}'` : ''} completely!`
                                : 'The proof gives more than one charging station: name the one to show!');
 
-    const { operator, pool, station } = match[0]!;
+    const { operator, pool, station } = only;
     const evses   = objects(get(station, 'EVSEs'));
     const tariffs = new Map<string, JSONObject[]>();
     const given   = objects(get(operator, 'chargingTariffs'));
@@ -244,12 +246,12 @@ export function verifyChargingStation(anchor:   TrustAnchor,
         for (const id of ids) {
             const tariff = given.find(item => item['@id'] === id);
             if (tariff === undefined)
-                warnings.push(`the charging tariff '${id}' of the EVSE '${String(evse['@id'])}' is not given by the proof`);
+                warnings.push(`the charging tariff '${id}' of the EVSE '${asText(evse['@id'])}' is not given by the proof`);
             else
                 taken.push(tariff);
         }
 
-        tariffs.set(String(evse['@id']), taken);
+        tariffs.set(asText(evse['@id']), taken);
 
     }
 
@@ -258,13 +260,13 @@ export function verifyChargingStation(anchor:   TrustAnchor,
         ...evses.map(evse => get(evse, 'energyMeter')).filter(isObject),
     ];
 
-    const manufacturer       = manufacturedAs(attested, station, `the charging station '${String(station['@id'])}'`, 'chargingStationManufacturers', 'chargingStationModels', warnings);
+    const manufacturer       = manufacturedAs(attested, station, `the charging station '${asText(station['@id'])}'`, 'chargingStationManufacturers', 'chargingStationModels', warnings);
     const energyMeterModels  = new Map<string, Manufactured>();
 
     for (const meter of energyMeters) {
-        const manufactured = manufacturedAs(attested, meter, `the energy meter '${String(meter['@id'])}'`, 'energyMeterManufacturers', 'energyMeterModels', warnings);
+        const manufactured = manufacturedAs(attested, meter, `the energy meter '${asText(meter['@id'])}'`, 'energyMeterManufacturers', 'energyMeterModels', warnings);
         if (manufactured !== undefined)
-            energyMeterModels.set(String(meter['@id']), manufactured);
+            energyMeterModels.set(asText(meter['@id']), manufactured);
     }
 
     for (const [kind, shown, proven] of [ [ 'name', anchor.name, get(attested, 'name') ], [ 'description', anchor.description, get(attested, 'description') ] ] as const)
@@ -274,7 +276,7 @@ export function verifyChargingStation(anchor:   TrustAnchor,
 
     return {
         roamingNetwork: {
-            id:          String(attested['@id']),
+            id:          asText(attested['@id']),
             name:        firstText(get(attested, 'name')),
             description: firstText(get(attested, 'description')),
         },
@@ -283,7 +285,7 @@ export function verifyChargingStation(anchor:   TrustAnchor,
         chargingStation:      station,
         evses,
         tariffs,
-        operatorSigningKeys:  POIPublicKey.parseAll(get(operator, 'signingKeys'), `signing keys of the charging station operator '${String(operator['@id'])}'`),
+        operatorSigningKeys:  POIPublicKey.parseAll(get(operator, 'signingKeys'), `signing keys of the charging station operator '${asText(operator['@id'])}'`),
         manufacturer,
         energyMeters,
         energyMeterModels,
@@ -326,11 +328,11 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
         throw new POIError('Price statements are an array, or {"priceStatements": [ … ]}!');
 
     const time       = timeOf(options.at);
-    const operatorId = String(station.operator['@id']);
+    const operatorId = asText(station.operator['@id']);
     const entities   = new Map<string, { type: string, tariffs: Set<string> | undefined }>([
-        [ `ChargingPool:${String(station.chargingPool['@id'])}`,     { type: 'ChargingPool',    tariffs: undefined } ],
-        [ `ChargingStation:${String(station.chargingStation['@id'])}`, { type: 'ChargingStation', tariffs: undefined } ],
-        ...station.evses.map(evse => [ `EVSE:${String(evse['@id'])}`, { type: 'EVSE', tariffs: new Set((station.tariffs.get(String(evse['@id'])) ?? []).map(tariff => String(tariff['@id']))) } ] as const),
+        [ `ChargingPool:${asText(station.chargingPool['@id'])}`,     { type: 'ChargingPool',    tariffs: undefined } ],
+        [ `ChargingStation:${asText(station.chargingStation['@id'])}`, { type: 'ChargingStation', tariffs: undefined } ],
+        ...station.evses.map(evse => [ `EVSE:${asText(evse['@id'])}`, { type: 'EVSE', tariffs: new Set((station.tariffs.get(asText(evse['@id'])) ?? []).map(tariff => asText(tariff['@id']))) } ] as const),
     ]);
 
     const byEntity = new Map<string, PriceStatement[]>();
@@ -349,8 +351,8 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
         // The prices of an EVSE apply to the charging tariffs the proof gives, those of the EVSE (12.4).
         if (entity.tariffs !== undefined)
             for (const price of statement.prices)
-                if (!entity.tariffs.has(String(price['chargingTariffId'])))
-                    throw new POIError(`The price statement of the EVSE '${statement.entityId}' names the charging tariff '${String(price['chargingTariffId'])}', which is not one of its own!`);
+                if (!entity.tariffs.has(asText(price['chargingTariffId'])))
+                    throw new POIError(`The price statement of the EVSE '${statement.entityId}' names the charging tariff '${asText(price['chargingTariffId'])}', which is not one of its own!`);
 
         // An ECDSA twin of a statement given already is that statement, not a second one of its sequence.
         const known = byEntity.get(key) ?? [];
@@ -378,7 +380,7 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
         // The latest statement valid now: a later one replaces it from its validFrom on.
         const valid = [ ...chain ].reverse().find(statement => statement.validFrom <= time);
 
-        if (valid !== undefined && valid.isValidAt(time))
+        if (valid?.isValidAt(time) === true)
             current.set(key, { statement: valid, digest: valid.digestHex() });
 
     }

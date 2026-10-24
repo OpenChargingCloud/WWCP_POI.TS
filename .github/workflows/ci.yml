@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  # Manual runs from the Actions tab ("Run workflow").
+  workflow_dispatch:
+
+concurrency:
+  # Pull requests: one run per branch, newest wins. Pushes: one run per commit, and nothing cancels anything, so that
+  # every commit gets a verdict of its own; keyed on the SHA, a third push can not discard the second before it starts.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    # As in ChargyCore.TS, the axis that matters for a pure JavaScript package is the Node version, so the matrix spans
+    # it and both operating systems:
+    #
+    #  * Ubuntu on Node 22.18, the exact minimum package.json promises (and tsup 9 demands): a declared engine range
+    #    nobody runs is a guess, this leg makes it a tested claim.
+    #  * Ubuntu on Node 26, which development happens on.
+    #  * Windows on Node 24, the LTS in between, on the other operating system. It is the leg that catches what depends
+    #    on the platform here: the test vectors are the exact bytes the C# implementation published, digested and
+    #    signed, which a checkout converting line endings would change (.gitattributes keeps them as they are), and
+    #    paths in the tests and the scripts.
+    #
+    # fail-fast is off: "red on exactly one leg" is the most valuable signal of the matrix.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: '22.18'
+            leg: ubuntu-node-22.18
+          - os: ubuntu-latest
+            node: '26'
+            leg: ubuntu-node-26
+          - os: windows-latest
+            node: '24'
+            leg: windows-node-24
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # test:browser drives a real headless Chromium through Vitest browser mode; without it, it fails with "Executable
+      # doesn't exist", which reads like a test failure but is a missing download. --with-deps installs the system
+      # libraries Chromium needs and is Linux-only; the Windows runner has them.
+      - name: Install Playwright Chromium
+        run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
+
+      # The steps below are 'npm run verify' pulled apart: same commands, same order, but the Actions UI names the stage
+      # that broke, and a type error stops the run before a browser boots.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Both reporters: the log stays readable, and the JUnit report keeps outcome, duration and failure message per
+      # test, which 'gh run download' fetches without a browser.
+      - name: Test (Node)
+        run: npm run test:node -- --reporter=default --reporter=junit --outputFile.junit=artifacts/node-${{ matrix.leg }}.xml
+
+      - name: Build
+        run: npm run build
+
+      # Reads dist/, so it follows the build: the bundle imports only the dependencies package.json names, and neither
+      # node:* modules nor Buffer nor process; an app gets it by the name of the package, in plain Node, and its declared
+      # types with TypeScript; npm publishes nothing but the bundle, its declarations and the documents.
+      - name: Test (bundle)
+        run: npm run test:bundle -- --reporter=default --reporter=junit --outputFile.junit=artifacts/bundle-${{ matrix.leg }}.xml
+
+      # A trust anchor, a commit, a station proof of ML-DSA attestations and the evidence of a session, checked in
+      # Chromium as a driver's app checks them.
+      - name: Test (browser)
+        run: npm run test:browser -- --reporter=default --reporter=junit --outputFile.junit=artifacts/browser-${{ matrix.leg }}.xml
+
+      # The script that checks a run of the C# examples, against the run the test vectors keep: it must say
+      # "Everything checked." and exit 0.
+      - name: Examples
+        run: npm run examples
+
+      # !cancelled() rather than success(): a red run is when these files matter most. A run that fails before any test
+      # step leaves no XML, which upload-artifact reports as a warning; the type or lint error is the finding there.
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.leg }}
+          path: artifacts/*.xml

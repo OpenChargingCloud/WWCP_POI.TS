@@ -87,7 +87,7 @@ export class ChargingStationProof {
                    commitId,
                    requireInteger(json, 'revision', 0, Number.MAX_SAFE_INTEGER, 'The revision of a proof'),
                    requireObject(get(json, 'roamingNetwork'), 'The roaming network of a proof'),
-                   get(json, 'attestations') === undefined ? [] : requireArray(get(json, 'attestations'), 'The attestations of a proof').map(Attestation.parse),
+                   get(json, 'attestations') === undefined ? [] : requireArray(get(json, 'attestations'), 'The attestations of a proof').map(attestation => Attestation.parse(attestation)),
                    json
                );
 
@@ -137,7 +137,7 @@ export class ChargingStationProof {
         const keyStatement          = KeyStatement.parse(get(operator, 'keyStatement'));
         const operatorIdentityKeys  = POIPublicKey.parseAll(get(operator, 'identityKeys'), 'identity keys of the roaming network operator');
         const certificates          = isArray(get(operator, 'signingKeyCertificates'))
-                                          ? (get(operator, 'signingKeyCertificates') as JSONValue[]).map(SigningKeyCertificate.parse)
+                                          ? (get(operator, 'signingKeyCertificates') as JSONValue[]).map(certificate => SigningKeyCertificate.parse(certificate))
                                           : [];
 
         if (keyStatement.roamingNetworkId !== networkId)

@@ -18,7 +18,7 @@
 import { checkContext, onlyProperties, requireArray, requireInteger, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { get, type JSONObject, type JSONValue } from '../json/value.ts';
 import { History, type HistoryOptions } from './history.ts';
-import { Commit }                       from './commit.ts';
+import type { Commit }                  from './commit.ts';
 import type { Checkpoint }              from './checkpoint.ts';
 import { POIError }                     from '../errors.ts';
 

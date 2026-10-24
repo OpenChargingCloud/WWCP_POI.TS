@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readJSON } from './helpers.ts';
+import { asText, defined, readJSON } from './helpers.ts';
 import { anchor, witnesses } from './qa.ts';
 
 import { parseEvidence, verifyEvidence } from '../src/verifier/evidence.ts';
@@ -56,30 +56,32 @@ describe('Example A10: the evidence of a charging session, months later', () => 
 
         // c) Revision 13, the version of the station proof: in checkpoint 4, witnessed.
         expect(verified.station.revision).toBe(13);
-        expect(verified.versionCheckpoint!.sequence).toBe(4);
+        expect(defined(verified.versionCheckpoint).sequence).toBe(4);
 
         // d) The price statement, sequence 2: after checkpoint 4, before checkpoint 5, witnessed.
-        const price      = verified.prices.get('EVSE:DE*GEF*E1*1')!;
-        const statement  = verified.statementCheckpoints.get(price.digest)!;
+        const price      = defined(verified.prices.get('EVSE:DE*GEF*E1*1'));
+        const statement  = defined(verified.statementCheckpoints.get(price.digest));
         expect(price.statement.sequence).toBe(2);
-        expect(statement.after!.sequence).toBe(4);
+        expect(defined(statement.after).sequence).toBe(4);
         expect(statement.namedBy.sequence).toBe(5);
 
         // e) What applied: the station and its energy meter, with their manufacturers and models as the proof gives them, the
         //    key of the meter, the tariff and the price of the statement; as C# printed them.
-        const station  = verified.station;
-        const meter    = station.evses.find(evse => evse['@id'] === 'DE*GEF*E1*1')!['energyMeter'] as JSONObject;
-        const madeBy   = station.manufacturer!;
-        const meterBy  = station.energyMeterModels.get(String(meter['@id']))!;
-        expect(`${String(station.chargingStation['@id'])}: ${String((madeBy.manufacturer['name'] as JSONObject)['en'])} ${String(madeBy.model!['@id'])}`).toBe('DE*GEF*S1: GraphDefined Charging Stations GD-DC300');
-        expect(`${String(meter['@id'])}: ${String((meterBy.manufacturer['name'] as JSONObject)['en'])} ${String(meterBy.model!['@id'])}, serial ${String(meter['serialNumber'])}, ${(meter['signatureMethods'] as string[]).join(', ')}, key ${String((meter['publicKeys'] as JSONObject[])[0]!['@id']).slice(0, 8)}`)
+        const station     = verified.station;
+        const meter       = defined(station.evses.find(evse => evse['@id'] === 'DE*GEF*E1*1'))['energyMeter'] as JSONObject;
+        const madeBy      = defined(station.manufacturer);
+        const meterBy     = defined(station.energyMeterModels.get(asText(meter['@id'])));
+        const model       = defined(madeBy.model);
+        const meterModel  = defined(meterBy.model);
+        expect(`${asText(station.chargingStation['@id'])}: ${asText((madeBy.manufacturer['name'] as JSONObject)['en'])} ${asText(model['@id'])}`).toBe('DE*GEF*S1: GraphDefined Charging Stations GD-DC300');
+        expect(`${asText(meter['@id'])}: ${asText((meterBy.manufacturer['name'] as JSONObject)['en'])} ${asText(meterModel['@id'])}, serial ${asText(meter['serialNumber'])}, ${(meter['signatureMethods'] as string[]).join(', ')}, key ${asText(defined((meter['publicKeys'] as JSONObject[])[0])['@id']).slice(0, 8)}`)
             .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key 17614ce1');
-        expect(`${String(madeBy.model!['maxPower'])} W, versions ${(madeBy.model!['versions'] as string[]).join('/')}; class ${String(meterBy.model!['accuracyClass'])}`).toBe('300000 W, versions 1.0/1.1; class B');
+        expect(`${asText(model['maxPower'])} W, versions ${(model['versions'] as string[]).join('/')}; class ${asText(meterModel['accuracyClass'])}`).toBe('300000 W, versions 1.0/1.1; class B');
         expect(station.warnings).toEqual([]);
 
-        const tariff = station.tariffs.get('DE*GEF*E1*1')![0]!;
-        const priceOf = (elements: JSONValue | undefined) => String(((elements as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!['price']);
-        expect(`${String(tariff['@id'])} ${priceOf(tariff['elements'])} €/kWh, by the price statement ${priceOf(price.statement.prices[0]!['elements'])} €/kWh`)
+        const tariff = defined(station.tariffs.get('DE*GEF*E1*1')?.[0]);
+        const priceOf = (elements: JSONValue | undefined): string => asText(defined((defined((elements as JSONObject[])[0])['priceComponents'] as JSONObject[])[0])['price']);
+        expect(`${asText(tariff['@id'])} ${priceOf(tariff['elements'])} €/kWh, by the price statement ${priceOf(defined(price.statement.prices[0])['elements'])} €/kWh`)
             .toBe('DE*GEF*T_DC 0.69 €/kWh, by the price statement 0.65 €/kWh');
 
     });
@@ -101,8 +103,9 @@ describe('Example A10: the evidence of a charging session, months later', () => 
     it('refuses another price, another time, another station and a checkpoint without witnesses, as C# does', () => {
 
         // a) A statement of another price: its signature is not the one of its content.
-        const otherPrice = clone(evidence.priceStatements[0]! as JSONObject);
-        ((((otherPrice['priceStatus'] as JSONObject)['prices'] as JSONObject[])[0]!['elements'] as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!['price'] = Decimal.parse('0.09');
+        const otherPrice = clone(defined(evidence.priceStatements[0]) as JSONObject);
+        const element    = defined((defined(((otherPrice['priceStatus'] as JSONObject)['prices'] as JSONObject[])[0])['elements'] as JSONObject[])[0]);
+        defined((element['priceComponents'] as JSONObject[])[0])['price'] = Decimal.parse('0.09');
         expect(() => verifyEvidence({ ...evidence, priceStatements: [ otherPrice ] }, { witnesses, requiredWitnesses: 2 })).toThrow('The signature of the price statement is invalid: The signature is invalid!');
 
         // b) A session claimed to have begun an hour earlier, before the statement was valid.
@@ -112,14 +115,14 @@ describe('Example A10: the evidence of a charging session, months later', () => 
 
         // c) A station proof of 300 kW: it leads to another root than the commit.
         const other = clone(evidence.chargingStationProof as JSONObject);
-        evseOf(other)!['maxPower'] = 300000;
+        defined(evseOf(other))['maxPower'] = 300000;
         expect(() => ChargingStationProof.parse(other).verifyAgainstCommitProof(CheckpointProof.parse(evidence.commitProof)))
             .toThrow('The proof leads to effectiveTree:sha256:hex:b425b72f7b71615f616c6c71514934c6a82881feda17e8d949541766eda9fc64, not to effectiveTree:sha256:hex:f5523684327b1e6081bb31ffb1d64e74a03253992963e47dbd9af083cf1be0d0!');
 
         // e) Checkpoint 5 as it was before its witnesses signed it.
         const unwitnessed = clone((json['checkpoints'] as JSONArray)[1] as JSONObject);
         unwitnessed['signatures'] = (unwitnessed['signatures'] as JSONObject[]).filter(signature => signature['role'] !== 'witness');
-        expect(() => verifyEvidence({ ...evidence, checkpoints: [ (json['checkpoints'] as JSONArray)[0]!, unwitnessed ] }, { witnesses, requiredWitnesses: 2 })).toThrow(/signed by 0 of the trusted witnesses/);
+        expect(() => verifyEvidence({ ...evidence, checkpoints: [ defined((json['checkpoints'] as JSONArray)[0]), unwitnessed ] }, { witnesses, requiredWitnesses: 2 })).toThrow(/signed by 0 of the trusted witnesses/);
 
     });
 
@@ -134,7 +137,7 @@ describe('ECDSA twins of price statements', () => {
         const original   = PriceStatement.parse(statements[0]);
         const twin       = PriceStatement.parse(readJSON('proofs/QA-priceStatement-malleated-twin.json'));
         const snapshot4  = readJSON('published/QA-checkpoint-4-snapshot.json') as JSONObject;
-        const keys       = POIPublicKey.parseAll(RoamingNetwork.parse(snapshot4['roamingNetwork']).chargingStationOperator('DE*GEF')!['signingKeys'], 'keys');
+        const keys       = POIPublicKey.parseAll(defined(RoamingNetwork.parse(snapshot4['roamingNetwork']).chargingStationOperator('DE*GEF'))['signingKeys'], 'keys');
 
         original.verify('QA', 'DE*GEF', keys);
         twin.verify('QA', 'DE*GEF', keys);
@@ -146,8 +149,8 @@ describe('ECDSA twins of price statements', () => {
 
         // Given both, the app takes them as one statement, not as two of one sequence, a split view.
         const station  = verifyChargingStation(anchor, evidence.chargingStationProof, { at: started });
-        const prices   = verifyPriceStatements(station, [ statements[0]!, readJSON('proofs/QA-priceStatement-malleated-twin.json') ], { at: get(original.json, 'signedAt') as string });
-        expect(prices.get('EVSE:DE*GEF*E1*1')!.statement.sequence).toBe(0);
+        const prices   = verifyPriceStatements(station, [ defined(statements[0]), readJSON('proofs/QA-priceStatement-malleated-twin.json') ], { at: get(original.json, 'signedAt') as string });
+        expect(defined(prices.get('EVSE:DE*GEF*E1*1')).statement.sequence).toBe(0);
 
     });
 

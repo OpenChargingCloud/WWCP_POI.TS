@@ -58,7 +58,7 @@ export function jsonToCbor(value: JSONValue): CborValue {
         return cbor.array(value.map(jsonToCbor));
 
     if (isObject(value))
-        return cbor.map(Object.keys(value).map(property => [ cbor.text(property), jsonToCbor(value[property]!) ] as const));
+        return cbor.map(Object.entries(value).map(([property, item]) => [ cbor.text(property), jsonToCbor(item) ] as const));
 
     throw new POIError(`A ${typeof value} has no CBOR representation here!`);
 

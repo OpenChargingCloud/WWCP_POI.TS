@@ -29,6 +29,17 @@ export class POIError extends Error {
 }
 
 
+/** The value, or a refusal with the given reason where it is missing. */
+export function required<T>(value: T | null | undefined, reason: string): T {
+
+    if (value === null || value === undefined)
+        throw new POIError(reason);
+
+    return value;
+
+}
+
+
 /** The result of a check that does not throw: verified, or refused with the reason. */
 export type Checked<T = true> =
     | { readonly ok: true;  readonly value: T }
@@ -47,11 +58,4 @@ export function check<T>(fn: () => T): Checked<T> {
         throw e;
     }
 
-}
-
-
-/** Refuses with the given reason unless the condition holds. */
-export function ensure(condition: unknown, message: string | (() => string)): asserts condition {
-    if (!condition)
-        throw new POIError(typeof message === 'function' ? message() : message);
 }

@@ -19,7 +19,7 @@ import { requireArray, requireObject, requireString } from '../common.ts';
 import { get, type JSONValue }             from '../json/value.ts';
 import { POIPublicKey }                    from '../keys.ts';
 import { SignatureRoles }                  from '../history/commit.ts';
-import { Checkpoint }                      from '../history/checkpoint.ts';
+import type { Checkpoint }                 from '../history/checkpoint.ts';
 import type { OperatorTrust }              from './trust.ts';
 import { POIError }                        from '../errors.ts';
 

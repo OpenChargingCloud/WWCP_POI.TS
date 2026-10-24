@@ -35,3 +35,10 @@ manufacturer. A change set changes only the properties of a party the C# impleme
 models, releases and certificates of a party are not replaced as one of its properties by a key that may not sign them.
 `forThisModel` of the transparency software of a meter asks for the version of the certificate among the versions of the
 model as well.
+
+Node.js 22.18 is the minimum, as of ChargyCore.TS: Node 20 has reached its end of life, and tsup 9, Vitest 5 and
+ESLint 10 do not run on it. The code follows the ESLint rules of ChargyCore.TS; where a missing value used to be asserted
+away, it is refused with a `POIError` saying what is missing. Tests of the bundle as published (its imports, its
+declarations for TypeScript apps, the files `npm pack` takes) and of the library in Chromium join the tests in Node; GitHub
+Actions run all of them on every push, and every night against floating dependencies, the newest codecs of Vanaheimr, and
+the C# examples of WWCP_POI as they are.

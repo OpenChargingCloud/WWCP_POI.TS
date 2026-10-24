@@ -148,7 +148,7 @@ export class POIPublicKey {
             if (new Set(usages).size !== usages.length)
                 throw new POIError(`The public key '${id}' names each of its usages once!`);
 
-            if (usages.some((usage, index) => index > 0 && usages[index - 1]! >= usage))
+            if (usages.some((usage, index) => { const before = usages[index - 1]; return before !== undefined && before >= usage; }))
                 throw new POIError(`The usages of the public key '${id}' are written in their ordinal order!`);
 
         }

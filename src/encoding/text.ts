@@ -27,7 +27,7 @@ const HEX = '0123456789abcdef';
 export function toHex(bytes: Uint8Array): string {
     let result = '';
     for (const byte of bytes)
-        result += HEX[byte >> 4]! + HEX[byte & 0x0F]!;
+        result += HEX.charAt(byte >> 4) + HEX.charAt(byte & 0x0F);
     return result;
 }
 
@@ -54,8 +54,17 @@ export const isLowerHex = (text: unknown, bytes?: number): text is string =>
     (bytes === undefined || text.length === 2 * bytes);
 
 
+/** The positions of the characters of an alphabet. */
+function positionsOf(alphabet: string): Map<string, number> {
+    const positions = new Map<string, number>();
+    for (let index = 0; index < alphabet.length; index++)
+        positions.set(alphabet.charAt(index), index);
+    return positions;
+}
+
+
 const BASE64     = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-const BASE64_MAP = new Map([...BASE64].map((character, index) => [character, index]));
+const BASE64_MAP = positionsOf(BASE64);
 
 /** Standard Base64 with padding. */
 export function toBase64(bytes: Uint8Array): string {
@@ -64,14 +73,14 @@ export function toBase64(bytes: Uint8Array): string {
 
     for (let index = 0; index < bytes.length; index += 3) {
 
-        const b0 = bytes[index]!;
+        const b0 = bytes[index] ?? 0;
         const b1 = bytes[index + 1];
         const b2 = bytes[index + 2];
 
-        result += BASE64[b0 >> 2]!;
-        result += BASE64[((b0 & 0x03) << 4) | ((b1 ?? 0) >> 4)]!;
-        result += b1 === undefined ? '=' : BASE64[((b1 & 0x0F) << 2) | ((b2 ?? 0) >> 6)]!;
-        result += b2 === undefined ? '=' : BASE64[b2 & 0x3F]!;
+        result += BASE64.charAt(b0 >> 2);
+        result += BASE64.charAt(((b0 & 0x03) << 4) | ((b1 ?? 0) >> 4));
+        result += b1 === undefined ? '=' : BASE64.charAt(((b1 & 0x0F) << 2) | ((b2 ?? 0) >> 6));
+        result += b2 === undefined ? '=' : BASE64.charAt(b2 & 0x3F);
 
     }
 
@@ -93,8 +102,8 @@ export function fromBase64(text: string): Uint8Array {
 
     for (let index = 0; index < text.length; index += 4) {
 
-        const values = [0, 1, 2, 3].map(position => {
-            const character = text[index + position]!;
+        const [ v0 = 0, v1 = 0, v2 = 0, v3 = 0 ] = [0, 1, 2, 3].map(position => {
+            const character = text.charAt(index + position);
             if (character === '=' && index + 4 === text.length && position >= 4 - padding)
                 return 0;
             const value = BASE64_MAP.get(character);
@@ -103,7 +112,7 @@ export function fromBase64(text: string): Uint8Array {
             return value;
         });
 
-        const triple = (values[0]! << 18) | (values[1]! << 12) | (values[2]! << 6) | values[3]!;
+        const triple = (v0 << 18) | (v1 << 12) | (v2 << 6) | v3;
 
         full[index / 4 * 3]     = (triple >> 16) & 0xFF;
         full[index / 4 * 3 + 1] = (triple >>  8) & 0xFF;
@@ -123,7 +132,7 @@ export function fromBase64(text: string): Uint8Array {
 
 
 const BASE45 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
-const BASE45_MAP = new Map([...BASE45].map((character, index) => [character, index]));
+const BASE45_MAP = positionsOf(BASE45);
 
 /** Base45 [RFC 9285], the encoding of the QR code of a trust anchor. */
 export function toBase45(bytes: Uint8Array): string {
@@ -131,13 +140,13 @@ export function toBase45(bytes: Uint8Array): string {
     let result = '';
 
     for (let index = 0; index + 1 < bytes.length; index += 2) {
-        const value = bytes[index]! * 256 + bytes[index + 1]!;
-        result += BASE45[value % 45]! + BASE45[Math.floor(value / 45) % 45]! + BASE45[Math.floor(value / 2025)]!;
+        const value = (bytes[index] ?? 0) * 256 + (bytes[index + 1] ?? 0);
+        result += BASE45.charAt(value % 45) + BASE45.charAt(Math.floor(value / 45) % 45) + BASE45.charAt(Math.floor(value / 2025));
     }
 
     if (bytes.length % 2 === 1) {
-        const value = bytes[bytes.length - 1]!;
-        result += BASE45[value % 45]! + BASE45[Math.floor(value / 45)]!;
+        const value = bytes[bytes.length - 1] ?? 0;
+        result += BASE45.charAt(value % 45) + BASE45.charAt(Math.floor(value / 45));
     }
 
     return result;
@@ -150,25 +159,27 @@ export function fromBase45(text: string): Uint8Array {
     if (text.length % 3 === 1)
         throw new POIError('Not Base45: its length leaves a single character!');
 
-    const values = [...text].map(character => {
+    const values: number[] = [];
+
+    for (const character of text) {
         const value = BASE45_MAP.get(character);
         if (value === undefined)
             throw new POIError(`Not Base45: the character '${character}'!`);
-        return value;
-    });
+        values.push(value);
+    }
 
     const bytes: number[] = [];
 
     for (let index = 0; index < values.length; index += 3) {
 
         if (index + 2 < values.length) {
-            const value = values[index]! + values[index + 1]! * 45 + values[index + 2]! * 2025;
+            const value = (values[index] ?? 0) + (values[index + 1] ?? 0) * 45 + (values[index + 2] ?? 0) * 2025;
             if (value > 0xFFFF)
                 throw new POIError('Not Base45: a triple above 65535!');
             bytes.push(value >> 8, value & 0xFF);
         }
         else {
-            const value = values[index]! + values[index + 1]! * 45;
+            const value = (values[index] ?? 0) + (values[index + 1] ?? 0) * 45;
             if (value > 0xFF)
                 throw new POIError('Not Base45: a pair above 255!');
             bytes.push(value);
