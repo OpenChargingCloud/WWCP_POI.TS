@@ -40,17 +40,21 @@ describe('Example A13: who checks the meter', () => {
         expect(`DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: ${legalStatus}`).toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: germanCalibrationLaw');
         expect(`${text(release, 'name')} ${text(release, 'version')}, by ${text(manufacturer, 'name')}, ${text(manufacturer, 'craRole')}, supported until ${text(release, 'supportUntil')}, ` +
                `vulnerabilities to ${text(manufacturer, 'vulnerabilityContact')}, bill of materials ${text(release, 'softwareBillOfMaterials')}`)
-            .toBe('Chargy Transparency Software 1.5.0, by GraphDefined GmbH, manufacturer, supported until 2031-10-24T14:13:41.644Z, vulnerabilities to security@graphdefined.example, ' +
+            .toBe('Chargy Transparency Software 1.5.0, by GraphDefined GmbH, manufacturer, supported until 2031-10-24T16:57:11.577Z, vulnerabilities to security@graphdefined.example, ' +
                   'bill of materials https://www.graphdefined.example/chargy/1.5.0/sbom.cdx.json');
         expect(`${text(certificate, '@id')} for the ${text(certificate, 'chargingStationModel')} ${text(certificate, 'chargingStationModelVersion')}, under the ${text(certificate, 'legislation')}, ` +
                `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')} for ${(get(body!, 'notifiedFor') as string[]).join(', ')}`)
             .toBe('PTB-2026-0042 for the GD-DC300 1.0, under the MID, by the PTB, notified body 0102 for MID');
 
         // The PTB has keys of its own (it signed its certificate itself, as the commit of revision 6 shows); the certificate is
-        // for the model of the station.
+        // for the model of the station, as its manufacturer states it with its versions, in one of them.
         expect(bodyHasKeys).toBe(true);
         expect(forThisModel).toBe(true);
-        expect(`${text(station.chargingStation, '@id')} is a ${text(station.chargingStation, 'modelId')} of ${text(station.chargingStation, 'manufacturerId')}`).toBe('DE*GEF*S1 is a GD-DC300 of GraphDefined');
+
+        const madeBy = station.manufacturer!;
+        expect(`the station ${text(station.chargingStation, '@id')} is a ${text(madeBy.model, '@id')} of ${text(madeBy.manufacturer, '@id')}, ${text(madeBy.model, 'name')}, ` +
+               `versions ${(get(madeBy.model!, 'versions') as string[]).join('/')}`)
+            .toBe('the station DE*GEF*S1 is a GD-DC300 of GraphDefined, GraphDefined DC 300, versions 1.0/1.1');
 
         // The manufacturer and the body are given as skeletons: their own properties, without their other children.
         expect(get(manufacturer, 'transparencySoftware')).toBeUndefined();
@@ -80,7 +84,7 @@ describe('Example A13: who checks the meter', () => {
         find(changed)!['chargingStationModel'] = 'GD-AC44';
 
         expect(() => verifyChargingStation(anchorPQ, changed, { at: AT }))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:4ece3b8eb2909e1d13b863519fcc95478ad9d2a07db2c31541891671ba2357b1 of the proof, not of 2!');
+            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:e4d0d81e56428d30fd096c6656a79a5c1ef80d586c5cae60144920ff0797de2c of the proof, not of 2!');
 
     });
 

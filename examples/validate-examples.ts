@@ -3,14 +3,14 @@
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
- *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-24T14:20:00.000Z
+ *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-24T17:03:00.000Z
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
  * same. Attestations end 15 minutes after they are signed: the station proof of example A13 is checked at the time of its
  * attestations unless `--at` names another, the evidence of example A10 at the time charging began, as the app does.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join }                     from 'node:path';
 
 import {
@@ -26,13 +26,16 @@ import {
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? args[atIndex + 1]! : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-bbd4cbd');
-const time       = at ?? (directory.includes('csharp-bbd4cbd') ? '2026-10-24T14:20:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-801bbce');
+const time       = at ?? (directory.includes('csharp-801bbce') ? '2026-10-24T17:03:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');
 const json  = (name: string): JSONValue  => parseJSON(text(name));
 const has   = (name: string): boolean    => existsSync(file(name));
+
+/** The revisions of epoch 1 whose proofs in a checkpoint the examples published, in order: examples A4 and A5 name them. */
+const proofRevisions = readdirSync(file('published')).map(name => /^QA-proof-revision-(\d+)\.json$/.exec(name)?.[1]).filter(revision => revision !== undefined).map(Number).sort((left, right) => left - right);
 
 let failures = 0;
 
@@ -89,7 +92,7 @@ function following(trustAnchor: TrustAnchor, root: RoamingNetwork, trusted: read
 const checkpoint = (sequence: number): Checkpoint => Checkpoint.parse(json(`published/QA-checkpoint-${sequence}.json`));
 const commits    = (name: string): JSONArray  => json(name) as JSONArray;
 
-// QA as examples A8 and A9 left it: revision 12 of epoch 1, the version of checkpoint 4.
+// QA as examples A8 and A9 left it: revision 13 of epoch 1, the version of checkpoint 4.
 const snapshot4  = json('published/QA-checkpoint-4-snapshot.json') as JSONObject;
 const head       = verifyVersion(anchor, snapshot4['roamingNetwork']!, snapshot4['commit']!, time);
 
@@ -130,9 +133,11 @@ step('Example A2: the charging station operator DE*GEF and the manufacturers', (
     for (const key of POIPublicKey.parseAll(gef['identityKeys'], 'identity keys'))
         console.log(`  identity key ${key.id}`);
 
-    for (const [kind, property] of [ [ 'Charging station manufacturer', 'chargingStationManufacturers' ], [ 'Energy meter manufacturer', 'energyMeterManufacturers' ] ] as const)
+    // The manufacturers, parties of their own, with the models they stated.
+    for (const [kind, property, models] of [ [ 'Charging station manufacturer', 'chargingStationManufacturers', 'chargingStationModels' ], [ 'Energy meter manufacturer    ', 'energyMeterManufacturers', 'energyMeterModels' ] ] as const)
         for (const manufacturer of (get(head.network.content, property) as JSONObject[] | undefined) ?? [])
-            console.log(`${kind} ${String(manufacturer['@id'])}: ${String((manufacturer['name'] as JSONObject)['en'])}`);
+            console.log(`${kind} ${String(manufacturer['@id'])}: ${String((manufacturer['name'] as JSONObject)['en'])}, models ` +
+                        ((get(manufacturer, models) as JSONObject[] | undefined) ?? []).map(model => `${String(model['@id'])} (versions ${((model['versions'] as string[] | undefined) ?? []).join('/')})`).join(', '));
 
 });
 
@@ -183,7 +188,7 @@ step('Example A4: the first checkpoint, and joining from it', () => {
         console.log(`Appended revision ${version.commit.revision}: ${version.commit.description ?? ''}`);
     }
 
-    const proof = CheckpointProof.parse(json('published/QA-proof-revision-3.json'));
+    const proof = CheckpointProof.parse(json(`published/QA-proof-revision-${proofRevisions[0]!}.json`));
     proof.verify(checkpoint0);
     console.log(`The proof of the commit of revision ${proof.revision} in checkpoint 0: valid`);
 
@@ -211,10 +216,10 @@ step('Example A5: a correction between two checkpoints', () => {
         history.append(commit);
     history.takeCheckpoint(line[1]!);
     history.takeCheckpoint(line[2]!);
-    console.log('Revisions 7 to 9 taken commit by commit, checkpoints 1 and 2 taken: their ETags and those of the versions reached the same');
+    console.log(`Revisions ${line[0]!.revision + 1} to ${line[2]!.revision} taken commit by commit, checkpoints 1 and 2 taken: their ETags and those of the versions reached the same`);
     showPools(history.head.network, false, 3, 4);
 
-    refused('The proof of revision 9 in checkpoint 1', () => CheckpointProof.parse(json('published/QA-proof-revision-9.json')).verify(line[1]!));
+    refused(`The proof of revision ${proofRevisions.at(-1)!} in checkpoint 1`, () => CheckpointProof.parse(json(`published/QA-proof-revision-${proofRevisions.at(-1)!}.json`)).verify(line[1]!));
 
 });
 
@@ -251,8 +256,8 @@ step('Example A7: compaction with an archive', () => {
         console.log(`Segment ${info.number}, from revision ${info.fromRevision}: its end and checkpoint ${index}: ETags the same, the root of its commits the same`);
     });
 
-    CheckpointProof.parse(json('published/QA-proof-revision-3-archived.json')).verify(checkpoint(0));
-    console.log('The proof of revision 3, from the archive, in checkpoint 0: valid');
+    CheckpointProof.parse(json(`published/QA-proof-revision-${proofRevisions[0]!}-archived.json`)).verify(checkpoint(0));
+    console.log(`The proof of revision ${proofRevisions[0]!}, from the archive, in checkpoint 0: valid`);
 
 });
 
@@ -313,6 +318,15 @@ if (has('driver/evidence-DE_GEF_E1_1.json'))
         console.log(`At ${evidence.chargingStarted}, when charging began: the station proof attested, the price statement valid`);
         console.log(`Revision ${verified.station.revision}, the version of the station proof: in checkpoint ${verified.versionCheckpoint?.sequence ?? '-'}, witnessed`);
         console.log(`The price statement, sequence ${price.statement.sequence}: after checkpoint ${named?.after?.sequence ?? '-'}, before checkpoint ${named?.namedBy.sequence ?? '-'}, witnessed`);
+
+        // The station and the meter of the EVSE, with their manufacturers and models as the proof gives them.
+        const station  = verified.station;
+        const meter    = station.evses.find(evse => evse['@id'] === evidence.evseId)?.['energyMeter'] as JSONObject | undefined;
+        const madeBy   = station.manufacturer;
+        const meterBy  = meter === undefined ? undefined : station.energyMeterModels.get(String(meter['@id']));
+        console.log(`${String(station.chargingStation['@id'])}: ${String((madeBy?.manufacturer['name'] as JSONObject | undefined)?.['en'])} ${String(madeBy?.model?.['@id'])}`);
+        if (meter !== undefined)
+            console.log(`${String(meter['@id'])}, the energy meter of ${evidence.evseId}: ${String((meterBy?.manufacturer['name'] as JSONObject | undefined)?.['en'])} ${String(meterBy?.model?.['@id'])}, serial ${String(meter['serialNumber'])}`);
 
     });
 
@@ -404,8 +418,15 @@ if (has('published/QA-DE-GEF-E1-1-proof.json'))
             console.log(`${software.energyMeterId}: ${software.legalStatus ?? ''}`);
             console.log(`  ${name(software.release['name'])} ${String(software.release['version'])}, by ${name(software.manufacturer['name'])}, ${String(software.manufacturer['craRole'] ?? '')}`);
             if (software.certificate !== undefined)
-                console.log(`  ${String(software.certificate['@id'])} under the ${String(software.certificate['legislation'])}, by the ${String(software.body?.['@id'])}; keys of its own: ${software.bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for the model of the station: ${software.forThisModel ? 'yes' : 'no'}`);
+                console.log(`  ${String(software.certificate['@id'])} for the ${String(software.certificate['chargingStationModel'])} ${String(software.certificate['chargingStationModelVersion'])} under the ${String(software.certificate['legislation'])}, by the ${String(software.body?.['@id'])}; keys of its own: ${software.bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for the model of the station: ${software.forThisModel ? 'yes' : 'no'}`);
         }
+
+        // The model of the station, as its manufacturer states it: a certificate is for one of its versions, the station names none.
+        const model = station.manufacturer?.model;
+        if (model !== undefined)
+            console.log(`The station ${String(station.chargingStation['@id'])} is a ${String(model['@id'])} of ${String(station.manufacturer!.manufacturer['@id'])}, versions ${((model['versions'] as string[] | undefined) ?? []).join('/')}`);
+        for (const warning of station.warnings)
+            console.log(`warning: ${warning}`);
 
     });
 

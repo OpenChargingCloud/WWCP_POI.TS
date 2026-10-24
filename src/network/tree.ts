@@ -34,6 +34,8 @@ export type TreeNodeKind =
     | 'eMobilityProvider'
     | 'gridOperator'
     | 'parkingOperator'
+    | 'chargingStationManufacturer'
+    | 'energyMeterManufacturer'
     | 'transparencySoftwareManufacturer'
     | 'conformityAssessmentBody'
     | 'leaf';
@@ -48,11 +50,11 @@ export const CHILD_ARRAYS: Readonly<Record<TreeNodeKind, Readonly<Record<string,
 
     roamingNetwork: {
         chargingStationOperators:          'chargingStationOperator',
-        chargingStationManufacturers:      'leaf',
+        chargingStationManufacturers:      'chargingStationManufacturer',
         eMobilityProviders:                'eMobilityProvider',
         gridOperators:                     'gridOperator',
         parkingOperators:                  'parkingOperator',
-        energyMeterManufacturers:          'leaf',
+        energyMeterManufacturers:          'energyMeterManufacturer',
         transparencySoftwareManufacturers: 'transparencySoftwareManufacturer',
         conformityAssessmentBodies:        'conformityAssessmentBody',
     },
@@ -102,6 +104,14 @@ export const CHILD_ARRAYS: Readonly<Record<TreeNodeKind, Readonly<Record<string,
         parkingSpaceTemplates:             'leaf',
         parkingSpaceGroups:                'leaf',
         parkingProducts:                   'leaf',
+    },
+
+    chargingStationManufacturer: {
+        chargingStationModels:             'leaf',
+    },
+
+    energyMeterManufacturer: {
+        energyMeterModels:                 'leaf',
     },
 
     transparencySoftwareManufacturer: {

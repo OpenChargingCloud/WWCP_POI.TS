@@ -2,19 +2,21 @@
 
 ## 0.1.0 (unreleased)
 
-The first milestone: the examples A1 to A13 of WWCP_POI (commit `bbd4cbd`) checked in TypeScript.
+The first milestone: the examples A1 to A13 of WWCP_POI (commit `801bbce`) checked in TypeScript.
 
 - Canonical JSON and deterministic CBOR of Styx; a lossless JSON parser keeping decimals as `System.Decimal` holds them.
 - COSE keys, RFC 9679 thumbprints, signatures ES256/384/512, ES256K, ESP*, ESB*, Ed25519, Ed448, ML-DSA-44/65/87.
 - Trust anchors (QR code, URL, JSON), key statements, certificates of signing keys; trust following the key statements
   of a history (`OperatorTrust.followedBy`).
 - Roaming networks with their ETags, effective members and the effective tree; proofs of charging stations, attestations,
-  the transparency software and certificates of their energy meters.
+  the manufacturers and models of the station and its meters (`manufacturer`, `energyMeterModels`), the transparency
+  software and certificates of their energy meters.
 - Change sets with their owners' signatures, commits, linear histories, checkpoints, their proofs and signatures by the
   roaming network operator and by witnesses, archive segments; epochs, their final checkpoints and the genesis of the
   next one.
-- Transparency software manufacturers and conformity assessment bodies, parties holding their releases and certificates,
-  and the key usages `software` and `certificates`; energy meter templates and groups.
+- Charging station and energy meter manufacturers, parties stating their models; transparency software manufacturers and
+  conformity assessment bodies, parties holding their releases and certificates; the key usages `models`, `software` and
+  `certificates`; energy meter templates and groups.
 - Price statements, their chains, checkpoint trees and proofs; evidence of a charging session as the app of example A10
   keeps it (`parseEvidence`).
 - The runtime status: status updates, frames of the WebSocket of a history, the runtime status of a snapshot.
@@ -26,3 +28,10 @@ its keys; where it signs in place of a party without keys, its signing keys coun
 when they may sign the usage of the change (docs/csharp-review.md, 13); its identity and signing keys counted alike for
 everything it owns; and the signing keys of a party could not rotate its signing keys. The values of change sets are
 kept in the order the C# implementation keeps them in (docs/csharp-review.md, 10).
+
+Moving on to `801bbce`, the manufacturers became parties: the roaming network operator adds and removes them, they change
+their own properties and state their models with a key that may sign `models`, every change of a model naming its
+manufacturer. A change set changes only the properties of a party the C# implementation lets it change, so that the
+models, releases and certificates of a party are not replaced as one of its properties by a key that may not sign them.
+`forThisModel` of the transparency software of a meter asks for the version of the certificate among the versions of the
+model as well.

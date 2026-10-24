@@ -7,13 +7,13 @@ import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { ChargingStationProof } from '../src/proofs/stationProof.ts';
 import { verifyChargingStation, verifyPriceStatements } from '../src/verifier/chargingStation.ts';
 import { etagToText }         from '../src/etags.ts';
-import { clone, type JSONObject } from '../src/json/value.ts';
+import { clone, get, type JSONObject } from '../src/json/value.ts';
 import { parseJSON }          from '../src/json/parse.ts';
 
 
 // The use case: an EV driver's app selects a charging station, downloads its proof and the price statements of its EVSEs,
 // and checks them against the trust anchor of the roaming network it pinned. Proofs made by the C# implementation
-// (tests/vectors/csharp-bbd4cbd/proofs/MakeProofs.cs.txt) of the head of QA as the examples left it, revision 7 of epoch 2,
+// (tests/vectors/csharp-801bbce/proofs/MakeProofs.cs.txt) of the head of QA as the examples left it, revision 7 of epoch 2,
 // attested by the ML-DSA signing keys of the holders of OCC, checked against the trust anchor of epoch 2.
 
 describe('The proof of a charging station, as an app checks it', () => {
@@ -28,14 +28,40 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(station.revision).toBe(7);
         expect(station.commitId).toHaveLength(128);
-        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:36be40e5893a89da29aa36f8c7629c695ca273a169ab0ed51197f128c9b90fd9');
+        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:01ecb39ad6adf940851e2a03a34da271acaddef663db15faded9b50e1c2db0fd');
         expect(station.chargingStation['@id']).toBe('DE*GEF*S1');
         expect(station.chargingStation['maxPower']).toBe(300000);
         expect(station.evses.map(evse => evse['@id'])).toEqual([ 'DE*GEF*E1*1', 'DE*GEF*E1*2' ]);
         expect(station.evses[0]!['chargingConnectors']).toEqual([ { '@id': '1', type: 'IEC_62196_T2_COMBO', format: 'CABLE' } ]);
         expect(station.tariffs.get('DE*GEF*E1*1')!.map(tariff => tariff['@id'])).toEqual([ 'DE*GEF*T_DC' ]);
         expect(station.operatorSigningKeys).toHaveLength(3);
+
+        // The model of the station and those of its energy meters, as their manufacturers state them.
+        expect(`${String(station.manufacturer!.manufacturer['@id'])} ${String(station.manufacturer!.model!['@id'])} ${String(station.manufacturer!.model!['numberOfEVSEs'])} EVSEs`).toBe('GraphDefined GD-DC300 2 EVSEs');
+        expect(get(station.manufacturer!.manufacturer, 'chargingStationModels')).toBeUndefined();
+        expect([ ...station.energyMeterModels ].map(([ meterId, { manufacturer, model } ]) => `${meterId}: ${String(manufacturer['@id'])} ${String(model!['@id'])}`))
+            .toEqual([ 'DE*GEF*M1*1: KERNBERG KDM-500', 'DE*GEF*M1*2: KERNBERG KDM-500' ]);
         expect(station.warnings).toEqual([]);
+
+    });
+
+    it('gives the models the station and its meters name, and no other', () => {
+
+        const proof     = readJSON('proofs/QA-proof-station-DE_GEF_S6.json') as JSONObject;
+        const network   = proof['roamingNetwork'] as JSONObject;
+        const leavesOf  = (array: JSONObject, models: string) => (get(array, '@leaves') as JSONObject[]).map(leaf => {
+                              const manufacturer = leaf['@entity'] as JSONObject;
+                              const given        = get(manufacturer, models) as JSONObject;
+                              return `${String(manufacturer['@id'])}: ${(get(given, '@leaves') as JSONObject[]).map(model => String((model['@entity'] as JSONObject)['@id'])).join(', ')} of ${String(get(given, '@size'))}`;
+                          });
+
+        // The AC station DE*GEF*S6 is a GD-AC44 with meters SM-3: the DC models are pruned, as is KERNBERG.
+        expect(leavesOf(network['chargingStationManufacturers'] as JSONObject, 'chargingStationModels')).toEqual([ 'GraphDefined: GD-AC44 of 2' ]);
+        expect(leavesOf(network['energyMeterManufacturers'] as JSONObject, 'energyMeterModels')).toEqual([ 'SAALE: SM-3 of 1' ]);
+
+        const s6 = verifyChargingStation(anchor, proof, { at: AT });
+        expect(String(s6.manufacturer!.model!['@id'])).toBe('GD-AC44');
+        expect([ ...s6.energyMeterModels.values() ].map(({ model }) => String(model!['@id']))).toEqual([ 'SM-3', 'SM-3' ]);
 
     });
 
@@ -63,7 +89,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(String(((price.statement.prices[0]!['elements'] as JSONObject[])[0]!['priceComponents'] as JSONObject[])[0]!['price'])).toBe('0.59');
 
         // After its validUntil there is no current price.
-        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-24T16:00:00.000Z' }).size).toBe(0);
+        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-24T18:00:00.000Z' }).size).toBe(0);
 
     });
 
@@ -76,7 +102,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(() => verifyChargingStation(anchor, changed, { at: AT })).toThrow(/attest the root/);
 
         // The attestations are valid for 15 minutes.
-        expect(() => verifyChargingStation(anchor, proof, { at: '2026-10-24T14:40:00.000Z' })).toThrow(/of 0 holders/);
+        expect(() => verifyChargingStation(anchor, proof, { at: '2026-10-24T17:20:00.000Z' })).toThrow(/of 0 holders/);
 
         // One attestation is not enough for a quorum of two.
         const one = clone(proof);

@@ -26,7 +26,7 @@ describe('Replaying the history of QA commit by commit, through both epochs', ()
         for (const sequence of [ 0, 1, 2, 3, 4, 5, 6 ])
             epoch1.takeCheckpoint(checkpoint(sequence));
 
-        expect(epoch1.head.commit.revision).toBe(15);
+        expect(epoch1.head.commit.revision).toBe(16);
         expect(epoch1.finalCheckpoint?.sequence).toBe(6);
         expect(epoch1.epochStatus).toBe('closing');
 

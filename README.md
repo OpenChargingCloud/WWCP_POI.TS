@@ -21,7 +21,7 @@ ML-DSA-44/65/87.
 ## Status
 
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A13 of
-[WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `bbd4cbd` are checked
+[WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `801bbce` are checked
 from what the C# examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations
 the C# implementation makes; also from a second run of the C# examples, with new keys. See [Tests](#tests).
 
@@ -53,7 +53,9 @@ const checked = await client.chargingStation({ evseId: 'DE*GEF*E1*1' });
 checked.station.roamingNetwork.name;                 // 'Quality Assurance', as the operator signed it, not as the QR code says
 checked.station.chargingStation;                     // the station as it is at runtime, with what its templates give it
 checked.station.tariffs.get('DE*GEF*E1*1');          // the charging tariffs the EVSE takes
+checked.station.manufacturer?.model;                 // its model, as its manufacturer states it: versions, ratings, datasheet
 checked.station.energyMeters;                        // with their public keys, for transparency software
+checked.station.energyMeterModels;                   // per meter: its manufacturer and model
 checked.station.transparencySoftware;                // per meter: the release, its manufacturer, the certificate, its body
 checked.prices.get('EVSE:DE*GEF*E1*1')?.statement;   // the price statement valid now, signed by DE*GEF
 checked.documents;                                   // as they came: keep them as evidence of the session
@@ -85,7 +87,9 @@ const prices   = verifyPriceStatements(station, priceStatementsJSON);
 ```
 
 Who checks the meter (example A13): the transparency software each energy meter names, with the certificate of a
-conformity assessment body, as the proof gives them. POI proves who states them, not that they are true.
+conformity assessment body, as the proof gives them. POI proves who states them, not that they are true. A certificate
+is for a version of a model; `forThisModel` tells whether it is for the model of the station and a version of it, the
+station naming no version ([docs/csharp-review.md](docs/csharp-review.md), 16).
 
 ```ts
 for (const { energyMeterId, legalStatus, release, manufacturer, certificate, body, forThisModel } of station.transparencySoftware)
@@ -163,17 +167,18 @@ epoch2.root.commit.id;    // the published genesis of epoch 2, 128 hexadecimal d
 | | |
 |---|---|
 | Canonical JSON, deterministic CBOR (Styx) | complete, including Styx's string escaping and decimals as `System.Decimal` holds them |
-| Keys, thumbprints, signatures | EC2, OKP and AKP COSE keys; all signature algorithms of section 4; the key usages `infrastructure`, `tariffs`, `priceStatements`, `software`, `certificates`, `party` |
+| Keys, thumbprints, signatures | EC2, OKP and AKP COSE keys; all signature algorithms of section 4; the key usages `infrastructure`, `tariffs`, `priceStatements`, `models`, `software`, `certificates`, `party` |
 | Trust anchors | QR code (`WWCP/TA-2:` and Base45 of CBOR), URL and JSON forms, read and written; key statements followed by succession |
 | Roaming networks | ETags `json`, `cbor`, `effectiveTree`; the roaming network operator, its key statement and certificates |
 | Effective members (9.2) | EVSEs, charging stations, charging pools, charging tariffs, energy meters. Parking spaces and energy meters of grid connection points taking templates are refused, not calculated |
-| Proofs (8.4), attestations (8.5) | complete, with the transparency software releases and certificates of the meters; subject attestations do not count for a whole proof |
-| Change sets (4) | `Add`, `Remove`, `UpdateProperty`, `RemoveProperty` of parties (charging station operators, e-mobility providers, grid and parking operators, transparency software manufacturers, conformity assessment bodies) and registries, the roaming network and its operator, of charging pools, stations, EVSEs, tariffs, templates and groups of charging station operators, energy meter templates and groups, transparency software releases and certificates, with their owners' signatures, quorum and proof of possession. Element changes, preconditions, offers and the entities of providers, grid and parking operators are refused, not applied |
+| Proofs (8.4), attestations (8.5) | complete, with the manufacturers and models of the station and its meters, the transparency software releases and certificates of the meters; subject attestations do not count for a whole proof |
+| Change sets (4) | `Add`, `Remove`, `UpdateProperty`, `RemoveProperty` of parties (charging station operators, e-mobility providers, grid and parking operators, charging station and energy meter manufacturers, transparency software manufacturers, conformity assessment bodies), the roaming network and its operator, of charging pools, stations, EVSEs, tariffs, templates and groups of charging station operators, energy meter templates and groups, models of manufacturers, transparency software releases and certificates, with their owners' signatures, quorum and proof of possession, and the properties a change set may change. Element changes, preconditions, offers and the entities of providers, grid and parking operators are refused, not applied. The references the C# implementation checks after every change set (a manufacturer, model, release or certificate a station, meter or certificate names) are not checked again: the `afterETags` of the change set pin the version it leads to |
 | Histories (5, 10, 11) | linear histories from snapshots, commits, checkpoints, their lines and signatures, proofs of commits, archive segments; epochs: their profiles, the final checkpoint, the genesis of the next epoch, its first checkpoint. Merges are not taken yet |
 | Price statements (12) | statements, chains, checkpoint trees and proofs in every epoch |
 | Runtime status (12.5) | status updates, frames of the WebSocket, the runtime status of a snapshot. No WebSocket client: the app brings its own |
 
-Whatever is not ported is refused with a `POIError` saying so: the library never takes as checked what it can not check.
+Whatever is not ported is refused with a `POIError` saying so, but for the references named above: the library never
+takes as checked what it can not check.
 And whatever it calculated otherwise than the C# implementation would end in other ETags or identifications, and be
 refused as well.
 
@@ -184,14 +189,15 @@ refused as well.
 npm test
 ```
 
-The test vectors are in `tests/vectors/csharp-bbd4cbd`: what one run of the C# examples of WWCP_POI at commit `bbd4cbd`
+The test vectors are in `tests/vectors/csharp-801bbce`: what one run of the C# examples of WWCP_POI at commit `801bbce`
 published (public data only; its output is `csharp-output.log` there), and in `proofs/`, what
 `proofs/MakeProofs.cs.txt` made of the same history with the C# implementation: proofs of charging stations of epoch 2,
 the commits of epoch 2 up to the head, and the ECDSA twin of a price statement.
 
 - `tests/canonical.test.ts`, `tests/specification.test.ts`: the test vectors of Styx and of section 6 of the
   specification.
-- `tests/exampleA1.test.ts`, `tests/examples.test.ts`: the examples A1 to A9, epoch 1.
+- `tests/exampleA1.test.ts`, `tests/examples.test.ts`: the examples A1 to A9, epoch 1, the manufacturers and the models
+  they state among them.
 - `tests/evidence.test.ts`: example A10, the evidence a driver's app keeps, and ECDSA twins of price statements.
 - `tests/exampleA11.test.ts`: example A11, epoch 2, followed with the old trust anchor and joined with the new one.
 - `tests/exampleA12.test.ts`: example A12, the runtime status and the commit pushed over the WebSocket.

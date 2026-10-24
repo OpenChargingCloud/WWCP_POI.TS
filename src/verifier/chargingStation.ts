@@ -40,8 +40,12 @@ export interface VerifiedChargingStation {
     readonly tariffs:         ReadonlyMap<string, readonly JSONObject[]>;
     /** The signing keys of the operator, which sign its price statements. */
     readonly operatorSigningKeys: readonly POIPublicKey[];
+    /** The manufacturer the station names, with the model it names, as the proof gives them. */
+    readonly manufacturer:    Manufactured | undefined;
     /** The energy meters of the station and its EVSEs, with their public keys, for transparency software. */
     readonly energyMeters:    readonly JSONObject[];
+    /** The manufacturer and the model each energy meter names, as the proof gives them, by the identification of the meter. */
+    readonly energyMeterModels: ReadonlyMap<string, Manufactured>;
     /** Who checks the meters: the transparency software each energy meter names, with its certificate, as the proof gives them. */
     readonly transparencySoftware: readonly MeterTransparencySoftware[];
 
@@ -52,6 +56,18 @@ export interface VerifiedChargingStation {
     /** Where the trust anchor names the network otherwise than the proof, and other things worth telling. */
     readonly warnings:        readonly string[];
 
+}
+
+
+/**
+ * The manufacturer a charging station or an energy meter names by its `manufacturerId`, and the model it names by its
+ * `modelId`, unique within its manufacturer: as the manufacturer states it, attested with the station.
+ */
+export interface Manufactured {
+    /** The manufacturer, as its skeleton: its own properties and keys. */
+    readonly manufacturer:  JSONObject;
+    /** The model, e.g. its versions and ratings; none where the station or meter names none, or the proof gives none. */
+    readonly model:         JSONObject | undefined;
 }
 
 
@@ -77,7 +93,11 @@ export interface MeterTransparencySoftware {
      * tell, not the proof (example A13, docs/csharp-review.md).
      */
     readonly bodyHasKeys:    boolean | undefined;
-    /** Whether the certificate is for the model of the station: its `modelId` and its `manufacturerId`. */
+    /**
+     * Whether the certificate is for the model of the station: its `modelId` and its `manufacturerId`, the model as its
+     * manufacturer states it with the version the certificate names. A station names no version of its model: whether it
+     * is of the version certified, the proof does not tell (docs/csharp-review.md, 16).
+     */
     readonly forThisModel:   boolean | undefined;
 }
 
@@ -89,8 +109,43 @@ const textOf = (object: JSONObject, property: string): string | undefined =>
     typeof get(object, property) === 'string' ? get(object, property) as string : undefined;
 
 
+const skeletonOf = (party: JSONObject, children: string): JSONObject => {
+    const { [children]: _, ...own } = party;
+    return own;
+};
+
+
+/**
+ * The manufacturer what is given names, with the model it names, from the manufacturers the proof gives in the given
+ * array of the roaming network: a charging station manufacturer or an energy meter manufacturer.
+ */
+function manufacturedAs(attested: JSONObject, named: JSONObject, what: string, manufacturers: string, models: string, warnings: string[]): Manufactured | undefined {
+
+    const manufacturerId  = textOf(named, 'manufacturerId');
+    const modelId         = textOf(named, 'modelId');
+
+    if (manufacturerId === undefined)
+        return undefined;
+
+    const manufacturer = objects(get(attested, manufacturers)).find(item => item['@id'] === manufacturerId);
+
+    if (manufacturer === undefined) {
+        warnings.push(`the manufacturer '${manufacturerId}' of ${what} is not given by the proof`);
+        return undefined;
+    }
+
+    const model = modelId === undefined ? undefined : objects(get(manufacturer, models)).find(item => item['@id'] === modelId);
+
+    if (modelId !== undefined && model === undefined)
+        warnings.push(`the model '${modelId}' of ${what} is not given by the proof`);
+
+    return { manufacturer: skeletonOf(manufacturer, models), model };
+
+}
+
+
 /** The transparency software the given energy meters name, from the releases and certificates the proof gives. */
-function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energyMeters: readonly JSONObject[], warnings: string[]): MeterTransparencySoftware[] {
+function transparencySoftwareOf(attested: JSONObject, station: JSONObject, model: JSONObject | undefined, energyMeters: readonly JSONObject[], warnings: string[]): MeterTransparencySoftware[] {
 
     const releases      = objects(get(attested, 'transparencySoftwareManufacturers')).flatMap(manufacturer =>
                               objects(get(manufacturer, 'transparencySoftware')).map(release => ({ release, manufacturer })));
@@ -98,10 +153,9 @@ function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energ
     const certificates  = objects(get(attested, 'conformityAssessmentBodies')).flatMap(body =>
                               objects(get(body, 'transparencySoftwareCertificates')).map(certificate => ({ certificate, body })));
 
-    const skeleton      = (party: JSONObject, children: string): JSONObject => {
-                              const { [children]: _, ...own } = party;
-                              return own;
-                          };
+    const versions      = model !== undefined && isArray(get(model, 'versions'))
+                              ? (get(model, 'versions') as JSONValue[]).filter((version): version is string => typeof version === 'string')
+                              : [];
 
     const result: MeterTransparencySoftware[] = [];
 
@@ -126,14 +180,15 @@ function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energ
                 energyMeterId:  meterId,
                 legalStatus:    textOf(assignment, 'legalStatus'),
                 release:        release.release,
-                manufacturer:   skeleton(release.manufacturer, 'transparencySoftware'),
+                manufacturer:   skeletonOf(release.manufacturer, 'transparencySoftware'),
                 certificate:    certificate?.certificate,
-                body:           certificate === undefined ? undefined : skeleton(certificate.body, 'transparencySoftwareCertificates'),
+                body:           certificate === undefined ? undefined : skeletonOf(certificate.body, 'transparencySoftwareCertificates'),
                 bodyHasKeys:    certificate === undefined ? undefined : isArray(get(certificate.body, 'signingKeys')) && (get(certificate.body, 'signingKeys') as JSONValue[]).length > 0,
                 forThisModel:   certificate === undefined
                                     ? undefined
                                     : textOf(certificate.certificate, 'chargingStationModel')          === textOf(station, 'modelId') &&
-                                      textOf(certificate.certificate, 'chargingStationManufacturerId') === textOf(station, 'manufacturerId'),
+                                      textOf(certificate.certificate, 'chargingStationManufacturerId') === textOf(station, 'manufacturerId') &&
+                                      versions.includes(textOf(certificate.certificate, 'chargingStationModelVersion') ?? ''),
             });
 
         }
@@ -203,6 +258,15 @@ export function verifyChargingStation(anchor:   TrustAnchor,
         ...evses.map(evse => get(evse, 'energyMeter')).filter(isObject),
     ];
 
+    const manufacturer       = manufacturedAs(attested, station, `the charging station '${String(station['@id'])}'`, 'chargingStationManufacturers', 'chargingStationModels', warnings);
+    const energyMeterModels  = new Map<string, Manufactured>();
+
+    for (const meter of energyMeters) {
+        const manufactured = manufacturedAs(attested, meter, `the energy meter '${String(meter['@id'])}'`, 'energyMeterManufacturers', 'energyMeterModels', warnings);
+        if (manufactured !== undefined)
+            energyMeterModels.set(String(meter['@id']), manufactured);
+    }
+
     for (const [kind, shown, proven] of [ [ 'name', anchor.name, get(attested, 'name') ], [ 'description', anchor.description, get(attested, 'description') ] ] as const)
         for (const [language, text] of Object.entries(shown))
             if (!isObject(proven) || get(proven, language) !== text)
@@ -220,8 +284,10 @@ export function verifyChargingStation(anchor:   TrustAnchor,
         evses,
         tariffs,
         operatorSigningKeys:  POIPublicKey.parseAll(get(operator, 'signingKeys'), `signing keys of the charging station operator '${String(operator['@id'])}'`),
+        manufacturer,
         energyMeters,
-        transparencySoftware: transparencySoftwareOf(attested, station, energyMeters, warnings),
+        energyMeterModels,
+        transparencySoftware: transparencySoftwareOf(attested, station, manufacturer?.model, energyMeters, warnings),
         commitId:             parsed.commitId,
         revision:             parsed.revision,
         eTag:                 verified.eTag,

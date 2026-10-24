@@ -1,11 +1,11 @@
-# Review of the C# implementation (WWCP_POI at bbd4cbd)
+# Review of the C# implementation (WWCP_POI at 801bbce)
 
 What porting WWCP POI 3 to TypeScript turned up in the C# implementation and the specification: logical errors,
 verification weaknesses, and places where code and specification disagree. Paths are relative to
-[WWCP_POI](https://github.com/OpenChargingCloud/WWCP_POI) at commit `bbd4cbd` (2026-10-24, conformity assessment bodies),
-Styx at `91901a9`, which the RoamingHubCLI pins with it (`26c454d`). The first review was of `2d9511d`; every finding of
-it was checked again against `bbd4cbd`, and the code added since, examples A10 to A13, epochs, transparency software
-manufacturers and conformity assessment bodies, was reviewed as well.
+[WWCP_POI](https://github.com/OpenChargingCloud/WWCP_POI) at commit `801bbce` (2026-10-24, charging station and energy
+meter manufacturers as parties with their models), Styx at `91901a9`, which the RoamingHubCLI pins with it (`a0c1841`).
+The first review was of `2d9511d`, the second of `bbd4cbd`; every finding was checked again against `801bbce`, and the
+code added since, manufacturers as parties, their models and the references to them, was reviewed as well.
 
 Each finding says how it was established:
 
@@ -13,7 +13,7 @@ Each finding says how it was established:
 - **confirmed**: the exact code path was read;
 - **plausible**: the code path was read in parts; the scenario needs conditions that were not set up.
 
-| # | Finding | Severity | Status | Since `2d9511d` |
+| # | Finding | Severity | Status | Since `bbd4cbd` |
 |---|---|---|---|---|
 | 1 | The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged |
 | 2 | ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated |
@@ -22,15 +22,18 @@ Each finding says how it was established:
 | 5 | A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged |
 | 6 | A subject attestation verifies a whole proof | medium | confirmed | unchanged |
 | 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | confirmed | unchanged |
-| 8 | `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; the new parties follow the code |
+| 8 | `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; the models follow the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
-| 10 | What a signed change set says is not what the content holds | low (interop) | demonstrated | extended |
+| 10 | What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged |
 | 11 | Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged |
-| 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged |
-| 13 | The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | **new** |
-| 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | **new** |
-| 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | **new** |
-| 16 | Smaller points | low | confirmed | extended |
+| 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well |
+| 13 | The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated |
+| 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged |
+| 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged |
+| 16 | A certificate is for a version of a model, a station names no version | medium | confirmed | **new** |
+| 17 | An energy meter may name a certificate for another model than its station's | low-medium | confirmed | **new** |
+| 18 | What one party names blocks what another party withdraws | low | confirmed | **new** |
+| 19 | Smaller points | low | confirmed | extended |
 
 
 ## 1. The holders counted for a quorum are named by the keys being counted
@@ -69,15 +72,15 @@ An ECDSA signature `(r, s)` has a twin `(r, n − s)`, valid as well, which anyb
 a price statement is the SHA-256 of its JSON *with its signature value*: the twin is a different statement of the same
 sequence.
 
-**Demonstrated** again at `bbd4cbd` (`tests/vectors/csharp-bbd4cbd/proofs/MakeProofs.cs.txt`, its output
+**Demonstrated** again at `801bbce` (`tests/vectors/csharp-801bbce/proofs/MakeProofs.cs.txt`, its output
 `MakeProofs-output.log`): a server joining `QA` from checkpoint 4 with the statements it names holds the genuine
 statement 1 of `DE*GEF*E1*1`; the twin of it, which anybody makes from it, is refused as a split view of the operator.
 
 ```
-price statement original: signature valid, sequence 0, digest 622e5170b819350f8b3de06acfe9941162de7fc5dceb77a808b65691462850ce
-price statement twin (r, n-s): signature valid, sequence 0, digest b4552c3a6b1f51ccca07cb359699f0e914c93fa78a61d6518e4a8e7792617237
-server of checkpoint 4 takes the genuine statement again, sequence 1, digest 58cd6969…: Known,
-server of checkpoint 4 takes the twin of the statement, sequence 1, digest 3318e117…: Refused, The EVSE 'DE*GEF*E1*1' has another price statement 1: two statements of one sequence are a split view!
+price statement original: signature valid, sequence 0, digest 25a93a8691f67fc8bbea368d4a10e9f562379c7b96b1e315883280aba42ebf3e
+price statement twin (r, n-s): signature valid, sequence 0, digest ad682ed917dccce9558c5d905201890bd7452f5ae3a6d9c565003c917c636d00
+server of checkpoint 4 takes the genuine statement again, sequence 1, digest 3840c66f…: Known,
+server of checkpoint 4 takes the twin of the statement, sequence 1, digest cc004833…: Refused, The EVSE 'DE*GEF*E1*1' has another price statement 1: two statements of one sequence are a split view!
 ```
 
 So whoever relays statements (a peer, a proxy, anybody posting to a server first) can make a server take the twin;
@@ -106,7 +109,7 @@ the public `beforeETags` of revision 9, chooses a `createdAt` within the validit
 K. It fits revision 9, is checked against revision 9, committed as a branch and merged into the head, as the head
 changed only the operator's keys. The same holds for a signing key of the RNO whose certificate was removed: "a key is
 revoked by removing its certificate" (8.6) does not hold for change sets. Example A11 replaces every key of `DE*GEF` at
-revision 15 of epoch 1; within epoch 1, its old keys would still sign this way. The new epoch ends it: commits of epoch
+revision 16 of epoch 1; within epoch 1, its old keys would still sign this way. The new epoch ends it: commits of epoch
 1 are not taken in epoch 2.
 
 **Fix:** a change set made for an older version must also be signed by keys valid in the head (or the tip it is merged
@@ -155,8 +158,9 @@ it signed across restarts, new histories and epochs.
 
 An attestation with a `subject` (8.5) only has to match the digest of one entity; its root is not compared with the root
 of the proof. With a quorum of one, the first such attestation verifies the whole proof, with whatever the proof gives
-above that entity (the name of the network, its operator, manufacturers, and since `bbd4cbd` the transparency software
-releases and certificates of the meters, example A13); with a quorum, subject and root attestations are counted
+above that entity (the name of the network, its operator, the manufacturers and since `801bbce` the models of the
+station and its meters, the transparency software releases and certificates of the meters, example A13); with a quorum,
+subject and root attestations are counted
 together. `role` and `signer` of attestations are not checked.
 
 **Fix:** a subject attestation attests its subject only: count it for the subtree, never for the proof. The TypeScript
@@ -182,32 +186,34 @@ requires `signedAt ≤ at`.
 ## 8. `lastChange` of what embeds a changed entity: code and specification disagree
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.InfrastructureChanges.cs:561,693-717` (`TouchParents`), likewise
-`ProviderChanges.cs`, `OfferChanges.cs`, `GridChanges.cs`, `ParkingChanges.cs`, `EnergyMeterGroupChanges.cs`, and new,
-`TransparencySoftwareChanges.cs` and `TransparencySoftwareCertificateChanges.cs`; `SPECIFICATION.md:174-176`.
+`ProviderChanges.cs`, `OfferChanges.cs`, `GridChanges.cs`, `ParkingChanges.cs`, `EnergyMeterGroupChanges.cs`,
+`TransparencySoftwareChanges.cs`, `TransparencySoftwareCertificateChanges.cs`, and new, `ModelChanges.cs` ("The
+manufacturer embedding it changed with it"); `SPECIFICATION.md:174-176`.
 
 The specification: a change set sets `lastChange` "of an entity when it is added … or when one of its own properties
 changes; **not when only an entity it embeds changes**". The code sets it on the charging station, the charging pool
 and the operator of a changed EVSE, on the operator of a changed energy meter template, on the manufacturer of a changed
-release, on the body of a changed certificate. `docs/README.md`, `docs/TransparencySoftwareManufacturer.md`,
+model or release, on the body of a changed certificate. `docs/README.md`, `docs/TransparencySoftwareManufacturer.md`,
 `docs/ConformityAssessmentBody.md` ("set to the `createdAt` of the change set by every change of it and of its releases")
 and `WWCP_POI3_Tests/InfrastructureTests.cs` follow the code.
 
 **Demonstrated:** the TypeScript port reproduces the `afterETags` of the commits of the examples only by doing what the
-code does (e.g. revision 9 of epoch 1, the correction of example A5, and revisions 5 to 7 of epoch 2, example A13). An
+code does (e.g. revision 2 of epoch 1, the models of example A2, revision 10, the correction of example A5, and
+revisions 5 to 7 of epoch 2, example A13). An
 implementation following the specification calculates other ETags and refuses every such change set. One of the two
 must change.
 
 
 ## 9. A provider's change of an operator's group, by a stale owner record
 
-**Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.Ownership.cs:1098,1145` (`AddedProviderGroups`),
+**Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.Ownership.cs:1144,1191` (`AddedProviderGroups`),
 `RoamingNetwork.ProviderChanges.cs`.
 
 Within one change set, an `Add` of a provider's group records the provider as its owner; a later `Remove` of it leaves the
 record. A third change of the same group id is then owned by the provider, while applying it finds no provider group
 and changes the operator's group of that id. It needs a provider id the group id type takes as the operator's (e.g.
 `DE-XYZ` and `DE*XYZ`); network-wide uniqueness of group ids is checked only after the last change. The owner path was
-read, the full scenario was not set up. `AddedEnergyMeterChildren` (`:1342-1395`) follows the same pattern for energy
+read, the full scenario was not set up. `AddedEnergyMeterChildren` (`:1386-1452`) follows the same pattern for energy
 meter templates and groups.
 
 
@@ -217,10 +223,10 @@ meter templates and groups.
 from what was signed, and a reader applying change sets on JSON (as the TypeScript port does, and as section 4 describes
 them) must know how:
 
-- **`@context` dropped:** revision 12 of example A8 (`UpdateProperty` of `elements` of `DE*GEF*T_AC`) writes its
+- **`@context` dropped:** revision 13 of example A8 (`UpdateProperty` of `elements` of `DE*GEF*T_AC`) writes its
   `newValue` as `[{"@context": "…/chargingTariffElement/v1", "priceComponents": […]}]`, signed so; the content holds the
   elements without it. Section 1.1: an embedded object "does not" name its context.
-- **Arrays reordered:** revision 14 of example A11 (`UpdateProperty` of `identityKeys` and `signingKeyCertificates` of
+- **Arrays reordered:** revision 15 of example A11 (`UpdateProperty` of `identityKeys` and `signingKeyCertificates` of
   `OCC`) gives the old keys first and the new ones after; the content holds them in the order of their `@id`s, the
   certificates in the order of the `@id`s of the signing keys they certify, then of the keys that signed them
   (`POIPublicKey.Ordered`, `RoamingNetworkSigningKeyCertificate.Ordered`; likewise energy meters and their public keys,
@@ -242,7 +248,8 @@ identifications. Commits do follow section 11.
 ## 12. A change without `oldValue` is not checked at all
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.ChangeSets.cs:636,787`, `RoamingNetwork.ElementChanges.cs:92`
-(`applied.OldValue is JToken …`), and the new `TryApplyTransparencySoftwareChange` and its twin for certificates.
+(`applied.OldValue is JToken …`), `TryApplyTransparencySoftwareChange` and its twin for certificates, and the new
+`TryApplyModelChange` (`RoamingNetwork.ModelChanges.cs`).
 
 A change naming no `oldValue` is applied without comparing anything; `null` means "absent". The `beforeETags` pin the
 version anyway, so applying is safe; rebasing and merging, which rely on old values, are not.
@@ -250,10 +257,10 @@ version anyway, so applying is safe; rebasing and merging, which rely on old val
 
 ## 13. The roaming network operator can not sign in place of a body or grid operator without keys
 
-**Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.Ownership.cs:896-900` (`SignerOf`: the RNO's signing keys for a party
-without signing keys), `:659-664` (only keys that `MaySign(POIKeyUsages.Of(change))` count), `POIKeyUsages.cs`
-(`TransparencySoftwareCertificate` → `certificates`, grid connection points → `infrastructure`);
-`docs/ConformityAssessmentBody.md`, `SPECIFICATION.md` section 4.1 ("the RNO for a body without signing keys").
+**Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.Ownership.cs:903-907` (`SignerOf`: the RNO's signing keys for a party
+without signing keys), `:680-686` (only keys that `MaySign(POIKeyUsages.Of(change))` count), `POIKeyUsages.cs`
+(`TransparencySoftwareCertificate` → `certificates`, grid connection points → `infrastructure`, and new, models →
+`models`); `docs/ConformityAssessmentBody.md`, `SPECIFICATION.md` section 4.1 ("the RNO for a body without signing keys").
 
 A conformity assessment body or a grid operator may take no part, without keys; "then the RNO adds, changes and removes
 its certificates in its place". `SignerOf` makes the RNO the owner, but its signing keys are counted only where they may
@@ -261,8 +268,8 @@ sign the usage of the change: `certificates` for a certificate, `infrastructure`
 keys of an RNO name `party` (examples A1 and A11 certify them so; section 4.1 gives the RNO `party` for everything it
 owns), so they never may, and its identity keys are not asked.
 
-**Demonstrated** on a second run of the examples at `bbd4cbd` (the last block of `MakeProofs.cs.txt`): a certificate of
-the BSI of example A13, which has no keys, signed by the quorum of `OCC`:
+**Demonstrated** again at `801bbce` (the last block of `MakeProofs.cs.txt`, run against the history of the examples whose
+data the tests keep): a certificate of the BSI of example A13, which has no keys, signed by the quorum of `OCC`:
 
 ```
 A certificate of the BSI, signed by the signing keys of AlphaOrg and BetaOrg of OCC: Refused, Change 0: Add of the TransparencySoftwareCertificate 'BSI-2026-0001' needs signatures by signing keys of 2 holders of the roaming network operator 'OCC' that may sign 'certificates'!
@@ -270,7 +277,9 @@ A certificate of the BSI, signed by the identity keys of AlphaOrg and BetaOrg of
 ```
 
 So the BSI can get no certificate until it has keys, unless the RNO certifies a signing key that names `certificates`
-(and `infrastructure` for grid operators), which the specification does not tell it to.
+(and `infrastructure` for grid operators), which the specification does not tell it to. Since `801bbce` the same holds
+for the models of a charging station or energy meter manufacturer without signing keys (`models`): a manufacturer is now
+added with keys, but one that a roaming network names from before, without keys, gets no model stated in its place.
 
 **Fix:** where the RNO signs in place of a party, count its signing keys that may sign `party`, the usage of everything
 the RNO owns; or say in section 4.1 which usages the RNO's keys need for it. The TypeScript port does as the C#
@@ -306,7 +315,61 @@ added it tells, and the app does not have it.
 proof carries it. The TypeScript port reports what the proof shows, `bodyHasKeys`, and says so.
 
 
-## 16. Smaller points
+## 16. A certificate is for a version of a model, a station names no version
+
+**Where:** `WWCP_POI2/RoamingNetwork/TransparencySoftware/TransparencySoftwareCertificate.cs:154`
+(`ChargingStationModelVersion`, mandatory), `WWCP_POI3/RoamingNetwork/ChargingStationManufacturer/ChargingStation/ChargingStation.cs:129,134`
+(a station names `manufacturerId` and `modelId`, no version), `examples/csharp/exampleA13.cs:244-248`,
+`docs/ChargingStationManufacturer.md` (`versions`: "A certificate names one of them").
+
+Since `801bbce` a certificate names a model of a manufacturer and one of its versions, e.g. hardware revisions, and the
+network checks that the version is one of the model's. A station names its model, but not its version. So an app can
+tell that the certificate is for the model of the station and for *a* version of it, not for the version the station
+is. Example A13 shows it: the GD-DC300 has the versions 1.0 and 1.1, the certificate of the PTB is for 1.0, and the app
+prints "the model the certificate is for, in one of its versions", for a station that may be a 1.1, which nobody
+certified. Whatever the version stands for (another meter mounting, another display, another firmware), the claim the
+app shows is wider than the certificate.
+
+**Fix:** a station (and its template) names the version of its model, e.g. `modelVersion`, checked against the
+`versions` of the model; the app compares it with the certificate. The TypeScript port reports `forThisModel` as the C#
+example decides it (manufacturer, model, and a version of the model) and says so.
+
+
+## 17. An energy meter may name a certificate for another model than its station's
+
+**Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.cs:2386-2405` (`UnknownTransparencyReference`, the energy meters),
+`examples/csharp/exampleA13.cs` ("The certificate for another model").
+
+The network checks that a certificate an energy meter names exists and covers the release the meter names. It does not
+check that the certificate is for the model of the station the meter is part of, although since `801bbce` both the
+station and the certificate name the model formally, with its manufacturer. A charging station operator can name, for
+the meters of an AC station, a certificate the body issued for a DC model, and the network takes it; only an app
+comparing the certificate with the station notices (example A13 does, the TypeScript port does with `forThisModel`).
+
+**Fix:** refuse, as a reference error, an energy meter of a charging station or EVSE naming a certificate for another
+manufacturer or model than the station's (with 16, another version).
+
+
+## 18. What one party names blocks what another party withdraws
+
+**Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.ChangeSets.cs:1137-1155` (the references checked after every change
+set), `docs/ChargingStation.md` ("a manufacturer or a model can not be removed while a station names it"),
+`SPECIFICATION.md:276-277` ("The RNO decides who is a member: removing a party removes everything it embeds, and needs no
+signature of the party").
+
+Since `801bbce` the manufacturers are parties, and the references to them are checked after every change set: a station
+or template of a charging station operator naming a manufacturer or a model, a certificate of a body naming a model and
+a version of it. So a manufacturer can not remove a model, or a version of it, as long as a station of an operator or a
+certificate of a body names it, and the RNO can not remove a manufacturer as long as a station of another party names
+it: the RNO decides who is a member only once the operators and bodies changed their data. Before, the same held for the
+releases of transparency software manufacturers and the certificates of bodies the meters name. The documentation says
+so for models; the specification's "removing a party removes everything it embeds" does not.
+
+**Fix:** say in section 4.1 that a party can not be removed, nor anything withdrawn, while another party names it, and
+who resolves it; or let a removal of the RNO remove or clear the references to what it removes.
+
+
+## 19. Smaller points
 
 - **Trust anchor quorum:** `minConsensus` is checked against the number of keys, not of holders
   (`RoamingNetworkTrustAnchor.cs`, `TryCheck`); see 1.
@@ -326,6 +389,13 @@ proof carries it. The TypeScript port reports what the proof shows, `bodyHasKeys
   (`OperatorTrust.of`, `OperatorTrust.followedBy`).
 - **Price statements taken along into an epoch they are not of:** `TryStartNextEpoch` takes the current statements of
   epoch 1, signed with ES256, into epoch 2, which a peer starting in epoch 2 refuses (example A12, *Limits*).
+- **Models describe, nothing compares:** a model states `maxPower`, `currentTypes`, `connectorTypes` and `numberOfEVSEs`
+  (charging stations), `currentTypes`, `maxCurrent` and `signatureMethods` (energy meters); a station of 300 kW may name
+  a model of 44 kW, a meter signing with a method its model does not name. The network checks only that the model
+  exists. An app showing the model's data next to the station's may show both, contradicting each other.
+- **Keyless parties in section 4.1:** `SPECIFICATION.md:276` says a party is added with keys of each kind, "a grid
+  operator also with none"; the code (`TryCheckPartyChange`) and the rest of section 4.1 allow a conformity assessment
+  body without keys as well.
 - **Building the examples:** `examples/csharp/examples.csproj` references `Hermod`, `Styx`, `WWCP_Node` as sibling
   checkouts, and `WWCP_Node` needs `Norn` and `Urdr` as well, at the commits the RoamingHubCLI pins; `examples/README.md`
   says only `dotnet run`. On Windows, a checkout below a long path needs `git config core.longpaths true`. Example A12
@@ -337,13 +407,15 @@ proof carries it. The TypeScript port reports what the proof shows, `bodyHasKeys
 ## What was checked and found sound
 
 Canonical JSON and deterministic CBOR (all Styx vectors), ETags, commit and checkpoint identifications with SHA-256 and
-SHA-512, the effective tree with templates, tariffs, energy meter templates, transparency software manufacturers and
-conformity assessment bodies, RFC 9162 trees and audit paths (bounds, domain separation) with SHA-256 and SHA-512, key
-thumbprints and their checks, the signature inputs of key statements, certificates, commits, checkpoints, attestations,
-change sets and price statements (ES256/384/512, Ed25519, Ed448, ML-DSA-65/87), Base64 canonicality, the trust anchor
-(QR code, URL), the ownership of every change of both epochs of the examples (the quorum of the RNO, the proof of
-possession of new identity keys, the keys of the new parties for their releases and certificates), checkpoint lines,
-the final checkpoint of epoch 1 and the genesis of epoch 2, archive segments, price statement trees and proofs, the
-evidence of example A10, the pushed commit of example A12 and the station proof of example A13: the TypeScript port,
-written from the specification and the code, calculates all of them byte for byte as the C# implementation does, for
-the published data of two runs of the examples at `bbd4cbd`.
+SHA-512, the effective tree with templates, tariffs, energy meter templates, charging station and energy meter
+manufacturers with their models, transparency software manufacturers and conformity assessment bodies, RFC 9162 trees and
+audit paths (bounds, domain separation) with SHA-256 and SHA-512, key thumbprints and their checks, the signature inputs
+of key statements, certificates, commits, checkpoints, attestations, change sets and price statements (ES256/384/512,
+Ed25519, Ed448, ML-DSA-65/87), Base64 canonicality, the trust anchor (QR code, URL), the ownership of every change of both
+epochs of the examples (the quorum of the RNO, the proof of possession of new identity keys, the keys of the
+manufacturers for their models, of the new parties for their releases and certificates), checkpoint lines, the final
+checkpoint of epoch 1 and the genesis of epoch 2, archive segments, price statement trees and proofs, the evidence of
+example A10, the pushed commit of example A12 and the station proofs of example A13 and of the proofs made for the tests,
+with the models of the station and its meters, the others pruned: the TypeScript port, written from the specification
+and the code, calculates all of them byte for byte as the C# implementation does, for the published data of two runs of
+the examples at `801bbce`.

@@ -32,7 +32,7 @@ import { POIError }                       from '../errors.ts';
 // change set is refused: it never takes a version the change set does not lead to.
 
 
-/** The arrays of the roaming network holding the parties and registries, by their entity type. */
+/** The arrays of the roaming network holding the parties, by their entity type. */
 const NETWORK_ARRAYS: Readonly<Record<string, string>> = {
     ChargingStationOperator:          'chargingStationOperators',
     EMobilityProvider:                'eMobilityProviders',
@@ -46,7 +46,32 @@ const NETWORK_ARRAYS: Readonly<Record<string, string>> = {
 
 /** The parties: the RNO adds and removes them, they own their other properties (4.1). */
 const PARTIES = new Set([ 'ChargingStationOperator', 'EMobilityProvider', 'GridOperator', 'ParkingOperator',
-                          'TransparencySoftwareManufacturer', 'ConformityAssessmentBody' ]);
+                          'ChargingStationManufacturer', 'EnergyMeterManufacturer', 'TransparencySoftwareManufacturer',
+                          'ConformityAssessmentBody' ]);
+
+const REGISTRY_PROPERTIES      = [ 'name', 'description', 'dataSource', 'address', 'homepage', 'hotline', 'customData' ];
+const PARTY_PROPERTIES         = [ ...REGISTRY_PROPERTIES, 'signingKeys', 'identityKeys' ];
+const CONTACT_PROPERTIES       = [ 'dataLicenses', 'logos', 'geoLocation', 'telephone', 'eMailAddress', 'termsAndConditions' ];
+const MANUFACTURER_PROPERTIES  = [ ...PARTY_PROPERTIES, ...CONTACT_PROPERTIES ];
+
+/**
+ * The parties and the roaming network operator in words, and the properties of theirs a change set can update or remove
+ * (`ChangeableOperatorProperties` and the registries of RoamingNetwork.RegistryChanges.cs): not their identification and
+ * timestamps, nor the children they change on their own.
+ */
+const PARTY_REGISTRIES: Readonly<Record<string, { readonly what: string, readonly article: string, readonly changeable: readonly string[] }>> = {
+    RoamingNetworkOperator:            { what: 'roaming network operator',            article: 'a',  changeable: [ ...REGISTRY_PROPERTIES, 'identityKeys', 'eMailAddress', 'hotlineEMailAddress',
+                                                                                                                   'minConsensus', 'keyStatement', 'signingKeyCertificates' ] },
+    ChargingStationOperator:           { what: 'charging station operator',           article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'brands' ] },
+    EMobilityProvider:                 { what: 'e-mobility provider',                 article: 'an', changeable: MANUFACTURER_PROPERTIES },
+    GridOperator:                      { what: 'grid operator',                       article: 'a',  changeable: PARTY_PROPERTIES },
+    ParkingOperator:                   { what: 'parking operator',                    article: 'a',  changeable: PARTY_PROPERTIES },
+    ChargingStationManufacturer:       { what: 'charging station manufacturer',       article: 'a',  changeable: MANUFACTURER_PROPERTIES },
+    EnergyMeterManufacturer:           { what: 'energy meter manufacturer',           article: 'an', changeable: MANUFACTURER_PROPERTIES },
+    TransparencySoftwareManufacturer:  { what: 'transparency software manufacturer',  article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'craRole', 'vulnerabilityContact',
+                                                                                                                   'vulnerabilityReporting', 'vulnerabilityDisclosurePolicy', 'securityAdvisories' ] },
+    ConformityAssessmentBody:          { what: 'conformity assessment body',          article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'notifiedBodyNumber', 'notifiedFor' ] },
+};
 
 /** The embedded children a party is not added with, but adds on its own (`PartyChildren`). */
 const PARTY_CHILDREN: Readonly<Record<string, readonly string[]>> = {
@@ -56,13 +81,16 @@ const PARTY_CHILDREN: Readonly<Record<string, readonly string[]>> = {
     EMobilityProvider:                 [ 'EVSEGroups', 'chargingStationGroups', 'chargingPoolGroups', 'chargingTariffOffers' ],
     GridOperator:                      [ 'gridConnectionPoints', 'energyMeterTemplates', 'energyMeterGroups' ],
     ParkingOperator:                   [ 'parkingGarages', 'parkingSpaces', 'parkingSensors', 'parkingSpaceTemplates', 'parkingSpaceGroups', 'parkingProducts' ],
+    ChargingStationManufacturer:       [ 'chargingStationModels' ],
+    EnergyMeterManufacturer:           [ 'energyMeterModels' ],
     TransparencySoftwareManufacturer:  [ 'transparencySoftware' ],
     ConformityAssessmentBody:          [ 'transparencySoftwareCertificates' ],
 };
 
 /**
- * Entities a party embeds and changes on its own, without runtime status and timestamps: the releases of a transparency
- * software manufacturer and the certificates of a conformity assessment body (TransparencySoftwareManufacturer.md,
+ * Entities a party embeds and changes on its own, without runtime status and timestamps: the models of a charging station
+ * or energy meter manufacturer, the releases of a transparency software manufacturer and the certificates of a conformity
+ * assessment body (ChargingStationManufacturer.md, EnergyMeterManufacturer.md, TransparencySoftwareManufacturer.md,
  * ConformityAssessmentBody.md).
  */
 interface PartyChildType {
@@ -72,9 +100,33 @@ interface PartyChildType {
     readonly what:        string;
     readonly usage:       KeyUsage;
     readonly changeable:  readonly string[];
+    /** Its party in words, when its identification is unique within its party only: then every change names its party. */
+    readonly inParent?:   string;
 }
 
 const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
+
+    ChargingStationModel: {
+        parentType:  'ChargingStationManufacturer',
+        parents:     'chargingStationManufacturers',
+        property:    'chargingStationModels',
+        what:        'charging station model',
+        usage:       KeyUsages.Models,
+        changeable:  [ 'name', 'description', 'versions', 'productURL', 'datasheetURL', 'images', 'maxPower', 'currentTypes', 'connectorTypes',
+                       'numberOfEVSEs', 'customData' ],
+        inParent:    'manufacturer',
+    },
+
+    EnergyMeterModel: {
+        parentType:  'EnergyMeterManufacturer',
+        parents:     'energyMeterManufacturers',
+        property:    'energyMeterModels',
+        what:        'energy meter model',
+        usage:       KeyUsages.Models,
+        changeable:  [ 'name', 'description', 'versions', 'productURL', 'datasheetURL', 'images', 'currentTypes', 'maxCurrent', 'accuracyClass',
+                       'measurands', 'signatureMethods', 'customData' ],
+        inParent:    'manufacturer',
+    },
 
     TransparencySoftware: {
         parentType:  'TransparencySoftwareManufacturer',
@@ -473,10 +525,11 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
 function applyNetworkArrayChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
     const property  = NETWORK_ARRAYS[change.entityType]!;
-    const what      = `${change.entityType} '${change.entityId}'`;
+    const registry  = PARTY_REGISTRIES[change.entityType]!;
+    const what      = `${registry.what} '${change.entityId}'`;
 
     if (change.parentEntityType !== undefined && (change.parentEntityType !== 'RoamingNetwork' || change.parentEntityId !== content['@id']))
-        throw new POIError(`Change ${index}: a ${change.entityType} of this roaming network belongs to RoamingNetwork '${String(content['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
+        throw new POIError(`Change ${index}: ${registry.article} ${registry.what} of this roaming network belongs to RoamingNetwork '${String(content['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
 
     const array   = get(content, property);
     const entity  = objectsOf(array).find(item => item['@id'] === change.entityId);
@@ -484,6 +537,10 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
 
     if (isProperty && entity === undefined)
         throw new POIError(`Change ${index}: the ${what} does not exist!`);
+
+    // Its children, e.g. its models, are changed on their own: by a key that may sign them.
+    if (isProperty && !registry.changeable.includes(change.propertyName ?? ''))
+        throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of ${registry.article} ${registry.what} can not be changed!`);
 
     checkOldValue(change, isProperty ? get(entity!, change.propertyName ?? '') : entity, index, what);
 
@@ -546,15 +603,49 @@ function partyNamed(content: JSONObject, type: string, id: string | undefined): 
 }
 
 
+/** A model of the manufacturer a change names as its parent, and where: its identification is unique within it only. */
+function partyChildIn(content: JSONObject, type: PartyChildType, change: Change, index: number): { party: JSONObject, found: { party: JSONObject, children: JSONArray, child: JSONObject } | undefined } {
+
+    const party = change.parentEntityType === type.parentType ? partyNamed(content, type.parentType, change.parentEntityId) : undefined;
+
+    if (party === undefined)
+        throw new POIError(`Change ${index}: the ${type.what} '${change.entityId}' needs its ${type.parentType}, an existing one!`);
+
+    const children  = get(party, type.property);
+    const child     = objectsOf(children).find(item => typeof item['@id'] === 'string' && sameId(item['@id'], change.entityId));
+
+    return { party, found: child === undefined ? undefined : { party, children: children as JSONArray, child } };
+
+}
+
+
 /**
- * Applies a change of a release of a transparency software manufacturer or of a certificate of a conformity assessment
- * body (`TryApplyTransparencySoftwareChange`, `TryApplyTransparencySoftwareCertificateChange`): added to the party an `Add`
- * names as its parent, changed and removed in the one embedding it; the party changes with it.
+ * Applies a change of a model of a charging station or energy meter manufacturer, of a release of a transparency software
+ * manufacturer or of a certificate of a conformity assessment body (`TryApplyModelChange`,
+ * `TryApplyTransparencySoftwareChange`, `TryApplyTransparencySoftwareCertificateChange`): added to the party an `Add` names
+ * as its parent, changed and removed in the one embedding it, a model in the manufacturer every change of it names; the
+ * party changes with it.
  */
 function applyPartyChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
     const type   = PARTY_CHILD_TYPES[change.entityType]!;
     const what   = `${type.what} '${change.entityId}'`;
+
+    if (type.inParent !== undefined) {
+
+        const { party, found } = partyChildIn(content, type, change, index);
+
+        if (change.kind === 'Add' && found !== undefined)
+            throw new POIError(`Change ${index}: the ${what} already exists, at the ${type.inParent} '${String(party['@id'])}'!`);
+
+        if (change.kind !== 'Add' && found === undefined)
+            throw new POIError(`Change ${index}: the ${what} of the ${type.inParent} '${String(party['@id'])}' does not exist!`);
+
+        applyPartyChild(type, party, found, change, index, what, createdAt);
+        return;
+
+    }
+
     const found  = partyChildOf(content, type, change.entityId);
     let   party: JSONObject;
 
@@ -585,13 +676,21 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
 
     }
 
+    applyPartyChild(type, party, found, change, index, what, createdAt);
+
+}
+
+/** Applies a change of a model, a release or a certificate to the party embedding it, or adding it. */
+function applyPartyChild(type: PartyChildType, party: JSONObject, found: { children: JSONArray, child: JSONObject } | undefined, change: Change, index: number,
+                         what: string, createdAt: string): void {
+
     const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
 
     checkOldValue(change, isProperty ? get(found!.child, change.propertyName ?? '') : found?.child, index, what);
 
     switch (change.kind) {
 
-        // Releases and certificates have no timestamps of their own.
+        // Models, releases and certificates have no timestamps of their own.
         case 'UpdateProperty':
         case 'RemoveProperty': {
 
@@ -782,6 +881,9 @@ function applyOperatorChange(content: JSONObject, change: Change, index: number,
     if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
         throw new POIError(`Change ${index}: the roaming network operator is neither added nor removed!`);
 
+    if (!PARTY_REGISTRIES['RoamingNetworkOperator']!.changeable.includes(change.propertyName ?? ''))
+        throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a roaming network operator can not be changed!`);
+
     checkOldValue(change, get(operator, change.propertyName ?? ''), index, `roaming network operator '${change.entityId}'`);
     applyProperty(operator, change, index, `roaming network operator '${change.entityId}'`, createdAt);
 
@@ -840,7 +942,7 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
                  :                                                                                          'signing',
         };
 
-    if (change.entityType === 'RoamingNetwork' || change.entityType === 'ChargingStationManufacturer' || change.entityType === 'EnergyMeterManufacturer')
+    if (change.entityType === 'RoamingNetwork')
         return { kind: 'rno', keys: 'signing' };
 
     if (PARTIES.has(change.entityType)) {
@@ -865,14 +967,21 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
 
     }
 
-    // A release of its transparency software manufacturer, a certificate of the conformity assessment body issuing it.
+    // A model of its manufacturer, which every change of it names, a release of its transparency software manufacturer, a
+    // certificate of the conformity assessment body issuing it.
     const childType = PARTY_CHILD_TYPES[change.entityType];
 
     if (childType !== undefined) {
 
         let party: JSONObject | undefined;
 
-        if (change.kind === 'Add') {
+        if (childType.inParent !== undefined) {
+            if (change.parentEntityType !== childType.parentType || change.parentEntityId === undefined)
+                throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' needs its ${childType.parentType} as its parent!`);
+            party = partyNamed(content, childType.parentType, change.parentEntityId);
+        }
+
+        else if (change.kind === 'Add') {
             if (change.parentEntityType !== childType.parentType || change.parentEntityId === undefined)
                 throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its ${childType.parentType} as its parent!`);
             party = partyNamed(content, childType.parentType, change.parentEntityId);
@@ -1018,7 +1127,7 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         if (PARTIES.has(change.entityType) && change.kind === 'Add' && isObject(change.newValue))
             keys = get(change.newValue, 'identityKeys');
 
-        else if ((PARTIES.has(change.entityType) || change.entityType === 'RoamingNetworkOperator' || change.entityType === 'ChargingStationManufacturer') &&
+        else if ((PARTIES.has(change.entityType) || change.entityType === 'RoamingNetworkOperator') &&
                  change.kind === 'UpdateProperty' && change.propertyName === 'identityKeys')
             keys = change.newValue;
 
