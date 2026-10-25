@@ -35,7 +35,7 @@ stays the review of the C# implementation.
 | 10 | ✅ What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged; **fixed** in `80e4ccc`, more than the review found |
 | 11 | ✅ Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged; **fixed** in `9280f0b`, the specification following the code |
 | 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well |
-| 13 | The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated |
+| 13 | ✅ The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated; **fixed** in `36bb176`, and in this port alike |
 | 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged |
 | 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged |
 | 16 | A certificate is for a version of a model, a station names no version | medium | confirmed | **new** |
@@ -440,7 +440,7 @@ A change naming no `oldValue` is applied without comparing anything; `null` mean
 version anyway, so applying is safe; rebasing and merging, which rely on old values, are not.
 
 
-## 13. The roaming network operator can not sign in place of a body or grid operator without keys
+## 13. ✅ The roaming network operator can not sign in place of a body or grid operator without keys
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.Ownership.cs:903-907` (`SignerOf`: the RNO's signing keys for a party
 without signing keys), `:680-686` (only keys that `MaySign(POIKeyUsages.Of(change))` count), `POIKeyUsages.cs`
@@ -469,6 +469,18 @@ added with keys, but one that a roaming network names from before, without keys,
 **Fix:** where the RNO signs in place of a party, count its signing keys that may sign `party`, the usage of everything
 the RNO owns; or say in section 4.1 which usages the RNO's keys need for it. The TypeScript port does as the C#
 implementation (`checkOwnership`).
+
+**Demonstrated** again against `850440a` and **fixed** in `36bb176`, and in this port alike: a signing key of the RNO
+counts for what it signs when it may sign the usage of what it changes, or `party`, the usage of everything it owns, so
+also in place of a party without signing keys (`UsagesOf`, `MaySign` in `RoamingNetwork.Ownership.cs`: for counting the
+holders of a quorum, for what a missing signature names, and for withdrawals). Nothing taken before is refused now: a
+key the RNO certifies for `certificates` alone still signs the certificates of a body without keys; one certified for
+`party`, as the examples certify them, does as well, and neither one certified for other usages only. Its identity keys
+stay what they are, for keys only. Section 4.1 says so, and `docs/ConformityAssessmentBody.md` and
+`docs/GridOperator.md`. `TransparencyTests` holds it in C#, with the RNO's signing key certified for `party`,
+`certificates` and `infrastructure` alone; `tests/ownership.test.ts` in this port, signing with the Ed25519 keys of
+section 6, whose private seeds the specification gives (`rnoHolders` of `checkOwnership` counts `party` besides the
+usage).
 
 
 ## 14. The first checkpoint of a later epoch takes signatures of any algorithm

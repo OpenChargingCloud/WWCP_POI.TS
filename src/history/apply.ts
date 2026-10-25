@@ -1234,10 +1234,10 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         valid.has(key.id) && key.isValidAt(createdAt);
 
     // The holders of the roaming network operator signing with keys of the kinds named, its signing keys only those that may
-    // sign what it owns.
-    const rnoHolders = (keys: OwnerKeys, usage: KeyUsage = KeyUsages.Party): Set<string> =>
-        new Set([ ...(keys !== 'identity' ? rnoSigning.filter(key => key.maySign(usage))           : []),
-                  ...(keys !== 'signing'  ? rnoIdentity                                            : []) ]
+    // sign what it owns, `party`, or one of the usages given.
+    const rnoHolders = (keys: OwnerKeys, ...usages: KeyUsage[]): Set<string> =>
+        new Set([ ...(keys !== 'identity' ? rnoSigning.filter(key => [ KeyUsages.Party, ...usages ].some(usage => key.maySign(usage))) : []),
+                  ...(keys !== 'signing'  ? rnoIdentity                                                                             : []) ]
                     .filter(signedValid)
                     .map(key => key.holderOrUnnamed));
 
@@ -1268,8 +1268,9 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         if (party === undefined)
             throw new POIError(`${describeChange(change, index)}: the ${owner.type} '${owner.id}' does not exist!`);
 
-        // A party without signing keys is changed by the roaming network operator in its place (`SignerOf`); identity
-        // keys of the roaming network operator recover both kinds of keys of every party, and nothing else of it.
+        // A party without signing keys is changed by the roaming network operator in its place (`SignerOf`), by signing
+        // keys that may sign `party`, as all it owns, or the usage of the change; identity keys of the roaming network
+        // operator recover both kinds of keys of every party, and nothing else of it.
         const bySigningKey   = owner.keys !== 'identity'  && party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key));
         const byIdentityKey  = owner.keys !== 'signing'   && party.identityKeys.some(signedValid);
         const byRecovery     = owner.keys !== 'signing'   && rnoHolders('identity').size >= minConsensus && rnoIdentity.some(signedValid);

@@ -97,3 +97,9 @@ groups by the prefix of their party, `DE-GDF` as `DE*GDF` (`duplicateIdentificat
 version it reads, also the one a change set leads to: before, an operator could add a group of the identification a group
 of the provider of its prefix has, and its change set was taken with the after ETags this library calculates. The golden
 vectors `version-twice-*` of WWCPPOIConformanceTests hold both implementations to it, refused in the same words (`reason`).
+
+The roaming network operator signs in place of a party without signing keys, e.g. the certificates of a conformity
+assessment body or the grid connection points of a grid operator not taking part, by a signing key that may sign
+`party`, as the examples certify its keys, as WWCP_POI does since `36bb176` (SPECIFICATION.md 4.1; docs/csharp-review.md,
+13): `checkOwnership` counts its signing keys that may sign `party` besides those that may sign the usage of the change.
+A change set taken before is taken still.

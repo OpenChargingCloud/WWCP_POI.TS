@@ -84,7 +84,7 @@ export const specification = load('poi-specification.json') as {
     readonly skeletons:          ReadonlyArray<Vector & { skeleton: string, hashAlgorithm: string, digest: string }>;
     readonly commits:            ReadonlyArray<Vector & { commit: unknown, content: string, hashAlgorithm: string, commitId: string }>;
     readonly keys:               ReadonlyArray<Vector & PublicKeyOf>;
-    readonly signatures:         ReadonlyArray<Vector & PublicKeyOf & { algorithm: string, input: string, value: string }>;
+    readonly signatures:         ReadonlyArray<Vector & PublicKeyOf & { algorithm: string, input: string, value: string, privateSeed?: string }>;
     readonly invalidSignatures:  ReadonlyArray<Vector & PublicKeyOf & { algorithm: string, input: string, value: string }>;
     readonly priceStatements:    ReadonlyArray<Vector & { statement: string, digest: string }>;
     readonly trustAnchors:       ReadonlyArray<Vector & { json: string, qrCode: string, roamingNetworkId: string, urls: string[], keys: string[], minConsensus: number }>;
