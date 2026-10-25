@@ -1318,6 +1318,48 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
     matchETags(changeSet.afterETags, after, 'The result does not match the change set');
 
+    checkKeyHolders(before, after);
+
     return after;
+
+}
+
+
+/**
+ * A key keeps its holder (4.1): a version naming a key of a party with another holder than the version before, or with one
+ * where that named none or none where that named one, is refused, as the C# implementation refuses it. So no holder counts
+ * twice in a quorum by naming a key of its own as another's.
+ */
+function checkKeyHolders(before: RoamingNetwork, after: RoamingNetwork): void {
+
+    const keysOf = (network: RoamingNetwork): Map<string, { party: string, key: POIPublicKey }> => {
+
+        const keys = new Map<string, { party: string, key: POIPublicKey }>();
+
+        const add = (type: string, id: string, partyKeys: readonly POIPublicKey[]): void => {
+            for (const key of partyKeys)
+                keys.set(`${type}:${id}:${key.id}`, { party: `${type} '${id}'`, key });
+        };
+
+        if (network.operator !== undefined)
+            add('RoamingNetworkOperator', network.operator.id, [ ...network.operator.identityKeys, ...network.operator.signingKeyCertificates.map(certificate => certificate.signingKey) ]);
+
+        for (const party of partiesOf(network).values())
+            add(party.type, party.id, [ ...party.identityKeys, ...party.signingKeys ]);
+
+        return keys;
+
+    };
+
+    const holders = keysOf(before);
+
+    for (const [where, { party, key }] of keysOf(after)) {
+
+        const previous = holders.get(where);
+
+        if (previous !== undefined && previous.key.holder !== key.holder)
+            throw new POIError(`The key '${key.id}' of the ${party} keeps its holder ${previous.key.holder === undefined ? 'none' : `'${previous.key.holder}'`}, not ${key.holder === undefined ? 'none' : `'${key.holder}'`}!`);
+
+    }
 
 }

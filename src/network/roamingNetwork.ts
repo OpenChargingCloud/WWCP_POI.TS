@@ -153,8 +153,12 @@ export class RoamingNetworkOperator {
             if (keyStatement.minConsensus !== minConsensus)
                 throw new POIError(`The key statement of the roaming network operator '${id}' states the minConsensus ${keyStatement.minConsensus}, not its ${minConsensus}!`);
 
+            // Signed by as many holders of its identity keys as its quorum needs, as the operator names their holders.
             try {
-                keyStatement.verify(identityKeys.map(key => key.id), identityKeys, { minConsensus });
+                const holders = new Map<string, string[]>();
+                for (const key of identityKeys)
+                    holders.set(key.holderOrUnnamed, [ ...(holders.get(key.holderOrUnnamed) ?? []), key.id ]);
+                keyStatement.verifyHolders([ ...holders.values() ], identityKeys, { minConsensus });
             }
             catch (e) {
                 throw new POIError(minConsensus > 1

@@ -130,23 +130,86 @@ export class KeyStatement {
     }
 
 
+    /** The `@id`s of its identity keys per holder, as it names their holders: what a trust anchor of it pins (8.6). */
+    public get holders(): string[][] {
+
+        const holders = new Map<string, string[]>();
+
+        for (const key of this.identityKeys)
+            holders.set(key.holderOrUnnamed, [ ...(holders.get(key.holderOrUnnamed) ?? []), key.id ]);
+
+        return [ ...holders.values() ];
+
+    }
+
+
     /**
-     * Verifies the statement as a verifier trusting identity keys by their `@id`s does (8.6), as `TryVerify` of the C#
-     * implementation: every signature valid, by an identity key it or the operator names, valid at `signedAt`; signed by
-     * trusted keys of as many holders as the larger of the given `minConsensus` and its own require; valid at `at`, when
-     * given. Returns the holders whose trusted keys signed it.
-     *
-     * The holders are told by the statement itself: a holder holding several trusted keys may name them as keys of
-     * several holders. See the review notes in docs/csharp-review.md.
+     * Verifies the statement against identity keys trusted by their `@id`s, each of a holder of its own, as
+     * `verifyHolders` does. Returns the holders whose trusted keys signed it.
      */
     public verify(trustedIdentityKeyIds: Iterable<string>,
                   otherIdentityKeys:     readonly POIPublicKey[] = [],
                   options:               { minConsensus?: number, at?: number } = {}): Set<string> {
 
-        const trusted   = new Set(trustedIdentityKeyIds);
+        return this.verifyHolders([ ...trustedIdentityKeyIds ].map(id => [ id ]), otherIdentityKeys, options).signedBy;
+
+    }
+
+    /**
+     * Verifies the statement as a verifier trusting identity keys by their `@id`s per holder does (8.6), e.g. as a trust
+     * anchor names them, as `TryVerify` of the C# implementation: every signature valid, by an identity key it or the
+     * operator names, valid at `signedAt`; signed by trusted keys of as many holders as the larger of the given
+     * `minConsensus` and its own require, counted as the verifier knows them, never as the statement names them; the
+     * trusted keys it names named as the verifier knows their holders, one holder for the keys of one, another for those of
+     * every other; valid at `at`, when given. So no holder counts twice by naming a key of its own as another's.
+     *
+     * Returns the holders that signed it, and the holder of every identity key trusted then: its own, as it names their
+     * holders, and the trusted ones it does not name, as it names another key of their holder, or else as a holder of its
+     * own the verifier knows.
+     */
+    public verifyHolders(trustedHolders:     readonly (readonly string[])[],
+                         otherIdentityKeys:  readonly POIPublicKey[] = [],
+                         options:            { minConsensus?: number, at?: number } = {}): { signedBy: Set<string>, holderOf: Map<string, string> } {
+
+        const trusted = new Map<string, number>();
+
+        trustedHolders.forEach((keys, holder) => {
+            for (const id of keys) {
+                if (trusted.has(id))
+                    throw new POIError(`The identity key '${id}' is trusted as one of two holders!`);
+                trusted.set(id, holder);
+            }
+        });
+
+        // The statement names the trusted keys as the verifier knows their holders.
+        const nameOf    = new Map<number, string>();
+        const holderOf  = new Map<string, number>();
+
+        for (const identityKey of this.identityKeys) {
+
+            const holder = trusted.get(identityKey.id);
+
+            if (holder === undefined)
+                continue;
+
+            const name   = identityKey.holderOrUnnamed;
+            const named  = nameOf.get(holder);
+            const other  = holderOf.get(name);
+
+            if ((named !== undefined && named !== name) || (other !== undefined && other !== holder))
+                throw new POIError(`The key statement names the holder of the trusted identity key '${identityKey.id}' otherwise than it is trusted!`);
+
+            nameOf.set(holder, name);
+            holderOf.set(name, holder);
+
+        }
+
+        const nameOfHolder = (holder: number): string =>
+            nameOf.get(holder) ?? `\u0000${trustedHolders[holder]?.[0] ?? ''}`;
+
         const keys      = [ ...this.identityKeys, ...otherIdentityKeys ];
         const required  = Math.max(options.minConsensus ?? 1, this.minConsensus);
-        const holders   = new Set<string>();
+        const holders   = new Set<number>();
 
         const [ only ] = this.signatures;
 
@@ -165,8 +228,10 @@ export class KeyStatement {
 
             this.verifySignature(signature, identityKey);
 
-            if (trusted.has(signature.keyId))
-                holders.add(identityKey.holderOrUnnamed);
+            const holder = trusted.get(signature.keyId);
+
+            if (holder !== undefined)
+                holders.add(holder);
 
         }
 
@@ -176,7 +241,13 @@ export class KeyStatement {
         if (options.at !== undefined && !this.isValidAt(options.at))
             throw new POIError(`The key statement is not valid at ${toTimestamp(options.at)}: it was signed at ${toTimestamp(this.signedAt)} and is valid until ${toTimestamp(this.validUntil)}!`);
 
-        return holders;
+        const trustedThen = new Map(this.identityKeys.map(key => [ key.id, key.holderOrUnnamed ] as const));
+
+        for (const [id, holder] of trusted)
+            if (!trustedThen.has(id))
+                trustedThen.set(id, nameOfHolder(holder));
+
+        return { signedBy: new Set([ ...holders ].map(nameOfHolder)), holderOf: trustedThen };
 
     }
 

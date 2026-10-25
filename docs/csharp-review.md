@@ -23,7 +23,7 @@ stays the review of the C# implementation.
 
 | # | Finding | Severity | Status | Since `bbd4cbd` |
 |---|---|---|---|---|
-| 1 | The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged |
+| 1 | ✅ The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged; **fixed** in `3e32f48` |
 | 2 | ✅ ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated; **fixed** in `dbf39b0` |
 | 3 | A removed or expired key still signs, through an older version | high | confirmed | unchanged |
 | 4 | A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged |
@@ -46,7 +46,7 @@ stays the review of the C# implementation.
 ✅ marks what WWCP_POI has fixed since; the finding stays as it was found, with how it was fixed.
 
 
-## 1. The holders counted for a quorum are named by the keys being counted
+## 1. ✅ The holders counted for a quorum are named by the keys being counted
 
 **Where:** `WWCP_POI3/Proofs/RoamingNetworkKeyStatement.cs:622,635,651`,
 `WWCP_POI3/Proofs/RoamingNetworkSigningKeyCertificate.cs:269,281`, `WWCP_POI3/Proofs/RoamingNetworkTrustAnchor.cs:46`;
@@ -68,7 +68,20 @@ holders. The quorum, meant so that "no single company decides for the network", 
 **Fix:** the trust anchor binds keys to holders (e.g. `keys` grouped per holder, `[[id, id], [id], [id]]`), and the
 verifier takes holders from the anchor only; signatures by keys the verified statement does not name do not count.
 
-The TypeScript port does as the C# implementation, so that both accept the same; `KeyStatement.verify` says so.
+**Fixed** in `3e32f48`, in context `v2` of the trust anchor (SPECIFICATION.md 4.1, 8.6):
+- A trust anchor names the keys per holder, one entry each: the `@id` of its key, or the array of the `@id`s of its keys
+  where it holds several (`"keys": ["a1…", ["b1…", "b2…"], "c1…"]`; in the URL the holders separated by `,`, the keys of
+  one holder by `;`). A verifier takes each entry as a holder of its own; `CreateTrustAnchor` groups the keys as the key
+  statement names their holders.
+- The holders of a key statement are counted as the verifier knows them, never as the statement names them, and the
+  statement must name the trusted keys so, or is refused (`RoamingNetworkKeyStatement.TryVerify(TrustedHolders, …)`).
+  An attestation counts for the holder of the trusted identity key that certified its key, as the verifier knows it
+  (`RoamingNetworkProof.Verify`), also for an anchored key the statement does not name.
+- A key keeps its holder: a version naming a key of a party with another holder than the version before is refused.
+
+`QuorumTests` of WWCP_POI hold the scenario above (`A_holder_does_not_count_twice_by_naming_its_key_as_another_s`), and
+WWCPPOIConformanceTests holds it for both implementations (`trust-holder-renamed`, `trust-holder-unnamed-key`, and
+`trust-holder-keys` taken). The TypeScript port does the same (`KeyStatement.verifyHolders`, `OperatorTrust`).
 
 
 ## 2. ✅ ECDSA twins of price statements: false split views, broken chains

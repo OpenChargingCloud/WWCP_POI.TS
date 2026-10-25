@@ -21,6 +21,7 @@ import { KeyUsages, type KeyUsage, type POIPublicKey } from '../keys.ts';
 import { SignatureRoles, type RoleSignature } from '../history/commit.ts';
 import { RoamingNetworkOperator, type RoamingNetwork } from '../network/roamingNetwork.ts';
 import type { KeyStatement }            from '../proofs/keyStatement.ts';
+import type { SigningKeyCertificate }   from '../proofs/signingKeyCertificate.ts';
 import type { TrustAnchor }             from '../proofs/trustAnchor.ts';
 import { POIError }                     from '../errors.ts';
 
@@ -28,8 +29,10 @@ import { POIError }                     from '../errors.ts';
 /**
  * The trust a verifier has in the roaming network operator of a version, from a trust anchor it pinned (SPECIFICATION.md
  * section 8.6), as example A1 builds it: the key statement the version embeds is signed by trusted identity keys of as
- * many holders as the trust anchor and the statement require and valid now; then the identity keys it names are trusted
- * as well, and a signing key of the operator is trusted where a trusted identity key of its holder certifies it.
+ * many holders as the trust anchor and the statement require and valid now, and names their holders as the trust anchor
+ * does; then the identity keys it names are trusted as well, and a signing key of the operator is trusted where a trusted
+ * identity key of its holder certifies it. Holders are counted as the trust anchor and the statements it followed name
+ * them, never as a signing key names itself.
  */
 export class OperatorTrust {
 
@@ -37,11 +40,17 @@ export class OperatorTrust {
         public readonly anchor:             TrustAnchor,
         public readonly operator:           RoamingNetworkOperator,
         public readonly keyStatement:       KeyStatement,
-        /** The `@id`s of the identity keys of the trust anchor and of the verified key statement. */
-        public readonly trustedIdentityKeyIds: ReadonlySet<string>,
+        /** The holder of every trusted identity key, the trust anchor's and those of the verified key statement, by its `@id`. */
+        public readonly identityKeyHolders: ReadonlyMap<string, string>,
         /** The holders whose trusted identity keys signed the key statement. */
         public readonly statementSignedBy:  ReadonlySet<string>
     ) {}
+
+
+    /** The `@id`s of the identity keys of the trust anchor and of the verified key statement. */
+    public get trustedIdentityKeyIds(): ReadonlySet<string> {
+        return new Set(this.identityKeyHolders.keys());
+    }
 
 
     /** The number of holders of the roaming network operator a signature must come from: the larger quorum. */
@@ -89,14 +98,23 @@ export class OperatorTrust {
             throw new POIError('the roaming network operator states no keys');
 
         if (sameValue(statement.json, this.keyStatement.json))
-            return new OperatorTrust(this.anchor, operator, statement, this.trustedIdentityKeyIds, this.statementSignedBy);
+            return new OperatorTrust(this.anchor, operator, statement, this.identityKeyHolders, this.statementSignedBy);
 
-        const signedBy = statement.verify(this.trustedIdentityKeyIds, operator.identityKeys, { minConsensus: this.requiredConsensus, at: timeOf(at) });
+        // The later statement names the holders of the keys trusted here as they are known here.
+        const known = new Map<string, string[]>();
+
+        for (const [id, holder] of this.identityKeyHolders)
+            known.set(holder, [ ...(known.get(holder) ?? []), id ]);
+
+        const { signedBy, holderOf } = statement.verifyHolders([ ...known.values() ], operator.identityKeys, { minConsensus: this.requiredConsensus, at: timeOf(at) });
+
+        // Trusted then: those of the trust anchor and of the later statement, not those the statement before named only.
+        const trusted = new Set([ ...this.anchor.keys, ...statement.identityKeys.map(key => key.id) ]);
 
         return new OperatorTrust(this.anchor,
                                  operator,
                                  statement,
-                                 new Set([ ...this.anchor.keys, ...statement.identityKeys.map(key => key.id) ]),
+                                 new Map([ ...holderOf ].filter(([id]) => trusted.has(id))),
                                  signedBy);
 
     }
@@ -108,12 +126,12 @@ export class OperatorTrust {
         if (operator === undefined || statement === undefined)
             throw new POIError('the roaming network operator states no keys');
 
-        const signedBy = statement.verify(anchor.keys, operator.identityKeys, { minConsensus: anchor.minConsensus, at: timeOf(at) });
+        const { signedBy, holderOf } = statement.verifyHolders(anchor.holders, operator.identityKeys, { minConsensus: anchor.minConsensus, at: timeOf(at) });
 
         return new OperatorTrust(anchor,
                                  operator,
                                  statement,
-                                 new Set([ ...anchor.keys, ...statement.identityKeys.map(key => key.id) ]),
+                                 holderOf,
                                  signedBy);
 
     }
@@ -125,11 +143,28 @@ export class OperatorTrust {
      * that may sign the given usage, the `party` by default. Undefined unless all of that holds.
      */
     public signingKeyOf(signature: RoleSignature, usage: KeyUsage = KeyUsages.Party): POIPublicKey | undefined {
+        return this.certificateOf(signature, usage)?.signingKey;
+    }
+
+    /**
+     * The holder of the signing key a signature names, as `signingKeyOf` finds it: the one of the trusted identity key that
+     * certified it, as the trust anchor and the key statements it followed name it, never as the signing key names itself.
+     */
+    public holderOf(signature: RoleSignature, usage: KeyUsage = KeyUsages.Party): string | undefined {
+
+        const certificate = this.certificateOf(signature, usage);
+
+        return certificate === undefined ? undefined : this.identityKeyHolders.get(certificate.keyId);
+
+    }
+
+    private certificateOf(signature: RoleSignature, usage: KeyUsage): SigningKeyCertificate | undefined {
 
         if (signature.role !== SignatureRoles.RoamingNetworkOperator)
             return undefined;
 
-        const identityPool = [ ...this.keyStatement.identityKeys, ...this.operator.identityKeys ];
+        const identityPool  = [ ...this.keyStatement.identityKeys, ...this.operator.identityKeys ];
+        const trustedIds    = this.trustedIdentityKeyIds;
 
         for (const certificate of this.operator.signingKeyCertificates) {
 
@@ -139,8 +174,8 @@ export class OperatorTrust {
                 continue;
 
             try {
-                certificate.verify(identityPool, this.trustedIdentityKeyIds);
-                return certificate.signingKey;
+                certificate.verify(identityPool, trustedIds);
+                return certificate;
             }
             catch {
                 continue;
@@ -165,13 +200,14 @@ export class OperatorTrust {
 
         for (const signature of signatures.filter(signature => signature.role === SignatureRoles.RoamingNetworkOperator)) {
 
-            const key = this.signingKeyOf(signature);
+            const key     = this.signingKeyOf(signature);
+            const holder  = this.holderOf(signature);
 
-            if (key === undefined)
+            if (key === undefined || holder === undefined)
                 throw new POIError(`the key '${signature.keyId}' is no signing key a trusted identity key of its holder certifies`);
 
             verify(signature, key);
-            signedBy.add(key.holderOrUnnamed);
+            signedBy.add(holder);
 
         }
 

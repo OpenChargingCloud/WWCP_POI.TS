@@ -13,6 +13,7 @@ import { verifyVersion }      from '../src/verifier/version.ts';
 import { verifyCheckpointSignatures } from '../src/verifier/checkpoints.ts';
 import { parseJSON }          from '../src/json/parse.ts';
 import { POIPublicKey }       from '../src/keys.ts';
+import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { clone, type JSONArray, type JSONObject } from '../src/json/value.ts';
 
 
@@ -180,3 +181,46 @@ describe('Example A11: a verifier trusting only the new locks', () => {
 
 });
 
+
+
+describe('Example A11: a trust anchor names the keys per holder', () => {
+
+    // The genesis of epoch 2 names the old and the new identity key of AlphaOrg and of BetaOrg: two holders of two keys.
+    const genesis2   = RoamingNetwork.parse((readJSON('published/QA-epoch-2-genesis.json') as JSONObject)['roamingNetwork']);
+    const statement  = defined(genesis2.operator?.keyStatement);
+    const operator   = defined(genesis2.operator);
+
+    it('writes a holder of several keys as an array of their @ids, in JSON, CBOR and the URL, and reads them back so', () => {
+
+        const perHolder = TrustAnchor.create('QA', anchor.urls, statement.holders, 2);
+        const keys      = perHolder.toJSON()['keys'] as JSONArray;
+
+        expect(perHolder.holders.map(holder => holder.length).sort((left, right) => left - right)).toEqual([ 1, 2, 2 ]);
+        expect(keys.filter(holder => Array.isArray(holder))).toHaveLength(2);
+        expect(keys.filter(holder => typeof holder === 'string')).toHaveLength(1);
+
+        for (const read of [ TrustAnchor.parse(perHolder.toQRCode()), TrustAnchor.parse(perHolder.toURL()), TrustAnchor.fromJSON(perHolder.toJSON()) ])
+            expect(read.holders).toEqual(perHolder.holders);
+
+        expect(perHolder.toURL()).toContain(defined(perHolder.holders.find(holder => holder.length === 2)).join(';'));
+
+        // Each @id once, every holder with a key, and at most as many must sign as there are holders.
+        expect(() => TrustAnchor.create('QA', anchor.urls, [ ...statement.holders, [ defined(anchor.keys[0]) ] ], 2)).toThrow('each once');
+        expect(() => TrustAnchor.create('QA', anchor.urls, [ ...statement.holders, [] ], 2)).toThrow('every holder with at least one');
+        expect(() => TrustAnchor.create('QA', anchor.urls, statement.holders, 4)).toThrow('needs identity keys of as many holders, not of 3');
+
+    });
+
+    it('counts the holders of the key statement as the trust anchor names them, and refuses a statement naming them otherwise', () => {
+
+        const perHolder = TrustAnchor.create('QA', anchor.urls, statement.holders, 2);
+        const signedBy  = statement.verifyHolders(perHolder.holders, operator.identityKeys, { minConsensus: 2 }).signedBy;
+
+        expect([ ...signedBy ].sort()).toEqual([ 'AlphaOrg', 'BetaOrg' ]);
+
+        // Pinned as five holders of a key each, the statement names two holders of two keys each: not as they are trusted.
+        expect(() => statement.verify(perHolder.keys, operator.identityKeys, { minConsensus: 2 })).toThrow('otherwise than it is trusted');
+
+    });
+
+});

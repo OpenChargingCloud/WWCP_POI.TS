@@ -74,9 +74,10 @@ What is checked (sections 8.4 to 8.6, 12.4 of the specification):
 
 - the proof leads to a root, the `effectiveTree` ETag of a version of the roaming network;
 - the key statement of the roaming network operator the proof gives is signed by identity keys the trust anchor pins, of
-  as many holders as its `minConsensus` requires, and is valid now;
+  as many holders as its `minConsensus` requires, counted as the trust anchor names them per holder, names their holders
+  so as well, and is valid now;
 - attestations of that root, valid now, by signing keys of the operator, each certified by a trusted identity key of its
-  holder, come from as many holders;
+  holder, come from as many holders, each counted for the holder of that identity key as the trust anchor knows it;
 - each price statement is signed by a signing key of the charging station operator that the proof gives and that may sign
   `priceStatements`, names only charging tariffs of its EVSE, and chains with the statements before it.
 

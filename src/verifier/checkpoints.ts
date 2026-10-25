@@ -71,16 +71,18 @@ export function verifyCheckpointSignatures(checkpoint:  Checkpoint,
 
         if (signature.role === SignatureRoles.RoamingNetworkOperator) {
 
-            const key = trust.signingKeyOf(signature);
+            // Counted for the holder of the trusted identity key that certified the key, as the trust knows it.
+            const key     = trust.signingKeyOf(signature);
+            const holder  = trust.holderOf(signature);
 
-            if (key === undefined) {
+            if (key === undefined || holder === undefined) {
                 ignored.push(`the key '${signature.keyId}' is no signing key a trusted identity key of its holder certifies`);
                 continue;
             }
 
             try {
                 checkpoint.verifySignature(signature, key);
-                signedBy.add(key.holderOrUnnamed);
+                signedBy.add(holder);
             }
             catch (e) {
                 ignored.push(`the signature by '${signature.keyId}' is invalid: ${e instanceof Error ? e.message : String(e)}`);

@@ -33,39 +33,53 @@ export type I18NText = Readonly<Record<string, string>>;
 /**
  * What a verifier pins of a roaming network (SPECIFICATION.md section 8.6), e.g. from a QR code on the website or in the
  * contract documents of its operator: the URLs below which its proofs are served, the `@id`s of the identity keys of its
- * operator and its `minConsensus`, and its name and description to show.
+ * operator per holder and its `minConsensus`, and its name and description to show. Each entry of `keys` is a holder:
+ * the `@id` of its key, or the array of the `@id`s of its keys where it holds several.
  *
- * Only the `@id`s and `minConsensus` are trusted. The texts to show are those of a verified proof; a verifier warns where
- * the trust anchor names the network otherwise.
+ * Only the `@id`s, which of them one holder holds, and `minConsensus` are trusted: a key statement counts the holders as
+ * the trust anchor names them, not as it names them itself. The texts to show are those of a verified proof; a verifier
+ * warns where the trust anchor names the network otherwise.
  */
 export class TrustAnchor {
 
     private constructor(
         public readonly id:            string,
         public readonly urls:          readonly string[],
-        public readonly keys:          readonly string[],
+        /** The `@id`s of the identity keys per holder: the keys of each in their order, the holders in the order of their first. */
+        public readonly holders:       readonly (readonly string[])[],
         public readonly minConsensus:  number,
         public readonly name:          I18NText,
         public readonly description:   I18NText
     ) {}
 
 
-    /** Makes a trust anchor, checked as one read would be. */
-    public static create(id: string, urls: readonly string[], keys: readonly string[], minConsensus = 1, name: I18NText = {}, description: I18NText = {}): TrustAnchor {
+    /** The `@id`s of the identity keys of all holders. */
+    public get keys(): readonly string[] {
+        return this.holders.flat();
+    }
 
-        const urlNetworkId = checkTrustAnchor(urls, keys, minConsensus);
+
+    /**
+     * Makes a trust anchor, checked as one read would be: each entry of `keys` a holder, the `@id` of its key, or the
+     * array of the `@id`s of its keys.
+     */
+    public static create(id: string, urls: readonly string[], keys: readonly (string | readonly string[])[], minConsensus = 1, name: I18NText = {}, description: I18NText = {}): TrustAnchor {
+
+        const holders       = orderedHolders(keys);
+        const urlNetworkId  = checkTrustAnchor(urls, holders, minConsensus);
 
         if (urlNetworkId !== id)
             throw new POIError(`The trust anchor of the roaming network '${id}' names the URL of '${urlNetworkId}'!`);
 
-        return new TrustAnchor(id, [ ...urls ], [ ...keys ], minConsensus, { ...name }, { ...description });
+        return new TrustAnchor(id, [ ...urls ], holders, minConsensus, { ...name }, { ...description });
 
     }
 
 
     /**
      * Reads a trust anchor as scanned: the text of its QR code, `WWCP/TA-2:` and the Base45 of its deterministic CBOR, or
-     * its URL, `https://…/RNs/{RN_Id}?keys=<@id>,<@id>&minConsensus=2&alsoAt=<escaped URL>`.
+     * its URL, `https://…/RNs/{RN_Id}?keys=<@id>,<@id>;<@id>&minConsensus=2&alsoAt=<escaped URL>`, the holders separated by
+     * commas, the keys of one holder by semicolons.
      */
     public static parse(text: string): TrustAnchor {
 
@@ -122,10 +136,10 @@ export class TrustAnchor {
 
         const quorum = minConsensus === undefined ? 1 : Number(minConsensus);
         const urls   = [ networkURL, ...alsoAt.map(value => decodeURIComponent(value)) ];
-        const ids    = decodeURIComponent(keys).split(',');
-        const id     = checkTrustAnchor(urls, ids, quorum);
+        const holders  = orderedHolders(decodeURIComponent(keys).split(',').map(holder => holder.split(';')));
+        const id       = checkTrustAnchor(urls, holders, quorum);
 
-        return new TrustAnchor(id, urls, ids, quorum, {}, {});
+        return new TrustAnchor(id, urls, holders, quorum, {}, {});
 
     }
 
@@ -143,10 +157,13 @@ export class TrustAnchor {
                               throw new POIError('A trust anchor names the absolute URLs of its roaming network!');
                           return url;
                       });
-        const keys  = requireArray(get(json, 'keys'), 'The keys of a trust anchor').map(key => {
-                          if (typeof key !== 'string')
-                              throw new POIError('A trust anchor names the identity keys of the roaming network operator by their @ids!');
-                          return key;
+        // One entry per holder: the @id of its key, or the array of the @ids of its keys.
+        const keys  = requireArray(get(json, 'keys'), 'The keys of a trust anchor').map(holder => {
+                          if (typeof holder === 'string')
+                              return holder;
+                          if (Array.isArray(holder) && holder.length > 0 && holder.every(key => typeof key === 'string'))
+                              return holder;
+                          throw new POIError('A trust anchor names the identity keys of the roaming network operator by their @ids, per holder!');
                       });
 
         const minConsensus = get(json, 'minConsensus') ?? 1;
@@ -187,9 +204,18 @@ export class TrustAnchor {
         if (urls?.type !== 'array' || urls.items.some(url => url.type !== 'text'))
             throw new POIError('A trust anchor names the absolute URLs of its roaming network!');
 
+        // One entry per holder: the thumbprint of its key, or the array of the thumbprints of its keys.
         const keys = values.get('keys');
-        if (keys?.type !== 'array' || keys.items.some(key => key.type !== 'bytes' || key.value.length !== 32))
-            throw new POIError('The identity keys of a trust anchor must be their SHA-256 thumbprints, 32 bytes each!');
+        if (keys?.type !== 'array')
+            throw new POIError('The identity keys of a trust anchor must be an array, one entry per holder!');
+
+        const thumbprint = (key: CborValue): string => {
+            if (key.type !== 'bytes' || key.value.length !== 32)
+                throw new POIError('The identity keys of a trust anchor must be their SHA-256 thumbprints, 32 bytes each, per holder!');
+            return toHex(key.value);
+        };
+
+        const holders = keys.items.map(holder => holder.type === 'array' ? holder.items.map(thumbprint) : thumbprint(holder));
 
         let quorum = 1;
         const minConsensus = values.get('minConsensus');
@@ -201,7 +227,7 @@ export class TrustAnchor {
 
         return TrustAnchor.create(id.value,
                                   urls.items.map(url => (url as { value: string }).value),
-                                  keys.items.map(key => toHex((key as { value: Uint8Array }).value)),
+                                  holders,
                                   quorum,
                                   i18nOfCbor(values.get('name')),
                                   i18nOfCbor(values.get('description')));
@@ -216,7 +242,7 @@ export class TrustAnchor {
             '@id':       this.id,
             '@context':  TRUST_ANCHOR_CONTEXT,
             urls:        [ ...this.urls ],
-            keys:        [ ...this.keys ],
+            keys:        this.holders.map(keys => keys.length === 1 ? required(keys[0], 'The key of a holder') : [ ...keys ]),
         };
 
         if (Object.keys(this.name).length > 0)
@@ -239,7 +265,9 @@ export class TrustAnchor {
             [ cbor.text('@id'),      cbor.text(this.id) ],
             [ cbor.text('@context'), cbor.text(TRUST_ANCHOR_CONTEXT) ],
             [ cbor.text('urls'),     cbor.array(this.urls.map(url => cbor.text(url))) ],
-            [ cbor.text('keys'),     cbor.array(this.keys.map(key => cbor.bytes(fromHex(key, true)))) ],
+            [ cbor.text('keys'),     cbor.array(this.holders.map(keys => keys.length === 1
+                                                                       ? cbor.bytes(fromHex(required(keys[0], 'The key of a holder'), true))
+                                                                       : cbor.array(keys.map(key => cbor.bytes(fromHex(key, true)))))) ],
         ];
 
         if (Object.keys(this.name).length > 0)
@@ -262,7 +290,7 @@ export class TrustAnchor {
 
     /** Its URL form, without name and description. */
     public toURL(): string {
-        return `${this.urls[0]}?keys=${this.keys.join(',')}` +
+        return `${this.urls[0]}?keys=${this.holders.map(keys => keys.join(';')).join(',')}` +
                (this.minConsensus > 1 ? `&minConsensus=${this.minConsensus}` : '') +
                this.urls.slice(1).map(url => `&alsoAt=${encodeURIComponent(url)}`).join('');
     }
@@ -297,13 +325,21 @@ function i18nOfCbor(value: CborValue | undefined): I18NText {
 
 const URL_PATTERN = /^(https?):\/\/([^/?#\s]+)(\/[^?#\s]*)?$/i;
 
+/** The keys per holder, ordered: the keys of each in their order, the holders in the order of their first keys. */
+function orderedHolders(keys: readonly (string | readonly string[])[]): string[][] {
+    return keys.map(holder => (typeof holder === 'string' ? [ holder ] : [ ...holder ]).sort(ordinal))
+               .sort((left, right) => ordinal(left[0] ?? '', right[0] ?? ''));
+}
+
+const ordinal = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0;
+
 /**
  * Checks URLs, keys and quorum of a trust anchor as `TryCheck` of the C# implementation, and returns the roaming network
  * the URLs name: at least one URL, each once, http or https, each the one of the same roaming network, `~/RNs/{RN_Id}`,
- * without a query; at least one key `@id` of 64 lowercase hexadecimal digits, each once; `minConsensus` from 1 to the
- * number of keys.
+ * without a query; at least one key `@id` of 64 lowercase hexadecimal digits, each once, every holder with at least one;
+ * `minConsensus` from 1 to the number of holders.
  */
-function checkTrustAnchor(urls: readonly string[], keys: readonly string[], minConsensus: number): string {
+function checkTrustAnchor(urls: readonly string[], holders: readonly (readonly string[])[], minConsensus: number): string {
 
     if (urls.length === 0)
         throw new POIError('A trust anchor names at least one URL of its roaming network!');
@@ -336,11 +372,13 @@ function checkTrustAnchor(urls: readonly string[], keys: readonly string[], minC
 
     }
 
-    if (keys.length === 0 || keys.some(key => !/^[0-9a-f]{64}$/.test(key)) || new Set(keys).size !== keys.length)
-        throw new POIError('A trust anchor names at least one identity key by its @id, 64 lowercase hexadecimal digits, each once!');
+    const keys = holders.flat();
 
-    if (minConsensus < 1 || minConsensus > keys.length)
-        throw new POIError(`The minConsensus ${minConsensus} of a trust anchor needs as many identity keys, not ${keys.length}!`);
+    if (keys.length === 0 || holders.some(holder => holder.length === 0) || keys.some(key => !/^[0-9a-f]{64}$/.test(key)) || new Set(keys).size !== keys.length)
+        throw new POIError('A trust anchor names at least one identity key by its @id, 64 lowercase hexadecimal digits, each once, and every holder with at least one!');
+
+    if (minConsensus < 1 || minConsensus > holders.length)
+        throw new POIError(`The minConsensus ${minConsensus} of a trust anchor needs identity keys of as many holders, not of ${holders.length}!`);
 
     return required(networkId, 'A trust anchor names at least one URL of its roaming network!');
 

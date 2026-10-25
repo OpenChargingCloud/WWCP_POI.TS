@@ -58,3 +58,11 @@ the SHA-256 of its signature input. The ECDSA twin `(r, n − s)` of a statement
 statement, of the same digest (docs/csharp-review.md, 2); `PriceStatement.sameSignedContent` is gone. The test vectors
 are those WWCPPOIConformanceTests generates for it, with a new run of the C# examples at `dbf39b0`
 (`tests/vectors/csharp-dbf39b0`).
+
+The holders of a quorum are counted as the trust anchor names them, as WWCP_POI does since `3e32f48` (SPECIFICATION.md
+4.1, 8.6; docs/csharp-review.md, 1): a trust anchor names the keys per holder, the `@id` of its key or the array of the
+`@id`s of its keys (`TrustAnchor.holders`; in the URL the holders separated by `,`, the keys of one holder by `;`).
+`KeyStatement.verifyHolders` counts the holders as the verifier knows them and refuses a statement naming the trusted
+keys otherwise; a station proof, `OperatorTrust` and the signatures of checkpoints count an attestation or a signature
+for the holder of the trusted identity key that certified its key. A change set naming a key of a party with another
+holder than before is refused.

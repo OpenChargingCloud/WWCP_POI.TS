@@ -27,7 +27,7 @@ import { SigningKeyCertificate }     from './signingKeyCertificate.ts';
 import { Attestation }               from './attestation.ts';
 import type { TrustAnchor }          from './trustAnchor.ts';
 import type { CheckpointProof }      from '../history/checkpoint.ts';
-import { POIError }                  from '../errors.ts';
+import { POIError, required as present } from '../errors.ts';
 
 
 export const PROOF_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/proof/v1';
@@ -146,14 +146,16 @@ export class ChargingStationProof {
         if (keyStatement.roamingNetworkOperatorId !== operatorId)
             throw new POIError(`The key statement is one of the roaming network operator '${keyStatement.roamingNetworkOperatorId}', not of '${operatorId}'!`);
 
-        keyStatement.verify(anchor.keys, operatorIdentityKeys, { minConsensus: anchor.minConsensus, at: time });
-
-        // A key statement trusted names identity keys to trust, e.g. those replacing pinned ones.
+        // A key statement trusted names identity keys to trust, e.g. those replacing pinned ones, with their holders, which
+        // it must name as the trust anchor does.
+        const { holderOf }  = keyStatement.verifyHolders(anchor.holders, operatorIdentityKeys, { minConsensus: anchor.minConsensus, at: time });
         const identityKeys  = [ ...keyStatement.identityKeys, ...operatorIdentityKeys ];
-        const trustedIds    = new Set([ ...anchor.keys, ...keyStatement.identityKeys.map(key => key.id) ]);
+        const trustedIds    = new Set(holderOf.keys());
         const required      = Math.max(anchor.minConsensus, keyStatement.minConsensus);
 
-        const certifiedSigningKeyOf = (attestation: Attestation): POIPublicKey | undefined => {
+        // The signing key of an attestation, certified by a trusted identity key of its holder, and that holder as the
+        // verifier knows it, never as the signing key names itself.
+        const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string } | undefined => {
 
             for (const certificate of certificates) {
 
@@ -165,7 +167,7 @@ export class ChargingStationProof {
 
                 try {
                     certificate.verify(identityKeys, trustedIds);
-                    return certificate.signingKey;
+                    return { key: certificate.signingKey, holder: present(holderOf.get(certificate.keyId), 'The holder of a trusted identity key') };
                 }
                 catch {
                     continue;
@@ -204,15 +206,15 @@ export class ChargingStationProof {
                 continue;
             }
 
-            const key = certifiedSigningKeyOf(attestation);
+            const certified = certifiedSigningKeyOf(attestation);
 
-            if (key === undefined) {
+            if (certified === undefined) {
                 refused.push(`the key '${attestation.keyId}' is no signing key a trusted identity key of its holder certifies`);
                 continue;
             }
 
             try {
-                attestation.verifySignature(key);
+                attestation.verifySignature(certified.key);
             }
             catch (e) {
                 refused.push(`the attestation by '${attestation.keyId}' is invalid: ${e instanceof Error ? e.message : String(e)}`);
@@ -220,7 +222,7 @@ export class ChargingStationProof {
             }
 
             counted.push(attestation);
-            holders.add(key.holderOrUnnamed);
+            holders.add(certified.holder);
 
         }
 
