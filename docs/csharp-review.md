@@ -427,8 +427,9 @@ who resolves it; or let a removal of the RNO remove or clear the references to w
 
 ## 19. Smaller points
 
-- **Trust anchor quorum:** `minConsensus` is checked against the number of keys, not of holders
-  (`RoamingNetworkTrustAnchor.cs`, `TryCheck`); see 1.
+- ✅ **Trust anchor quorum (fixed in `3e32f48`):** `minConsensus` is checked against the number of keys, not of holders
+  (`RoamingNetworkTrustAnchor.cs`, `TryCheck`); see 1. Since the trust anchor names its keys per holder, `TryCheck`
+  checks `minConsensus` against the number of holders.
 - **Certificates and statements of another operator in a proof:** `RoamingNetworkProof.Verify` does not compare the
   `roamingNetworkOperatorId` of the certificates and of the key statement with the operator of the proof (the content
   check of a full version does). The TypeScript port does. Demonstrated by the vectors `trust-certificate-operator` and
