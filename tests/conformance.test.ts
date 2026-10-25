@@ -131,11 +131,13 @@ describe('Golden vectors: station proofs of the example network against a trust 
     for (const vector of trust.stationProofs.filter(applies))
         it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
 
-            const proof   = ChargingStationProof.parse(parseJSON(vector.proof));
+            const proof   = parseJSONObject(vector.proof);
             const anchor  = TrustAnchor.fromJSON(parseJSON(vector.trustAnchor));
             const verify  = (): unknown => verifyChargingStation(anchor, proof, { at: vector.at, evseId: vector.evseId });
 
-            expect(etagToText(proof.calculate().eTag)).toBe(vector.root);
+            // The root the proof leads to, whatever its attestations: also a proof refused for one of them, as one without
+            // a validUntil, leads to it.
+            expect(etagToText(ChargingStationProof.parse({ ...proof, attestations: [] }).calculate().eTag)).toBe(vector.root);
 
             if ((vector.expected === 'accepted') !== deviates(vector))
                 verify();

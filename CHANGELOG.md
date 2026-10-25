@@ -81,3 +81,9 @@ one that names a JSON-LD context in what it embeds (custom data aside, which kee
 certificates or the lists of section 2 out of their order or twice, or a timestamp not UTC to the millisecond is
 refused. An old value is compared as it is given. The test vectors are those of a new run of the C# examples at
 `80e4ccc` (`tests/vectors/csharp-80e4ccc`).
+
+An attestation gives its `validUntil`, at most 24 hours after its `signedAt`, as WWCP_POI requires since `be07037`
+(SPECIFICATION.md 8.5, 8.6, 12.1; docs/csharp-review.md, 7): `Attestation.parse` refuses one without or valid longer
+(`MAX_ATTESTATION_VALIDITY`), so that none is valid forever. The `signedAt` of an attestation or a price statement is the
+choice of its signer: the signing key of an attestation counts when it is valid when it attested and at the time the proof
+is checked, and a price statement is current no longer than its key.

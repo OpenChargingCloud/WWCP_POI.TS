@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { checkContext, onlyProperties, optionalString, optionalTimestamp, requireInteger, requireObject, requireString, requireTimestamp, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
+import { checkContext, onlyProperties, optionalString, requireInteger, requireObject, requireString, requireTimestamp, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }        from '../json/canonical.ts';
 import { get, type JSONObject, type JSONValue } from '../json/value.ts';
 import { verifySignature }           from '../crypto/signature.ts';
@@ -26,10 +26,14 @@ import { POIError }                  from '../errors.ts';
 
 export const ATTESTATION_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/attestation/v1';
 
+/** How long an attestation is valid at most, from its `signedAt` to its `validUntil` (8.5): 24 hours, in milliseconds. */
+export const MAX_ATTESTATION_VALIDITY = 24 * 60 * 60 * 1000;
+
 
 /**
  * An attestation (SPECIFICATION.md section 8.5): states that a version is the one its signer has, at a point in time, with
- * the `effectiveTree` ETag of one hash algorithm. Small and fresh, unlike a commit signature.
+ * the `effectiveTree` ETag of one hash algorithm. Small and fresh, unlike a commit signature: valid from its `signedAt`
+ * until its `validUntil`, which it must give, at most a day later.
  */
 export class Attestation {
 
@@ -41,7 +45,7 @@ export class Attestation {
         public readonly role:              string,
         public readonly signer:            string | undefined,
         public readonly signedAt:          number,
-        public readonly validUntil:        number | undefined,
+        public readonly validUntil:        number,
         public readonly subject:           JSONObject | undefined,
         public readonly algorithm:         string,
         public readonly keyId:             string,
@@ -62,11 +66,14 @@ export class Attestation {
         if (eTag.format !== 'effectiveTree')
             throw new POIError('An attestation attests an effectiveTree ETag!');
 
-        const signedAt    = requireTimestamp (json, 'signedAt',   'The signedAt of an attestation');
-        const validUntil  = optionalTimestamp(json, 'validUntil', 'The validUntil of an attestation');
+        const signedAt    = requireTimestamp(json, 'signedAt',   'The signedAt of an attestation');
+        const validUntil  = requireTimestamp(json, 'validUntil', 'The validUntil of an attestation');
 
-        if (validUntil !== undefined && validUntil < signedAt)
+        if (validUntil < signedAt)
             throw new POIError('An attestation is not valid until before it was signed!');
+
+        if (validUntil - signedAt > MAX_ATTESTATION_VALIDITY)
+            throw new POIError(`An attestation is valid for 24 hours at most, not from ${toTimestamp(signedAt)} until ${toTimestamp(validUntil)}!`);
 
         const subject = get(json, 'subject');
 
@@ -98,6 +105,7 @@ export class Attestation {
             keyId:             this.keyId,
             role:              this.role,
             signedAt:          toTimestamp(this.signedAt),
+            validUntil:        toTimestamp(this.validUntil),
             roamingNetworkId:  this.roamingNetworkId,
             commitId:          this.commitId,
             revision:          this.revision,
@@ -106,9 +114,6 @@ export class Attestation {
 
         if (this.signer !== undefined)
             json['signer'] = this.signer;
-
-        if (this.validUntil !== undefined)
-            json['validUntil'] = toTimestamp(this.validUntil);
 
         if (this.subject !== undefined)
             json['subject'] = this.subject;
@@ -129,7 +134,7 @@ export class Attestation {
 
     /** Whether it is valid at the given point in time: signed then or before, and not after its `validUntil`. */
     public isValidAt(time: number): boolean {
-        return this.signedAt <= time && (this.validUntil === undefined || time <= this.validUntil);
+        return this.signedAt <= time && time <= this.validUntil;
     }
 
 }

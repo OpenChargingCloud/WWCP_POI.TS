@@ -312,7 +312,8 @@ export interface VerifiedPrice {
  * Verifies price statements (12.4) against what a verified proof of a charging station gives: each one of its pool, the
  * station or one of its EVSEs, signed by a signing key of the operator that may sign `priceStatements` and was valid when
  * it signed, naming only charging tariffs of that entity, the statements of one entity a chain. Returns the statement of
- * each entity valid at `at`, now by default, where there is one.
+ * each entity valid at `at`, now by default, where there is one, and its key valid then as well: a statement is valid
+ * no longer than its key, whatever its `signedAt` says (12.1).
  */
 export function verifyPriceStatements(station:     VerifiedChargingStation,
                                       statements:  JSONValue,
@@ -335,7 +336,8 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
         ...station.evses.map(evse => [ `EVSE:${asText(evse['@id'])}`, { type: 'EVSE', tariffs: new Set((station.tariffs.get(asText(evse['@id'])) ?? []).map(tariff => asText(tariff['@id']))) } ] as const),
     ]);
 
-    const byEntity = new Map<string, PriceStatement[]>();
+    const byEntity   = new Map<string, PriceStatement[]>();
+    const signedWith = new Map<string, POIPublicKey>();
 
     for (const item of list) {
 
@@ -346,7 +348,7 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
         if (entity === undefined)
             throw new POIError(`The price statement of the ${statement.entityType} '${statement.entityId}' is none of the station, its pool or its EVSEs!`);
 
-        statement.verify(station.roamingNetwork.id, operatorId, station.operatorSigningKeys);
+        signedWith.set(statement.digestHex(), statement.verify(station.roamingNetwork.id, operatorId, station.operatorSigningKeys));
 
         // The prices of an EVSE apply to the charging tariffs the proof gives, those of the EVSE (12.4).
         if (entity.tariffs !== undefined)
@@ -377,10 +379,10 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
                 verifyPriceStatementChain([ before, statement ]);
         });
 
-        // The latest statement valid now: a later one replaces it from its validFrom on.
+        // The latest statement valid now: a later one replaces it from its validFrom on. Valid no longer than its key.
         const valid = [ ...chain ].reverse().find(statement => statement.validFrom <= time);
 
-        if (valid?.isValidAt(time) === true)
+        if (valid?.isValidAt(time) === true && signedWith.get(valid.digestHex())?.isValidAt(time) === true)
             current.set(key, { statement: valid, digest: valid.digestHex() });
 
     }

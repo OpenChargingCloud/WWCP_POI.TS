@@ -76,10 +76,12 @@ What is checked (sections 8.4 to 8.6, 12.4 of the specification):
 - the key statement of the roaming network operator the proof gives is signed by identity keys the trust anchor pins, of
   as many holders as its `minConsensus` requires, counted as the trust anchor names them per holder, names their holders
   so as well, and is valid now;
-- attestations of that root, valid now, by signing keys of the operator, each certified by a trusted identity key of its
+- attestations of that root, valid now - signed then or before, until their `validUntil`, at most a day later - by
+  signing keys of the operator, valid when they attested and now, each certified by a trusted identity key of its
   holder, come from as many holders, each counted for the holder of that identity key as the trust anchor knows it;
 - each price statement is signed by a signing key of the charging station operator that the proof gives and that may sign
-  `priceStatements`, names only charging tariffs of its EVSE, and chains with the statements before it.
+  `priceStatements`, names only charging tariffs of its EVSE, and chains with the statements before it; it is current no
+  longer than its key.
 
 When a roaming network moves into a new epoch and replaces the keys of its operator (example A11), its operator publishes
 a new QR code: a key statement signed only by the new keys is refused under the old trust anchor. A verifier that follows

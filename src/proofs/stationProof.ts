@@ -110,7 +110,8 @@ export class ChargingStationProof {
      *   statement require, names this roaming network and operator, and is valid at `at`;
      * - attestations of the root, of this roaming network, commit and hash algorithm, valid at `at`, in the role of the
      *   roaming network operator, each by a signing key certified for this operator by a trusted identity key of its
-     *   holder, valid when it attested and allowed to sign for the party, come from as many holders as required.
+     *   holder, valid when it attested and at `at`, and allowed to sign for the party, come from as many holders as
+     *   required.
      *
      * Attestations of a subject (8.5) attest one entity, not the root: they do not count here.
      */
@@ -154,7 +155,8 @@ export class ChargingStationProof {
         const required      = Math.max(anchor.minConsensus, keyStatement.minConsensus);
 
         // The signing key of an attestation, certified by a trusted identity key of its holder, and that holder as the
-        // verifier knows it, never as the signing key names itself.
+        // verifier knows it, never as the signing key names itself. Valid when it attested and at `at`: the signedAt of
+        // an attestation is the choice of its signer.
         const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string } | undefined => {
 
             for (const certificate of certificates) {
@@ -162,6 +164,7 @@ export class ChargingStationProof {
                 if (certificate.signingKey.id !== attestation.keyId              ||
                     certificate.roamingNetworkOperatorId !== operatorId          ||
                     !certificate.signingKey.isValidAt(attestation.signedAt)      ||
+                    !certificate.signingKey.isValidAt(time)                      ||
                     !certificate.signingKey.maySign(KeyUsages.Party))
                     continue;
 
@@ -209,7 +212,7 @@ export class ChargingStationProof {
             const certified = certifiedSigningKeyOf(attestation);
 
             if (certified === undefined) {
-                refused.push(`the key '${attestation.keyId}' is no signing key a trusted identity key of its holder certifies`);
+                refused.push(`the key '${attestation.keyId}' is no signing key a trusted identity key of its holder certifies, valid at ${toTimestamp(attestation.signedAt)}, when it attested, and at ${toTimestamp(time)}, that may sign for the party`);
                 continue;
             }
 

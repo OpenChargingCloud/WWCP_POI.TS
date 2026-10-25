@@ -29,7 +29,7 @@ stays the review of the C# implementation.
 | 4 | ✅ A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged; **fixed** in `bc3b1bd` |
 | 5 | ✅ A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged; **fixed** in `c5cfc62` |
 | 6 | ✅ A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged; **fixed** in `6e469a0`, as this port does |
-| 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
+| 7 | ✅ Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged; **fixed** in `be07037`, more than this port did |
 | 8 | ✅ `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; **fixed** in `8e6a1fa`, the specification following the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
 | 10 | ✅ What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged; **fixed** in `80e4ccc`, more than the review found |
@@ -267,7 +267,7 @@ as the proof gives it: that node with everything below it, nothing above it. The
 verifies no subject attestations.
 
 
-## 7. Attestations without `validUntil`, keys checked at a self-chosen `signedAt`
+## 7. ✅ Attestations without `validUntil`, keys checked at a self-chosen `signedAt`
 
 **Where:** `WWCP_POI3/History/RoamingNetworkAttestation.cs:417-419`, `WWCP_POI3/Proofs/RoamingNetworkProof.cs`
 (`CertifiedSigningKeyOf`), `WWCP_POI3/Proofs/RoamingNetworkPriceStatement.cs` (validity).
@@ -285,6 +285,23 @@ checked a second before its attestations were signed is taken by the C# implemen
 
 **Fix:** require `validUntil` with a bounded lifetime, `signedAt ≤ at`, and the key valid at `at`. The TypeScript port
 requires `signedAt ≤ at`.
+
+**Fixed** in `be07037` (SPECIFICATION.md 8.5, 8.6, 12.1, 12.4), and in this port alike:
+- **Bounded:** an attestation gives its `validUntil`, at most 24 hours after its `signedAt`
+  (`RoamingNetworkAttestation.MaxValidity`); one without, or valid longer, is refused when it is read. `Create` and
+  `Attest` sign one valid for 15 minutes unless told otherwise, and a history attests for at most a day
+  (`AttestationValidity`). So no attestation outlives the day it was signed, also one of a key revoked since.
+- **Signed before:** `IsValidAt` is `signedAt ≤ at ≤ validUntil`; an attestation of the future is no attestation now. A
+  history takes an attestation of another server signed up to 5 minutes after its own clock (`MaxClockSkew`, as for
+  change sets), and counts it once it was signed.
+- **The key at `at`:** the signing key of an attestation counts when it is valid when it attested and at the time the
+  proof is verified; a price statement, with a `validUntil` or without, is valid no longer than its key
+  (`TryVerify(SigningKeys, …, At)`), and an operator replacing that key states its prices anew with the next one.
+
+Price statements keep `validUntil` optional: without, a statement is valid until the next one of its entity, as its chain
+says; its key bounds it. The vectors `stationProof-before-signed` and `trust-future` hold both implementations to it,
+`trust-no-valid-until` is refused by both, and `trust-a-day`, `trust-too-long` and `trust-key-ended` are new;
+WWCPPOIConformanceTests no longer lists D3 as a deviation.
 
 
 ## 8. ✅ `lastChange` of what embeds a changed entity: code and specification disagree

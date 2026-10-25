@@ -5,8 +5,11 @@ import { anchor as anchorOfEpoch1, anchorPQ } from './qa.ts';
 
 import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { ChargingStationProof } from '../src/proofs/stationProof.ts';
+import { Attestation }        from '../src/proofs/attestation.ts';
 import { verifyChargingStation, verifyPriceStatements } from '../src/verifier/chargingStation.ts';
 import { etagToText }         from '../src/etags.ts';
+import { POIPublicKey }       from '../src/keys.ts';
+import { toTimestamp }        from '../src/common.ts';
 import { clone, get, type JSONObject } from '../src/json/value.ts';
 import { parseJSON }          from '../src/json/parse.ts';
 
@@ -93,6 +96,29 @@ describe('The proof of a charging station, as an app checks it', () => {
 
         // After its validUntil there is no current price.
         expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-25T16:20:00.000Z' }).size).toBe(0);
+
+    });
+
+    it('takes a price statement no longer than its key, and an attestation for at most a day (csharp-review 7)', () => {
+
+        const station     = verifyChargingStation(anchor, readJSON('proofs/QA-proof-station-DE_GEF_S1.json'), { at: AT });
+        const statements  = readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json');
+        const statement   = defined(verifyPriceStatements(station, statements, { at: AT }).get('EVSE:DE*GEF*E1*1')).statement;
+
+        // The key of the statement ends when the statement begins: a current price then, none later, whatever its signedAt
+        // says.
+        const ended       = { ...station, operatorSigningKeys: station.operatorSigningKeys.map(key => key.id !== statement.keyId ? key : POIPublicKey.parse({ ...key.json, notAfter: toTimestamp(statement.validFrom) })) };
+        expect(statement.validFrom).toBeLessThan(Date.parse(AT));
+        expect(verifyPriceStatements(ended, statements, { at: statement.validFrom }).has('EVSE:DE*GEF*E1*1')).toBe(true);
+        expect(verifyPriceStatements(ended, statements, { at: AT }).has('EVSE:DE*GEF*E1*1')).toBe(false);
+
+        // An attestation gives its validUntil, at most a day after its signedAt (8.5).
+        const attestation = clone(defined(((readJSON('proofs/QA-proof-station-DE_GEF_S1.json') as JSONObject)['attestations'] as JSONObject[])[0]));
+        const signedAt    = Date.parse(asText(attestation['signedAt']));
+        expect(Attestation.parse({ ...attestation, validUntil: toTimestamp(signedAt + 24 * 60 * 60 * 1000) }).validUntil).toBe(signedAt + 24 * 60 * 60 * 1000);
+        expect(() => Attestation.parse({ ...attestation, validUntil: toTimestamp(signedAt + 24 * 60 * 60 * 1000 + 1) })).toThrow(/valid for 24 hours at most/);
+        delete attestation['validUntil'];
+        expect(() => Attestation.parse(attestation)).toThrow(/The validUntil of an attestation/);
 
     });
 
