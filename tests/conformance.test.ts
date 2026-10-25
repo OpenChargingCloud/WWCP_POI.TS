@@ -312,10 +312,13 @@ describe('Golden vectors: what must be refused', () => {
             if (vector.document !== undefined && vector.document.patch.length > 0)
                 check(vector, runDocument(vector.document));
 
+            // Refused for what the vector is about, where it names it.
             if (deviates(vector))
                 check(vector, document);
-            else
+            else if (vector.reason === undefined)
                 expect(() => { check(vector, document); }).toThrow();
+            else
+                expect(() => { check(vector, document); }).toThrow(vector.reason);
 
         });
 

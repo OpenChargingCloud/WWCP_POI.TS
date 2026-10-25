@@ -20,6 +20,7 @@ import { get, isArray, isObject, sameValue, set, without, type JSONObject, type 
 import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type ETag } from '../etags.ts';
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
+import { duplicateIdentification }   from './identifications.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import { POIPublicKey }              from '../keys.ts';
 import { KeyStatement }              from '../proofs/keyStatement.ts';
@@ -194,8 +195,10 @@ export class RoamingNetwork {
 
     /**
      * Reads a roaming network and refuses it unless it is a valid version: of its `@context`, with `eTags` that are those
-     * of its content, where it lists any, without keys of its own, and with a valid roaming network operator. Its `eTags`
-     * may be left out: what binds a version is the commit whose ETags it has (`matchesCommitETags`).
+     * of its content, where it lists any, without keys of its own, with a valid roaming network operator, and naming no
+     * identification twice that WWCP_POI keeps unique within the roaming network (`duplicateIdentification`), also the
+     * version a change set leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it has
+     * (`matchesCommitETags`).
      */
     public static parse(value: JSONValue | undefined): RoamingNetwork {
 
@@ -222,6 +225,12 @@ export class RoamingNetwork {
 
         const operatorJSON = get(json, 'operator');
         const operator     = operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, id);
+
+        const duplicate    = duplicateIdentification(content);
+
+        if (duplicate !== undefined)
+            throw new POIError(duplicate);
+
         const network      = new RoamingNetwork(id, content, operator, treeHashAlgorithms);
 
         const eTagsJSON = get(json, 'eTags');

@@ -87,3 +87,13 @@ An attestation gives its `validUntil`, at most 24 hours after its `signedAt`, as
 (`MAX_ATTESTATION_VALIDITY`), so that none is valid forever. The `signedAt` of an attestation or a price statement is the
 choice of its signer: the signing key of an attestation counts when it is valid when it attested and at the time the proof
 is checked, and a price statement is current no longer than its key.
+
+A version naming twice an identification WWCP_POI keeps unique within the roaming network is refused, as WWCP_POI refuses
+it (`DuplicateGridConnectionPoint` to `DuplicateEnergyMeterTemplate` of RoamingNetwork.cs): grid connection points, energy
+meters, parking garages, spaces, sensors, space groups, space templates and products, transparency software releases and
+certificates, energy meter templates and groups, the EVSE, charging station and charging pool groups of operators and
+providers, and charging tariff offers, compared as their C# types compare them, without case but parking products, the
+groups by the prefix of their party, `DE-GDF` as `DE*GDF` (`duplicateIdentification`). `RoamingNetwork.parse` checks every
+version it reads, also the one a change set leads to: before, an operator could add a group of the identification a group
+of the provider of its prefix has, and its change set was taken with the after ETags this library calculates. The golden
+vectors `version-twice-*` of WWCPPOIConformanceTests hold both implementations to it, refused in the same words (`reason`).

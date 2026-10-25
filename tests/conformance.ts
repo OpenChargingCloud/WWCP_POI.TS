@@ -126,6 +126,8 @@ export interface RefusalVector extends Vector {
     readonly at?:           string;
     readonly keysFrom?:     DocumentRef;
     readonly text?:         string;
+    /** What the refusal names, as both implementations word it. */
+    readonly reason?:       string;
 }
 
 export const refusals = load('poi-refusals.json') as { readonly vectors: readonly RefusalVector[] };
