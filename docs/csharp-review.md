@@ -31,7 +31,7 @@ stays the review of the C# implementation.
 | 6 | ✅ A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged; **fixed** in `6e469a0`, as this port does |
 | 7 | ✅ Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged; **fixed** in `be07037`, more than this port did |
 | 8 | ✅ `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; **fixed** in `8e6a1fa`, the specification following the code |
-| 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
+| 9 | ✅ A provider's change of an operator's group, by a stale owner record | medium | demonstrated | unchanged; **fixed** in `850440a`, more than the review found |
 | 10 | ✅ What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged; **fixed** in `80e4ccc`, more than the review found |
 | 11 | ✅ Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged; **fixed** in `9280f0b`, the specification following the code |
 | 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well |
@@ -339,7 +339,7 @@ older than those of its EVSEs and stations as long as the `createdAt` of the cha
 e.g. after merges, the floors of section 8.8 (point 3) remain open.
 
 
-## 9. A provider's change of an operator's group, by a stale owner record
+## 9. ✅ A provider's change of an operator's group, by a stale owner record
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.Ownership.cs:1144,1191` (`AddedProviderGroups`),
 `RoamingNetwork.ProviderChanges.cs`.
@@ -350,6 +350,27 @@ and changes the operator's group of that id. It needs a provider id the group id
 `DE-XYZ` and `DE*XYZ`); network-wide uniqueness of group ids is checked only after the last change. The owner path was
 read, the full scenario was not set up. `AddedEnergyMeterChildren` (`:1386-1452`) follows the same pattern for energy
 meter templates and groups.
+
+**Demonstrated** against `be07037`, then **fixed** in `850440a`. The provider `DE-GDF` alone signed a change set adding
+its group `DE-GDF*EGHIGHWAY`, removing it, and renaming `DE*GDF*EGHIGHWAY`, the group of the charging station operator
+`DE*GDF`: `TryCheckOwnership` took it, and `TryApplyChangeSet` renamed the operator's group. So did the change set in
+which the roaming network operator removed the provider, with the group, in place of the `Remove`, signed by the provider
+and the roaming network operator.
+
+The owner records of a change set (`EarlierChanges`) now say who owns what its earlier changes added, the parent of the
+`Add`, and that nobody owns what they removed, alone or with the party embedding it, until it is added anew; an owner
+the version names counts only while no earlier change removed it. A change of a group is one of a provider's group while
+a provider has it, as applying it decides (`IsProviderGroupChange`), else the operator its identification names signs
+it. Energy meter templates and groups, charging tariff offers, parking entities and grid connection points follow the
+same rule; there the stale record reached only changes that applying refused, as their `Add` refuses an identification
+any owner has, and they are now refused by their owners already. More than the review found: a grid connection point
+handed on or taken over by an earlier change is the new maintainer's for the changes after it, not the former one's.
+SPECIFICATION.md section 4.1 says so ("Within a change set"), and 9.3 that a provider's and an operator's group may
+share an identification within a change set. `ProviderGroupTests`, `EnergyMeterTemplateTests` and
+`GridConnectionPointTests` hold it.
+
+This port applies no change of a provider's group, nor of a grid connection point; its record of the energy meter
+templates and groups an earlier change added reaches only changes that applying refuses. It stays as it is.
 
 
 ## 10. ✅ What a signed change set says is not what the content holds
