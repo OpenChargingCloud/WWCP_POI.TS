@@ -27,7 +27,7 @@ stays the review of the C# implementation.
 | 2 | ✅ ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated; **fixed** in `dbf39b0` |
 | 3 | ✅ A removed or expired key still signs, through an older version | high | confirmed | unchanged; **fixed** in `f2ae688` |
 | 4 | ✅ A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged; **fixed** in `bc3b1bd` |
-| 5 | A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged |
+| 5 | ✅ A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged; **fixed** in `c5cfc62` |
 | 6 | A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged |
 | 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
 | 8 | `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; the models follow the code |
@@ -204,7 +204,7 @@ identification (`Commit.parse`); WWCPPOIConformanceTests holds both to the refus
 `changeSet-rebasedFrom`, `changeSet-without-changes` and `changeSet-merge-id`, against the new frozen run of `bc3b1bd`.
 
 
-## 5. A witness signs the first checkpoint of a history started from a snapshot unchecked
+## 5. ✅ A witness signs the first checkpoint of a history started from a snapshot unchecked
 
 **Where:** `WWCP_POI3/History/RoamingNetworkHistory.Checkpoints.cs:865` ("Only the first checkpoint of a history that
 started from a snapshot can not be checked completely"), `:409-446` (`TryWitness` signs any checkpoint the history holds).
@@ -219,6 +219,24 @@ refused nothing of 10.1 in its own history, which it took commit by commit".
 
 **Fix:** `TryWitness` refuses a checkpoint whose commits the history did not check, and a witness keeps the checkpoints
 it signed across restarts, new histories and epochs.
+
+**Fixed** in `c5cfc62` (SPECIFICATION.md 10.2, 10.5), both:
+- **Checked only:** a history marks the checkpoint it takes without its commits, the first one of a history started from
+  a snapshot (also when it is loaded again; after a compaction more strictly), and `TryWitness` refuses it.
+- **A journal beyond the history:** a witness is its key and its journal (`RoamingNetworkWitness`,
+  `RoamingNetworkWitnessJournal`, in memory or a file of one JSON line per checkpoint, written through before the
+  signature is given), one per witness for every history it signs from. It refuses another checkpoint of a roaming
+  network, epoch and sequence it signed; one the history signs from cannot tell is of the line signed last, as it does
+  not hold that checkpoint, e.g. after the peer started it anew from a snapshot; and one of an epoch not starting from
+  the final checkpoint it signed of the epoch before. Signing the same checkpoint again, e.g. with a new key, is
+  taken.
+
+`CheckpointTests` and `EpochTests` of WWCP_POI hold a history joined from a checkpoint snapshot, the journal read again
+after a restart refusing another checkpoint of a sequence from another history, a history not holding the checkpoint
+signed last, an epoch started from another final checkpoint, and a line written only partly. Examples A6, A9, A10 and
+A11 sign through one witness per party, its journal in `witnesses/`; A6 shows a copy started anew and one joined from
+a snapshot refused. A witness whose history was replaced in the middle of an epoch signs again in it only once it holds
+the checkpoint it signed last, at the latest in the next epoch. The TypeScript port signs no checkpoints.
 
 
 ## 6. A subject attestation verifies a whole proof
