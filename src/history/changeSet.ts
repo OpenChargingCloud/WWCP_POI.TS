@@ -17,8 +17,10 @@
 
 import { checkContext, onlyProperties, optionalString, requireArray, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }        from '../json/canonical.ts';
-import { get, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { get, isArray, isObject, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { hash }                      from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
+import { toHex }                     from '../encoding/text.ts';
 import { parseETags, type ETag }     from '../etags.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
@@ -26,6 +28,83 @@ import { POIError }                  from '../errors.ts';
 
 /** The context of a change set, also of the signature input of its signatures (4). */
 export const CHANGE_SET_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/changeSet/v3';
+
+/** How the identification of the change set of a merge starts, which is identified by its parents, not by its content (5.3). */
+export const MERGE_CHANGE_SET_ID_PREFIX = 'merge-';
+
+
+/**
+ * The identification of a change set by its content (4): the SHA-256 of its canonical JSON with its context, without
+ * `@id` and its signatures, as 64 lowercase hex digits, in every epoch.
+ */
+export function changeSetIdentification(json: JSONObject): string {
+
+    const content = without(json, '@id', 'signatures');
+    set(content, '@context', CHANGE_SET_CONTEXT);
+
+    return toHex(hash('sha256', canonicalJSONBytes(content)));
+
+}
+
+/**
+ * Refuses a change set naming change sets in `metadata.rebasedFrom` it was not rebased from (4): each entry names one,
+ * the latest last, by its `@id`, `beforeETags` and `afterETags`, which is this change set with these ETags and with the
+ * entries before it as its `rebasedFrom`, none for the first one.
+ */
+function checkRebasedFrom(json: JSONObject, id: string): void {
+
+    const metadata    = get(json, 'metadata');
+    const rebasedFrom = isObject(metadata) ? get(metadata, 'rebasedFrom') : undefined;
+
+    if (!isObject(metadata) || rebasedFrom === undefined)
+        return;
+
+    if (!isArray(rebasedFrom) || rebasedFrom.length === 0)
+        throw new POIError(`The rebasedFrom of the change set '${id}' must be an array of the change sets it was rebased from!`);
+
+    rebasedFrom.forEach((entry, index) => {
+
+        const malformed = `Entry ${index} of the rebasedFrom of the change set '${id}' must name the @id, the beforeETags and the afterETags of a change set it was rebased from!`;
+
+        if (!isObject(entry) || Object.keys(entry).some(key => key !== '@id' && key !== 'beforeETags' && key !== 'afterETags'))
+            throw new POIError(malformed);
+
+        const namedId     = get(entry, '@id');
+        const beforeETags = get(entry, 'beforeETags');
+        const afterETags  = get(entry, 'afterETags');
+
+        if (typeof namedId !== 'string' || beforeETags === undefined || afterETags === undefined)
+            throw new POIError(malformed);
+
+        try {
+            parseETags(beforeETags, true);
+            parseETags(afterETags,  true);
+        }
+        catch {
+            throw new POIError(malformed);
+        }
+
+        const originalMetadata = without(metadata, 'rebasedFrom');
+
+        if (index > 0)
+            set(originalMetadata, 'rebasedFrom', rebasedFrom.slice(0, index));
+
+        const original = without(json, 'metadata', 'beforeETags', 'afterETags');
+        set(original, 'beforeETags', beforeETags);
+        set(original, 'afterETags',  afterETags);
+
+        // Metadata without properties is not written.
+        if (Object.keys(originalMetadata).length > 0)
+            set(original, 'metadata', originalMetadata);
+
+        const originalId = changeSetIdentification(original);
+
+        if (namedId !== originalId)
+            throw new POIError(`Entry ${index} of the rebasedFrom of the change set '${id}' names '${namedId}', not the change set it was rebased from with these ETags, '${originalId}'!`);
+
+    });
+
+}
 
 
 /** The kinds of changes (SPECIFICATION.md section 4). */
@@ -88,6 +167,18 @@ export class ChangeSet {
                                'beforeETags', 'afterETags', 'signatures' ], 'A change set');
 
         const id = requireString(json, '@id', 'The identification of a change set');
+
+        // Identified by its content, and rebased from what it names; the change set of a merge by its parents.
+        if (!id.startsWith(MERGE_CHANGE_SET_ID_PREFIX)) {
+
+            const contentId = changeSetIdentification(json);
+
+            if (id !== contentId)
+                throw new POIError(`The change set '${id}' is not identified by its content, '${contentId}'!`);
+
+            checkRebasedFrom(json, id);
+
+        }
 
         const changes = requireArray(get(json, 'changes'), `The changes of the change set '${id}'`).map((item, index) => {
 

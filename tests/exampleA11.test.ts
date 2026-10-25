@@ -47,7 +47,7 @@ describe('Example A11: a verifier trusting only the old locks', () => {
         const final = epoch1.takeCheckpoint(checkpoint(6));
 
         expect(epoch1.head.commit.revision).toBe(16);
-        expect(final.id).toBe('f99eb2d76767d1908f6bd8200ea32bc19f4ed1567e367a22cedb345099eb922f');
+        expect(final.id).toBe('ae5ae7d141df9c83c48e0a5bddc5e6bc1b3c0db253a4b8051d1f824708e77934');
         expect(final.isFinal).toBe(true);
         expect(defined(final.next).number).toBe(2);
         expect(defined(final.next).profiles.toString()).toBe('sha512, ML-DSA-65, ML-DSA-87');
@@ -57,13 +57,13 @@ describe('Example A11: a verifier trusting only the old locks', () => {
         // Epoch 1 takes no commit after it.
         const firstOfEpoch2 = defined(commits('published/QA-epoch-2-commits-since-genesis.json')[0]);
         expect(() => epoch1.append(firstOfEpoch2))
-            .toThrow("The epoch 1 of the roaming network 'QA' is closed by its final checkpoint 'f99eb2d76767d1908f6bd8200ea32bc19f4ed1567e367a22cedb345099eb922f': what follows belongs to the epoch 2!");
+            .toThrow("The epoch 1 of the roaming network 'QA' is closed by its final checkpoint 'ae5ae7d141df9c83c48e0a5bddc5e6bc1b3c0db253a4b8051d1f824708e77934': what follows belongs to the epoch 2!");
 
         // c) It starts epoch 2 itself: the genesis the server published, 128 hexadecimal digits.
         const epoch2     = epoch1.startNextEpoch();
         const published  = readJSON('published/QA-epoch-2-genesis.json') as JSONObject;
 
-        expect(epoch2.root.commit.id).toBe('b28cface4229a3d1ed9aeac37d7fa7bed9dd11d12215f8b8e85f01e4ed0272cf642cc158f85df55fcc563f3d3a0e1a95b5afa4b960a189402668dc010708c14a');
+        expect(epoch2.root.commit.id).toBe('86ea9e9bfc6abcbdb45e47b8b69389d3d854245b17fd803c347910e6e2a9ef013dd7992b60a73e3b6ea817a6c9f5c504dd8c9b1a960ba52367cc8dcdf574ef0c');
         expect(epoch2.root.commit.id).toBe((published['commit'] as JSONObject)['@id']);
         expect(epoch2.root.commit.revision).toBe(0);
         expect(epoch2.epoch.number).toBe(2);
@@ -160,7 +160,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
 
         // c) A commit of epoch 1, the last one, given as one of epoch 2.
         const ofEpoch1 = defined(commits('published/QA-commits-since-checkpoint-5.json').at(-1));
-        expect(() => joined.append(ofEpoch1)).toThrow("The commit 'e11c849c8f0de1a15743c30e4d1bcac2378bedab4270f8078e5d6e77c21a5b9c' is one of the epoch 1, but this history is of the epoch 2!");
+        expect(() => joined.append(ofEpoch1)).toThrow("The commit 'e58ae02702e72eaf82f7e49a78d1bde87a387a1c5c4c8dcfd94c6445aa0efea6' is one of the epoch 1, but this history is of the epoch 2!");
 
         // d) A genesis of epoch 2 of another version, of another name: its ETags are not those of its content.
         const other = parseJSON(readText('published/QA-epoch-2-genesis.json').replace('"en": "Quality Assurance"', '"en": "Quality Assurance, otherwise"'));

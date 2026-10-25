@@ -26,7 +26,7 @@ stays the review of the C# implementation.
 | 1 | ✅ The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged; **fixed** in `3e32f48` |
 | 2 | ✅ ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated; **fixed** in `dbf39b0` |
 | 3 | ✅ A removed or expired key still signs, through an older version | high | confirmed | unchanged; **fixed** in `f2ae688` |
-| 4 | A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged |
+| 4 | ✅ A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged; **fixed** in `bc3b1bd` |
 | 5 | A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged |
 | 6 | A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged |
 | 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
@@ -122,7 +122,7 @@ checkpoints leave their signatures out. The twin is the same statement: a server
 as `Known` and the next one of the operator as following it (`PriceStatementTests`,
 `The_ECDSA_twin_of_a_price_statement_is_the_same_statement`), and a checkpoint names the one digest both have. Without a
 history to keep, in context `v1`. The TypeScript port calculates the same digest (`PriceStatement.digest`). The same
-program against the run of `dbf39b0` (`tests/vectors/csharp-dbf39b0/proofs/MakeProofs-output.log`): the twin of the same
+program against the run of `bc3b1bd` (`tests/vectors/csharp-bc3b1bd/proofs/MakeProofs-output.log`): the twin of the same
 digest, which the server of checkpoint 4 takes as `Known`.
 
 
@@ -164,7 +164,7 @@ change set waiting for the signatures of a quorum (4.2) whenever anything else i
 replays linear histories only, so nothing changes there.
 
 
-## 4. A change set counts as committed by its `@id` alone
+## 4. ✅ A change set counts as committed by its `@id` alone
 
 **Where:** `WWCP_POI3/History/RoamingNetworkHistory.cs:756` (`FindCommitted`), `:1797-1830` (`ChangeSetIds`,
 including `metadata.rebasedFrom`).
@@ -181,6 +181,27 @@ change sets of authenticated senders (`commitChangeSet`), another way in.
 
 **Fix:** identify change sets by the digest of their content without signatures (as commits are), or compare the content
 of a change set found by its `@id`; refuse change sets without changes.
+
+**Fixed** in `bc3b1bd` (SPECIFICATION.md 4, 4.2, 5.2, 5.3), the first way, so that nobody can take the `@id` of another
+change set, not even of one waiting whose `@id` the list of change sets waiting tells (comparing contents only would
+have refused the genuine one then):
+- **Identification:** the `@id` of a change set is the SHA-256 of its canonical JSON with its `@context`, without `@id`
+  and signatures, 64 lowercase hex digits, in every epoch (`RoamingNetworkChangeSet.ContentId`; `CreateChangeSet` and
+  `TryRebase` set it). A change set identified otherwise is refused when read, and by `Commit`, `CoSign` and
+  `TryAppend` before they look for it as committed; so is one without changes, and one named as the change set of a
+  merge outside a merge commit, which alone is identified by its parents. The same `@id` is the same change set, so
+  `AlreadyCommitted` answers only the change set itself.
+- **Rebased:** `rebasedFrom` names each change set a rebased one was prepared from by its `@id`, `beforeETags` and
+  `afterETags`; an entry counts only when that `@id` is the one of the rebased change set with these ETags and the
+  entries before it, so everyone calculates it again, and a change set committed rebased answers the one it was
+  prepared from as committed, and lets go of it waiting.
+
+`CoSigningTests` of WWCP_POI hold the scenario: under the `@id` of the one waiting, naming it in `rebasedFrom`, or
+without changes, another change set is refused, and the one waiting is committed once signed, told so once. The
+TypeScript port checks the `@id` and `rebasedFrom` of every change set it reads (`ChangeSet.parse`,
+`changeSetIdentification`) and refuses a commit with one parent whose change set has no changes or a merge
+identification (`Commit.parse`); WWCPPOIConformanceTests holds both to the refusal vectors `changeSet-id`,
+`changeSet-rebasedFrom`, `changeSet-without-changes` and `changeSet-merge-id`, against the new frozen run of `bc3b1bd`.
 
 
 ## 5. A witness signs the first checkpoint of a history started from a snapshot unchecked

@@ -63,7 +63,7 @@ export { PriceStatement, PriceStatementProof, parsePriceStatements, priceStateme
 
 // History
 export { Commit, SignatureRoles, COMMIT_CONTEXT, type RoleSignature } from './history/commit.ts';
-export { ChangeSet, CHANGE_SET_CONTEXT, type Change, type ChangeKind, type ChangeSetSignature } from './history/changeSet.ts';
+export { ChangeSet, CHANGE_SET_CONTEXT, MERGE_CHANGE_SET_ID_PREFIX, changeSetIdentification, type Change, type ChangeKind, type ChangeSetSignature } from './history/changeSet.ts';
 export { applyChangeSet, checkOwnership }                    from './history/apply.ts';
 export { Checkpoint, CheckpointProof, commitsRoot, CHECKPOINT_CONTEXT } from './history/checkpoint.ts';
 export { History, type EpochStatus, type HistoryOptions, type Version } from './history/history.ts';

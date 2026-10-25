@@ -2,7 +2,7 @@
 
 ## 0.1.0 (unreleased)
 
-The first milestone: the examples A1 to A13 of WWCP_POI (commit `dbf39b0`) checked in TypeScript.
+The first milestone: the examples A1 to A13 of WWCP_POI (commit `bc3b1bd`) checked in TypeScript.
 
 - Canonical JSON and deterministic CBOR of Styx; a lossless JSON parser keeping decimals as `System.Decimal` holds them.
 - COSE keys, RFC 9679 thumbprints, signatures ES256/384/512, ES256K, ESP*, ESB*, Ed25519, Ed448, ML-DSA-44/65/87.
@@ -66,3 +66,11 @@ The holders of a quorum are counted as the trust anchor names them, as WWCP_POI 
 keys otherwise; a station proof, `OperatorTrust` and the signatures of checkpoints count an attestation or a signature
 for the holder of the trusted identity key that certified its key. A change set naming a key of a party with another
 holder than before is refused.
+
+A change set is identified by its content, as WWCP_POI does since `bc3b1bd` (SPECIFICATION.md 4, 5.2;
+docs/csharp-review.md, 4): its `@id` is the SHA-256 of its canonical JSON with its `@context`, without `@id` and
+signatures (`changeSetIdentification`), so that nobody commits another change set in the place of one. `ChangeSet.parse`
+refuses a change set identified otherwise, and one naming change sets in `metadata.rebasedFrom` it was not rebased from;
+`Commit.parse` reads the change set of a commit as well and refuses a commit with one parent whose change set has no
+changes or the identification of a merge. The test vectors are those of a new run of the C# examples at `bc3b1bd`
+(`tests/vectors/csharp-bc3b1bd`).

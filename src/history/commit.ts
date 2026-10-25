@@ -23,6 +23,7 @@ import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../cryp
 import { verifySignature }           from '../crypto/signature.ts';
 import { parseETags, type ETag }     from '../etags.ts';
 import { EpochProfiles, type Epoch } from './epoch.ts';
+import { ChangeSet, MERGE_CHANGE_SET_ID_PREFIX } from './changeSet.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
 
@@ -206,6 +207,26 @@ export class Commit {
 
         if (computed !== id)
             throw new POIError(`The commit identification '${id}' is not the one of its content, '${computed}'!`);
+
+        // Its change set identified by its content, with changes, unless it is the one of a merge, identified by its parents (4, 5.2).
+        if (changeSet !== undefined) {
+
+            let parsed: ChangeSet;
+
+            try {
+                parsed = ChangeSet.parse(changeSet);
+            }
+            catch (e) {
+                throw new POIError(`Invalid change set of the commit '${id}': ${e instanceof Error ? e.message : String(e)}`);
+            }
+
+            if (parentIds.length === 1 && parsed.id.startsWith(MERGE_CHANGE_SET_ID_PREFIX))
+                throw new POIError(`The change set '${parsed.id}' of the commit '${id}' is identified as the change set of a merge, which only a merge commit has!`);
+
+            if (parentIds.length === 1 && parsed.changes.length === 0)
+                throw new POIError(`The change set '${parsed.id}' of the commit '${id}' has no changes: it would change nothing!`);
+
+        }
 
         if (revision === 0 && parentIds.length > 0)
             throw new POIError(`The commit '${id}' of revision 0 has parents!`);

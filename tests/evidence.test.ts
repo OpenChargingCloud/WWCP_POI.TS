@@ -51,7 +51,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         ]);
 
         // b) As charging began: the station proof attested, the price statement valid.
-        expect(toTimestamp(started)).toBe('2026-10-25T10:19:17.327Z');
+        expect(toTimestamp(started)).toBe('2026-10-25T14:39:23.519Z');
         expect(verified.station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
 
         // c) Revision 13, the version of the station proof: in checkpoint 4, witnessed.
@@ -75,7 +75,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const meterModel  = defined(meterBy.model);
         expect(`${asText(station.chargingStation['@id'])}: ${asText((madeBy.manufacturer['name'] as JSONObject)['en'])} ${asText(model['@id'])}`).toBe('DE*GEF*S1: GraphDefined Charging Stations GD-DC300');
         expect(`${asText(meter['@id'])}: ${asText((meterBy.manufacturer['name'] as JSONObject)['en'])} ${asText(meterModel['@id'])}, serial ${asText(meter['serialNumber'])}, ${(meter['signatureMethods'] as string[]).join(', ')}, key ${asText(defined((meter['publicKeys'] as JSONObject[])[0])['@id']).slice(0, 8)}`)
-            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key 03b98023');
+            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key c0866452');
         expect(`${asText(model['maxPower'])} W, versions ${(model['versions'] as string[]).join('/')}; class ${asText(meterModel['accuracyClass'])}`).toBe('300000 W, versions 1.0/1.1; class B');
         expect(station.warnings).toEqual([]);
 
@@ -89,10 +89,10 @@ describe('Example A10: the evidence of a charging session, months later', () => 
     it('needs the checkpoints months later: the attestations alone have ended', () => {
 
         const monthsLater = toTimestamp(started + 90 * 24 * 60 * 60 * 1000);
-        expect(monthsLater).toBe('2027-01-23T10:19:17.327Z');
+        expect(monthsLater).toBe('2027-01-23T14:39:23.519Z');
 
         expect(() => ChargingStationProof.parse(evidence.chargingStationProof).verify(anchor, monthsLater))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:b456a0aef7a8b08f57ba0e028d18d269c1360e64efaed14404d9ca1331edf701 of the proof, not of 2!');
+            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:c06e632480042880e324720abaf59fbc7f208d5a510cd4b8d6529de217a4ebfa of the proof, not of 2!');
 
         // The commit proof in the witnessed checkpoint 4 still proves the version of the station proof.
         const proof  = ChargingStationProof.parse(evidence.chargingStationProof);
@@ -117,7 +117,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const other = clone(evidence.chargingStationProof as JSONObject);
         defined(evseOf(other))['maxPower'] = 300000;
         expect(() => ChargingStationProof.parse(other).verifyAgainstCommitProof(CheckpointProof.parse(evidence.commitProof)))
-            .toThrow('The proof leads to effectiveTree:sha256:hex:ce0fe2754bbeb9b0e81be20f3614db33039217cf554d63dadac7134d074a7d3d, not to effectiveTree:sha256:hex:b456a0aef7a8b08f57ba0e028d18d269c1360e64efaed14404d9ca1331edf701!');
+            .toThrow('The proof leads to effectiveTree:sha256:hex:900c81b1ee456e71161fb72175f3d8dd0bf50573f3145d85b0556308963962f8, not to effectiveTree:sha256:hex:c06e632480042880e324720abaf59fbc7f208d5a510cd4b8d6529de217a4ebfa!');
 
         // e) Checkpoint 5 as it was before its witnesses signed it.
         const unwitnessed = clone((json['checkpoints'] as JSONArray)[1] as JSONObject);
