@@ -16,7 +16,7 @@ import { verifyVersion }         from '../src/verifier/version.ts';
 import { verifyCheckpointLine, verifyCheckpointSignatures } from '../src/verifier/checkpoints.ts';
 import { canonicalJSON }         from '../src/json/canonical.ts';
 import { parseJSON }             from '../src/json/parse.ts';
-import { clone, get, type JSONArray, type JSONObject } from '../src/json/value.ts';
+import { clone, get, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
 import { hash }                  from '../src/crypto/hash.ts';
 import { toHex }                 from '../src/encoding/text.ts';
 
@@ -265,6 +265,27 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
         const changedProof = clone(readJSON('published/QA-proof-revision-4.json') as JSONObject);
         changedProof['@index'] = 5;
         expect(() => { CheckpointProof.parse(changedProof).verify(checkpoint0); }).toThrow('The proof does not lead to the commits of the checkpoint!');
+
+    });
+
+    it('finds epoch 1 named by its checkpoints, not by its commits, and refuses the other forms, as C# does', () => {
+
+        // Every checkpoint names its epoch, a commit only from the second one on (SPECIFICATION.md 5.1, 10.1, 11).
+        const checkpoint0 = readJSON('published/QA-checkpoint-0.json') as JSONObject;
+        const revision1   = commits('published/QA-commits-since-genesis.json')[0] as JSONObject;
+
+        const checkpoint  = Checkpoint.parse(checkpoint0);
+        const commit      = Commit.parse(revision1);
+
+        expect(checkpoint0['epoch']).toBe(1);
+        expect(checkpoint.epoch).toBe(1);
+        expect(get(revision1, 'epoch')).toBeUndefined();
+        expect(commit.epoch).toBe(1);
+
+        expect(() => Checkpoint.parse(without(checkpoint0, 'epoch')))
+            .toThrow(`The epoch of the checkpoint '${checkpoint.id}' must be a whole number from 1 to 4294967295!`);
+        expect(() => Commit.parse({ ...revision1, epoch: 1 }))
+            .toThrow(`The epoch of the commit '${commit.id}' must be a whole number from 2 to 9007199254740991!`);
 
     });
 

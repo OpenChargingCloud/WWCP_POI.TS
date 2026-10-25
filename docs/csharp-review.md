@@ -33,7 +33,7 @@ stays the review of the C# implementation.
 | 8 | ✅ `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; **fixed** in `8e6a1fa`, the specification following the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
 | 10 | ✅ What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged; **fixed** in `80e4ccc`, more than the review found |
-| 11 | Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged |
+| 11 | ✅ Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged; **fixed** in `9280f0b`, the specification following the code |
 | 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well |
 | 13 | The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated |
 | 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged |
@@ -371,12 +371,18 @@ Every other form it cannot tell ends in other `afterETags` than the change set n
 pass: a known limit. Custom data does not hold its values as given in C# yet (finding 20).
 
 
-## 11. Epoch 1 checkpoints name their epoch, the specification says they do not
+## 11. ✅ Epoch 1 checkpoints name their epoch, the specification says they do not
 
 `SPECIFICATION.md:1459`: "Every history begins in epoch 1, whose commits and checkpoints do not name it."
 `WWCP_POI3/History/RoamingNetworkCheckpoint.cs:1119` always writes `"epoch"`, also 1 (checkpoints 0 to 6 of example A11),
 and section 10.1 and the examples show `"epoch": 1`. A reader following section 11 calculates other checkpoint
 identifications. Commits do follow section 11.
+
+**Fixed** in `9280f0b` (SPECIFICATION.md sections 5.1, 10.1 and 11): the specification follows the code, as it did before
+epochs came in (`db522b4` wrote the sentence; the draft before it said "every history is epoch 1, and checkpoints name
+it"). Every checkpoint names its epoch, 1 as well, and one without it is refused; a commit names it from the second one
+on, and one naming epoch 1, a second written form of another identification, is refused. Both implementations did so
+already; tests in both read epoch 1 and refuse the other forms. No identification changes.
 
 
 ## 12. A change without `oldValue` is not checked at all
