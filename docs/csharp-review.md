@@ -28,7 +28,7 @@ stays the review of the C# implementation.
 | 3 | ✅ A removed or expired key still signs, through an older version | high | confirmed | unchanged; **fixed** in `f2ae688` |
 | 4 | ✅ A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged; **fixed** in `bc3b1bd` |
 | 5 | ✅ A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged; **fixed** in `c5cfc62` |
-| 6 | A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged |
+| 6 | ✅ A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged; **fixed** in `6e469a0`, as this port does |
 | 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
 | 8 | ✅ `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; **fixed** in `8e6a1fa`, the specification following the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
@@ -241,7 +241,7 @@ a snapshot refused. A witness whose history was replaced in the middle of an epo
 the checkpoint it signed last, at the latest in the next epoch. The TypeScript port signs no checkpoints.
 
 
-## 6. A subject attestation verifies a whole proof
+## 6. ✅ A subject attestation verifies a whole proof
 
 **Where:** `WWCP_POI3/Proofs/RoamingNetworkProof.cs:252` (`AttestationsOf`), `:401` (`required == 1`).
 
@@ -258,6 +258,13 @@ by the C# implementation and refused by this port.
 
 **Fix:** a subject attestation attests its subject only: count it for the subtree, never for the proof. The TypeScript
 port counts root attestations only, in the role `roamingNetworkOperator`.
+
+**Fixed** in `6e469a0` (SPECIFICATION.md 8.4 and 8.5): a proof is verified by attestations of its root in the role
+`roamingNetworkOperator` only, with a quorum and without, as this port does. `VerifySubject` verifies the charging
+station operator an attestation of a subject names, in the role `chargingStationOperator`, by the digest of the operator
+as the proof gives it: that node with everything below it, nothing above it. The vectors `trust-subject` and
+`trust-role` hold both implementations to it; WWCPPOIConformanceTests no longer lists D4 and D5 as deviations. This port
+verifies no subject attestations.
 
 
 ## 7. Attestations without `validUntil`, keys checked at a self-chosen `signedAt`
