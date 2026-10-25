@@ -42,8 +42,8 @@ stays the review of the C# implementation.
 | 17 | An energy meter may name a certificate for another model than its station's | low-medium | confirmed | **new** |
 | 18 | What one party names blocks what another party withdraws | low | confirmed | **new** |
 | 19 | Smaller points | low | confirmed | extended |
-| 20 | Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server | medium (interop) | confirmed | **new**, found fixing 10 |
-| 21 | The custom data of an address is lost | low | confirmed | **new**, found fixing 10 |
+| 20 | ✅ Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server | medium (interop) | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
+| 21 | ✅ The custom data of an address is lost | low | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
 
 ✅ marks what WWCP_POI has fixed since; the finding stays as it was found, with how it was fixed.
 
@@ -368,7 +368,7 @@ The TypeScript port applies a new value as it is given and refuses one it can te
 of the values: a JSON-LD context outside custom data, identified elements and the lists of section 2 out of their order or
 given twice, a timestamp not UTC to the millisecond (`tests/newValues.test.ts`); it compares old values as they are given.
 Every other form it cannot tell ends in other `afterETags` than the change set names, unless a change set was made to
-pass: a known limit. Custom data does not hold its values as given in C# yet (finding 20).
+pass: a known limit. Custom data holds its values as given in C# since Styx `06b592d3` (finding 20).
 
 
 ## 11. ✅ Epoch 1 checkpoints name their epoch, the specification says they do not
@@ -547,7 +547,7 @@ who resolves it; or let a removal of the RNO remove or clear the references to w
   `^0.11.1`, and this library takes both at `^0.10.0` and `^0.11.1`: one copy.
 
 
-## 20. Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server
+## 20. ✅ Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server
 
 **Where:** Styx `Illias/CustomData/ACustomDataNew.cs:135-139` (`ToJObject`: `JObject.Parse` with the defaults of
 Newtonsoft.Json), `CustomDataNew.cs:290-291`, `CustomDataValue.cs:349-366`; written by `POIEntityMetadata.cs:97-98`.
@@ -564,8 +564,17 @@ so.
 **Fix:** read and write custom data as JSON, without converting numbers or texts (`DateParseHandling.None`,
 `FloatParseHandling.Decimal`, or the JSON text kept as it is).
 
+**Fixed** in Styx `06b592d3`: `ToJObject()` builds the JSON object of custom data from its values, and `ParseJObject()`
+reads the values of the JSON object it is given, no longer each through a JSON text read again. A text stays a text, also
+one that looks like a timestamp, in every time zone; a number with a fraction stays a decimal with its decimal places
+where the decimal writes it as given (`1.50`), any other number its JSON text (`1e-30`, `1.5e2`, an integer beyond 64
+bits). SPECIFICATION.md of WWCP_POI says so in section 2 since `7493da7` and no longer lists it as an open point in section 7;
+`NewValueTests.Custom_data_is_held_as_given` prepares and applies `1.50`, `0.1` and timestamps with `Z` and an offset,
+which before the fix ended in an `InvalidCastException`. The examples and the frozen run hold no custom data: no
+document of them changes.
 
-## 21. The custom data of an address is lost
+
+## 21. ✅ The custom data of an address is lost
 
 **Where:** Styx `Illias/Helpers/Address.cs:403,424,533-535`.
 
@@ -574,6 +583,10 @@ given as `"CustomData"` it is written in lower case and dropped when read again.
 (confirmed by reading). Since finding 10, an address giving custom data is refused, as the content does not hold it.
 
 **Fix:** read `"customData"`.
+
+**Fixed** in Styx `06b592d3`: an address reads `"customData"`, its values as finding 20 reads them, and
+`Address.TryParse(String)` reads its JSON text without turning texts into timestamps or numbers into doubles. The
+address of a charging station keeps its custom data in `NewValueTests.Custom_data_is_held_as_given`.
 
 
 ## What was checked and found sound
