@@ -157,7 +157,7 @@ export function verifyEvidence(evidence: Evidence,
         statementProof.verify(namedBy);
         statementProof.priceStatement.verify(station.roamingNetwork.id, asText(station.operator['@id']), station.operatorSigningKeys);
 
-        const kept = evidence.priceStatements.map(item => PriceStatement.parse(item)).find(item => item.sameSignedContent(statementProof.priceStatement));
+        const kept = evidence.priceStatements.map(item => PriceStatement.parse(item)).find(item => item.digestHex() === statementProof.priceStatement.digestHex());
 
         if (kept === undefined)
             throw new POIError('The proof of a price statement is one of a statement the evidence does not keep!');

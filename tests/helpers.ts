@@ -10,7 +10,7 @@ export { AT }            from './at.ts';
 
 
 /**
- * The published artifacts of one run of the C# examples of WWCP_POI at commit 801bbce (examples/csharp, `dotnet run`):
+ * The published artifacts of one run of the C# examples of WWCP_POI at commit dbf39b0 (examples/csharp, `dotnet run`):
  * what everybody may read, without any private key. The keys are new in every run, so are all digests.
  */
 export const VECTORS = join(import.meta.dirname, 'vectors', VECTORS_RUN);

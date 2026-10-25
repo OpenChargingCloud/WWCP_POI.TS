@@ -2,7 +2,7 @@
 
 ## 0.1.0 (unreleased)
 
-The first milestone: the examples A1 to A13 of WWCP_POI (commit `801bbce`) checked in TypeScript.
+The first milestone: the examples A1 to A13 of WWCP_POI (commit `dbf39b0`) checked in TypeScript.
 
 - Canonical JSON and deterministic CBOR of Styx; a lossless JSON parser keeping decimals as `System.Decimal` holds them.
 - COSE keys, RFC 9679 thumbprints, signatures ES256/384/512, ES256K, ESP*, ESB*, Ed25519, Ed448, ML-DSA-44/65/87.
@@ -52,3 +52,9 @@ examples of WWCP_POI master moved there as well.
 The codecs of Vanaheimr are `@vanaheimr/cose` 0.10.0 and `@vanaheimr/metrological-cbor` 0.11.1: `@vanaheimr/cose` 0.9.0
 brought a CBOR codec 0.10 of its own next to the 0.11 this library uses, so that an app installed two copies of it; now
 there is one.
+
+The digest of a price statement leaves its signature value out, as WWCP_POI does since `dbf39b0` (SPECIFICATION.md 12.1):
+the SHA-256 of its signature input. The ECDSA twin `(r, n − s)` of a statement, which anybody can make of it, is the same
+statement, of the same digest (docs/csharp-review.md, 2); `PriceStatement.sameSignedContent` is gone. The test vectors
+are those WWCPPOIConformanceTests generates for it, with a new run of the C# examples at `dbf39b0`
+(`tests/vectors/csharp-dbf39b0`).

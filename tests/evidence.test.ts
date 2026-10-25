@@ -51,7 +51,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         ]);
 
         // b) As charging began: the station proof attested, the price statement valid.
-        expect(toTimestamp(started)).toBe('2026-10-24T16:57:08.707Z');
+        expect(toTimestamp(started)).toBe('2026-10-25T10:19:17.327Z');
         expect(verified.station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
 
         // c) Revision 13, the version of the station proof: in checkpoint 4, witnessed.
@@ -75,7 +75,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const meterModel  = defined(meterBy.model);
         expect(`${asText(station.chargingStation['@id'])}: ${asText((madeBy.manufacturer['name'] as JSONObject)['en'])} ${asText(model['@id'])}`).toBe('DE*GEF*S1: GraphDefined Charging Stations GD-DC300');
         expect(`${asText(meter['@id'])}: ${asText((meterBy.manufacturer['name'] as JSONObject)['en'])} ${asText(meterModel['@id'])}, serial ${asText(meter['serialNumber'])}, ${(meter['signatureMethods'] as string[]).join(', ')}, key ${asText(defined((meter['publicKeys'] as JSONObject[])[0])['@id']).slice(0, 8)}`)
-            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key 17614ce1');
+            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key 03b98023');
         expect(`${asText(model['maxPower'])} W, versions ${(model['versions'] as string[]).join('/')}; class ${asText(meterModel['accuracyClass'])}`).toBe('300000 W, versions 1.0/1.1; class B');
         expect(station.warnings).toEqual([]);
 
@@ -89,10 +89,10 @@ describe('Example A10: the evidence of a charging session, months later', () => 
     it('needs the checkpoints months later: the attestations alone have ended', () => {
 
         const monthsLater = toTimestamp(started + 90 * 24 * 60 * 60 * 1000);
-        expect(monthsLater).toBe('2027-01-22T16:57:08.707Z');
+        expect(monthsLater).toBe('2027-01-23T10:19:17.327Z');
 
         expect(() => ChargingStationProof.parse(evidence.chargingStationProof).verify(anchor, monthsLater))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:f5523684327b1e6081bb31ffb1d64e74a03253992963e47dbd9af083cf1be0d0 of the proof, not of 2!');
+            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:b456a0aef7a8b08f57ba0e028d18d269c1360e64efaed14404d9ca1331edf701 of the proof, not of 2!');
 
         // The commit proof in the witnessed checkpoint 4 still proves the version of the station proof.
         const proof  = ChargingStationProof.parse(evidence.chargingStationProof);
@@ -117,7 +117,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const other = clone(evidence.chargingStationProof as JSONObject);
         defined(evseOf(other))['maxPower'] = 300000;
         expect(() => ChargingStationProof.parse(other).verifyAgainstCommitProof(CheckpointProof.parse(evidence.commitProof)))
-            .toThrow('The proof leads to effectiveTree:sha256:hex:b425b72f7b71615f616c6c71514934c6a82881feda17e8d949541766eda9fc64, not to effectiveTree:sha256:hex:f5523684327b1e6081bb31ffb1d64e74a03253992963e47dbd9af083cf1be0d0!');
+            .toThrow('The proof leads to effectiveTree:sha256:hex:ce0fe2754bbeb9b0e81be20f3614db33039217cf554d63dadac7134d074a7d3d, not to effectiveTree:sha256:hex:b456a0aef7a8b08f57ba0e028d18d269c1360e64efaed14404d9ca1331edf701!');
 
         // e) Checkpoint 5 as it was before its witnesses signed it.
         const unwitnessed = clone((json['checkpoints'] as JSONArray)[1] as JSONObject);
@@ -131,7 +131,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
 
 describe('ECDSA twins of price statements', () => {
 
-    it('finds the twin (r, n − s) of a statement valid, of another digest, but the same statement as signed', () => {
+    it('finds the twin (r, n − s) of a statement valid and of the same digest: the same statement', () => {
 
         const statements = readJSON('published/QA-checkpoint-4-priceStatements.json') as JSONArray;
         const original   = PriceStatement.parse(statements[0]);
@@ -142,10 +142,9 @@ describe('ECDSA twins of price statements', () => {
         original.verify('QA', 'DE*GEF', keys);
         twin.verify('QA', 'DE*GEF', keys);
 
-        // The digests C# printed for both (proofs/MakeProofs-output.log).
-        expect(original.digestHex()).toBe('25a93a8691f67fc8bbea368d4a10e9f562379c7b96b1e315883280aba42ebf3e');
-        expect(twin.digestHex()).toBe('ad682ed917dccce9558c5d905201890bd7452f5ae3a6d9c565003c917c636d00');
-        expect(twin.sameSignedContent(original)).toBe(true);
+        // The digest leaves the signature value out (12.1).
+        expect(twin.value).not.toBe(original.value);
+        expect(twin.digestHex()).toBe(original.digestHex());
 
         // Given both, the app takes them as one statement, not as two of one sequence, a split view.
         const station  = verifyChargingStation(anchor, evidence.chargingStationProof, { at: started });

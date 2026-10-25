@@ -24,7 +24,7 @@ stays the review of the C# implementation.
 | # | Finding | Severity | Status | Since `bbd4cbd` |
 |---|---|---|---|---|
 | 1 | The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged |
-| 2 | ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated |
+| 2 | ✅ ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated; **fixed** in `dbf39b0` |
 | 3 | A removed or expired key still signs, through an older version | high | confirmed | unchanged |
 | 4 | A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged |
 | 5 | A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged |
@@ -42,6 +42,8 @@ stays the review of the C# implementation.
 | 17 | An energy meter may name a certificate for another model than its station's | low-medium | confirmed | **new** |
 | 18 | What one party names blocks what another party withdraws | low | confirmed | **new** |
 | 19 | Smaller points | low | confirmed | extended |
+
+✅ marks what WWCP_POI has fixed since; the finding stays as it was found, with how it was fixed.
 
 
 ## 1. The holders counted for a quorum are named by the keys being counted
@@ -69,7 +71,7 @@ verifier takes holders from the anchor only; signatures by keys the verified sta
 The TypeScript port does as the C# implementation, so that both accept the same; `KeyStatement.verify` says so.
 
 
-## 2. ECDSA twins of price statements: false split views, broken chains
+## 2. ✅ ECDSA twins of price statements: false split views, broken chains
 
 **Where:** `WWCP_POI3/Proofs/RoamingNetworkPriceStatement.cs:250` (the digest covers `value`),
 `WWCP_POI3/History/RoamingNetworkHistory.PriceStatements.cs:582-613` (statements compared by digest), `POST
@@ -80,8 +82,8 @@ An ECDSA signature `(r, s)` has a twin `(r, n − s)`, valid as well, which anyb
 a price statement is the SHA-256 of its JSON *with its signature value*: the twin is a different statement of the same
 sequence.
 
-**Demonstrated** again at `801bbce` (`tests/vectors/csharp-801bbce/proofs/MakeProofs.cs.txt`, its output
-`MakeProofs-output.log`): a server joining `QA` from checkpoint 4 with the statements it names holds the genuine
+**Demonstrated** again at `801bbce` (`proofs/MakeProofs.cs.txt` of the run `csharp-801bbce` of the test vectors, its
+output `MakeProofs-output.log`): a server joining `QA` from checkpoint 4 with the statements it names holds the genuine
 statement 1 of `DE*GEF*E1*1`; the twin of it, which anybody makes from it, is refused as a split view of the operator.
 
 ```
@@ -99,8 +101,16 @@ and is not affected; every epoch accepting ECDSA is, epoch 1 of every roaming ne
 checkpoints are not affected: their identifications leave signatures out.
 
 **Fix:** digest and compare statements without `value` (the signed content), or require and produce low-S ECDSA
-signatures where a signature value is hashed. The TypeScript port compares by signed content
-(`PriceStatement.sameSignedContent`), so that an app given both takes them as one statement.
+signatures where a signature value is hashed.
+
+**Fixed** in `dbf39b0`, the first way: the digest of a price statement is the SHA-256 of its signature input, `value`
+left out (SPECIFICATION.md 12.1; `RoamingNetworkPriceStatement.Digest`), as the identifications of commits and
+checkpoints leave their signatures out. The twin is the same statement: a server taking it first takes the genuine one
+as `Known` and the next one of the operator as following it (`PriceStatementTests`,
+`The_ECDSA_twin_of_a_price_statement_is_the_same_statement`), and a checkpoint names the one digest both have. Without a
+history to keep, in context `v1`. The TypeScript port calculates the same digest (`PriceStatement.digest`). The same
+program against the run of `dbf39b0` (`tests/vectors/csharp-dbf39b0/proofs/MakeProofs-output.log`): the twin of the same
+digest, which the server of checkpoint 4 takes as `Known`.
 
 
 ## 3. A removed or expired key still signs, through an older version
@@ -417,7 +427,7 @@ who resolves it; or let a removal of the RNO remove or clear the references to w
   checkouts, and `WWCP_Node` needs `Norn` and `Urdr` as well, at the commits the RoamingHubCLI pins; `examples/README.md`
   says only `dotnet run`. On Windows, a checkout below a long path needs `git config core.longpaths true`. Example A12
   opens two servers on `127.0.0.1`.
-- **Dependencies of COSE.TS (resolved):** `@vanaheimr/cose@0.9.0` depended on `@vanaheimr/metrological-cbor@^0.10.0`,
+- ✅ **Dependencies of COSE.TS (resolved):** `@vanaheimr/cose@0.9.0` depended on `@vanaheimr/metrological-cbor@^0.10.0`,
   this library on `^0.11.0`: a consumer got two copies of the CBOR codec. `@vanaheimr/cose@0.10.0` depends on
   `^0.11.1`, and this library takes both at `^0.10.0` and `^0.11.1`: one copy.
 

@@ -134,9 +134,12 @@ export class PriceStatement {
         return canonicalJSONBytes(without(this.json, 'value'));
     }
 
-    /** The digest (12.1): the SHA-256 of its canonical JSON with its `@context`, its signature value included. */
+    /**
+     * The digest (12.1): the SHA-256 of its signature input, its signature value left out. Another valid signature of the
+     * same statement, as the ECDSA twin `(r, n − s)` anybody can make of one, is the same statement, of the same digest.
+     */
     public digest(): Uint8Array {
-        return hash('sha256', canonicalJSONBytes(this.json));
+        return hash('sha256', this.signingBytes());
     }
 
     public digestHex(): string {
@@ -182,15 +185,6 @@ export class PriceStatement {
 
         return key;
 
-    }
-
-    /**
-     * Whether both are the same statement as signed, whatever their signature values. An ECDSA signature `(r, s)` has a
-     * twin `(r, n − s)` anybody can make from it, valid as well; as the digest covers the value, the twin has another
-     * digest. It is the same statement, not a split view of its operator. See docs/csharp-review.md.
-     */
-    public sameSignedContent(other: PriceStatement): boolean {
-        return bytesEqual(this.signingBytes(), other.signingBytes());
     }
 
     /** Whether it is valid at the given point in time: from `validFrom`, until `validUntil` where it names one. */

@@ -24,7 +24,7 @@ ML-DSA-44/65/87.
 ## Status
 
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A13 of
-[WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `801bbce` are checked
+[WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `dbf39b0` are checked
 from what the C# examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations
 the C# implementation makes; also from a second run of the C# examples, with new keys. See [Tests](#tests).
 
@@ -226,7 +226,7 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   of the specification, station proofs of its example network signed with its keys against a trust anchor, what to
   calculate of the documents of the run below, and documents to refuse (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
-- `tests/vectors/csharp-801bbce`, what one run of the C# examples of WWCP_POI at commit `801bbce` published (public data
+- `tests/vectors/csharp-dbf39b0`, what one run of the C# examples of WWCP_POI at commit `dbf39b0` published (public data
   only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same
   history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the head, and
   the ECDSA twin of a price statement.

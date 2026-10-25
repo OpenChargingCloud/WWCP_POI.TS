@@ -354,9 +354,9 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
                 if (!entity.tariffs.has(asText(price['chargingTariffId'])))
                     throw new POIError(`The price statement of the EVSE '${statement.entityId}' names the charging tariff '${asText(price['chargingTariffId'])}', which is not one of its own!`);
 
-        // An ECDSA twin of a statement given already is that statement, not a second one of its sequence.
+        // A statement given again, also as its ECDSA twin, is that statement, not a second one of its sequence.
         const known = byEntity.get(key) ?? [];
-        if (!known.some(other => other.sameSignedContent(statement)))
+        if (!known.some(other => other.digestHex() === statement.digestHex()))
             byEntity.set(key, [ ...known, statement ]);
 
     }
