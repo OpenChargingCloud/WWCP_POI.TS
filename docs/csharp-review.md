@@ -417,8 +417,9 @@ who resolves it; or let a removal of the RNO remove or clear the references to w
   checkouts, and `WWCP_Node` needs `Norn` and `Urdr` as well, at the commits the RoamingHubCLI pins; `examples/README.md`
   says only `dotnet run`. On Windows, a checkout below a long path needs `git config core.longpaths true`. Example A12
   opens two servers on `127.0.0.1`.
-- **Dependencies of COSE.TS:** `@vanaheimr/cose@0.9.0` on npm still depends on `@vanaheimr/metrological-cbor@^0.10.0`, its
-  repository on `^0.11.0`: a consumer of both gets two copies of the CBOR codec.
+- **Dependencies of COSE.TS (resolved):** `@vanaheimr/cose@0.9.0` depended on `@vanaheimr/metrological-cbor@^0.10.0`,
+  this library on `^0.11.0`: a consumer got two copies of the CBOR codec. `@vanaheimr/cose@0.10.0` depends on
+  `^0.11.1`, and this library takes both at `^0.10.0` and `^0.11.1`: one copy.
 
 
 ## What was checked and found sound

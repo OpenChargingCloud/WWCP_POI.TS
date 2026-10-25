@@ -48,3 +48,7 @@ the examples of section 6 of the specification, signed station proofs against a 
 the C# examples, and documents to refuse - and runs them against this library and the C# implementation alike. This
 repository vendors them in `tests/vectors` and runs them in `tests/conformance.test.ts`. The nightly check against the C#
 examples of WWCP_POI master moved there as well.
+
+The codecs of Vanaheimr are `@vanaheimr/cose` 0.10.0 and `@vanaheimr/metrological-cbor` 0.11.1: `@vanaheimr/cose` 0.9.0
+brought a CBOR codec 0.10 of its own next to the 0.11 this library uses, so that an app installed two copies of it; now
+there is one.
