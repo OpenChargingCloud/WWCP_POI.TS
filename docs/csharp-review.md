@@ -30,7 +30,7 @@ stays the review of the C# implementation.
 | 5 | ✅ A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged; **fixed** in `c5cfc62` |
 | 6 | A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged |
 | 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
-| 8 | `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; the models follow the code |
+| 8 | ✅ `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; **fixed** in `8e6a1fa`, the specification following the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
 | 10 | What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged |
 | 11 | Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged |
@@ -278,7 +278,7 @@ checked a second before its attestations were signed is taken by the C# implemen
 requires `signedAt ≤ at`.
 
 
-## 8. `lastChange` of what embeds a changed entity: code and specification disagree
+## 8. ✅ `lastChange` of what embeds a changed entity: code and specification disagree
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.InfrastructureChanges.cs:561,693-717` (`TouchParents`), likewise
 `ProviderChanges.cs`, `OfferChanges.cs`, `GridChanges.cs`, `ParkingChanges.cs`, `EnergyMeterGroupChanges.cs`,
@@ -297,6 +297,20 @@ code does (e.g. revision 2 of epoch 1, the models of example A2, revision 10, th
 revisions 5 to 7 of epoch 2, example A13). An
 implementation following the specification calculates other ETags and refuses every such change set. One of the two
 must change.
+
+**Fixed** in `8e6a1fa` (SPECIFICATION.md section 4): the specification follows the code. A change set sets the
+`lastChange` of every entity embedding one it adds, changes or removes, up to the roaming network, named there by kind;
+`lastChange` tells when the representation of an entity, with everything it embeds, last changed, as its ETag does, and
+the history tells what changed. Models, transparency software releases and certificates are named among what has no timestamps;
+energy meters keep those of their new value. The README of WWCP_POI and the documents of the e-mobility provider and the
+parking operator say the same, and `ChargingTariffOfferTests` and `TransparencyTests` now check the owners of a changed
+offer and the body of a changed certificate as well. No implementation calculates other ETags than before: the frozen
+runs, the test vectors and the TypeScript port stay as they are. `tests/lastChange.test.ts` of the port checks every
+change set of both epochs of the run, and refuses `afterETags` calculated as the specification said before (revision 10
+of epoch 1). A refusal vector of WWCPPOIConformanceTests would need such a change set signed anew, by keys the run does
+not publish. The effective `lastChange` of 8.1 takes the one of a station or pool without templates as it is; it is not
+older than those of its EVSEs and stations as long as the `createdAt` of the change sets grows, and where it does not,
+e.g. after merges, the floors of section 8.8 (point 3) remain open.
 
 
 ## 9. A provider's change of an operator's group, by a stale owner record
