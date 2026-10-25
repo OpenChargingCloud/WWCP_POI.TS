@@ -34,7 +34,7 @@ stays the review of the C# implementation.
 | 9 | ✅ A provider's change of an operator's group, by a stale owner record | medium | demonstrated | unchanged; **fixed** in `850440a`, more than the review found |
 | 10 | ✅ What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged; **fixed** in `80e4ccc`, more than the review found |
 | 11 | ✅ Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged; **fixed** in `9280f0b`, the specification following the code |
-| 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well |
+| 12 | ✅ A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well; **fixed** in `1717ee2`, where it mattered, and in this port alike |
 | 13 | ✅ The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated; **fixed** in `36bb176`, and in this port alike |
 | 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged |
 | 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged |
@@ -430,7 +430,7 @@ on, and one naming epoch 1, a second written form of another identification, is 
 already; tests in both read epoch 1 and refuse the other forms. No identification changes.
 
 
-## 12. A change without `oldValue` is not checked at all
+## 12. ✅ A change without `oldValue` is not checked at all
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.ChangeSets.cs:636,787`, `RoamingNetwork.ElementChanges.cs:92`
 (`applied.OldValue is JToken …`), `TryApplyTransparencySoftwareChange` and its twin for certificates, and the new
@@ -438,6 +438,21 @@ already; tests in both read epoch 1 and refuse the other forms. No identificatio
 
 A change naming no `oldValue` is applied without comparing anything; `null` means "absent". The `beforeETags` pin the
 version anyway, so applying is safe; rebasing and merging, which rely on old values, are not.
+
+**Checked** again against `36bb176`: the code was safer than the review said. Every apply compares an old value that is
+given; merges (section 5.3) compare the versions of the tips, not the old values of their change sets, and a server
+commits a change set made for an older version on that version, as a tip to be merged (`FindVersionFor`); and
+`TryRebase` refuses a change without old value, but an `Add` or `AddElement`, since `16ec05d` ("a rebase could silently
+overwrite a concurrent change"), held by `RebaseTests`. What was missing is the rule: the specification did not say that
+a change set without old values can not be rebased, so a rebase made elsewhere could overwrite a concurrent change
+unnoticed.
+
+**Fixed** in `1717ee2`, and in this port alike: section 4 says so ("Rebased", "Old values"), and a change set naming
+`rebasedFrom` with a change, but an `Add` or `AddElement`, without `oldValue` is refused when it is read
+(`RebasedFromError`; `checkRebasedFrom` here), so that a rebase is held to what `TryRebase` does wherever it was made.
+One not rebased is read as before. `RebaseTests` and `tests/changeSet.test.ts` hold it, and the vector
+`changeSet-rebased-without-old-value` of WWCPPOIConformanceTests holds both implementations to it, refused in the same
+words.
 
 
 ## 13. ✅ The roaming network operator can not sign in place of a body or grid operator without keys

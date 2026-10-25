@@ -103,3 +103,8 @@ assessment body or the grid connection points of a grid operator not taking part
 `party`, as the examples certify its keys, as WWCP_POI does since `36bb176` (SPECIFICATION.md 4.1; docs/csharp-review.md,
 13): `checkOwnership` counts its signing keys that may sign `party` besides those that may sign the usage of the change.
 A change set taken before is taken still.
+
+A change set naming `rebasedFrom` with a change, but an `Add` or `AddElement`, without `oldValue` is refused, as WWCP_POI
+refuses it since `1717ee2` (SPECIFICATION.md 4; docs/csharp-review.md, 12): only old values tell that a change set
+committed meanwhile changed what it changes, which such a rebase may have overwritten. One not rebased is read as before.
+The golden vector `changeSet-rebased-without-old-value` holds both implementations to it.

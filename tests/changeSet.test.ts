@@ -5,7 +5,7 @@ import { commits } from './qa.ts';
 
 import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification } from '../src/history/changeSet.ts';
 import { canonicalJSON } from '../src/json/canonical.ts';
-import { clone, isObject, set, without, type JSONObject, type JSONValue } from '../src/json/value.ts';
+import { clone, isObject, set, without, type JSONArray, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { hash }          from '../src/crypto/hash.ts';
 import { toHex, utf8 }   from '../src/encoding/text.ts';
 
@@ -88,6 +88,25 @@ describe('Change sets identified by their content (4)', () => {
         expect(() => ChangeSet.parse(rebased(first, [ entry(once), entry(first) ], first))).toThrow(/not the change set it was rebased from/);
         expect(() => ChangeSet.parse(rebased(first, [ without(entry(first), 'afterETags') ], second))).toThrow(/must name the @id, the beforeETags and the afterETags/);
         expect(() => ChangeSet.parse(rebased(first, [], second))).toThrow(/must be an array/);
+
+    });
+
+    it('refuses a change set rebased with a change that names no old value, and reads it not rebased (csharp-review 12)', () => {
+
+        const updating        = defined(changeSets.find(changeSet => (changeSet['changes'] as JSONArray).some(change => isObject(change) && change['kind'] !== 'Add' && change['kind'] !== 'AddElement')),
+                                        'A change set of the run changing what is there');
+        const other           = defined(changeSets.find(changeSet => changeSet !== updating));
+        const withoutOldValue = without(updating, 'signatures');
+
+        set(withoutOldValue, 'changes', (updating['changes'] as JSONArray).map(change => isObject(change) ? without(change, 'oldValue') : change));
+        set(withoutOldValue, '@id',     changeSetIdentification(withoutOldValue));
+
+        // Only old values tell that a change set committed meanwhile changed what it changes, which the rebase overwrote.
+        expect(() => ChangeSet.parse(rebased(withoutOldValue, [ entry(withoutOldValue) ], other)))
+            .toThrow(/Change \d+ of the change set '[0-9a-f]{64}', which was rebased, has no old value/);
+
+        // Not rebased, its beforeETags pin the version it applies to.
+        expect(ChangeSet.parse(withoutOldValue).id).toBe(withoutOldValue['@id']);
 
     });
 

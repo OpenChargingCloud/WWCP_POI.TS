@@ -49,7 +49,8 @@ export function changeSetIdentification(json: JSONObject): string {
 /**
  * Refuses a change set naming change sets in `metadata.rebasedFrom` it was not rebased from (4): each entry names one,
  * the latest last, by its `@id`, `beforeETags` and `afterETags`, which is this change set with these ETags and with the
- * entries before it as its `rebasedFrom`, none for the first one.
+ * entries before it as its `rebasedFrom`, none for the first one; and one that was not rebased so: a change of it, but
+ * an `Add` or `AddElement`, names no `oldValue`.
  */
 function checkRebasedFrom(json: JSONObject, id: string): void {
 
@@ -102,6 +103,15 @@ function checkRebasedFrom(json: JSONObject, id: string): void {
         if (namedId !== originalId)
             throw new POIError(`Entry ${index} of the rebasedFrom of the change set '${id}' names '${namedId}', not the change set it was rebased from with these ETags, '${originalId}'!`);
 
+    });
+
+    // Rebased, every change but an Add or AddElement names the old value it expects: only old values tell that a change set
+    // committed meanwhile changed what it changes, which a rebase would overwrite (`RebasedFromError`).
+    const changes = get(json, 'changes');
+
+    (isArray(changes) ? changes : []).forEach((change, index) => {
+        if (isObject(change) && get(change, 'oldValue') === undefined && change['kind'] !== 'Add' && change['kind'] !== 'AddElement')
+            throw new POIError(`Change ${index} of the change set '${id}', which was rebased, has no old value: the rebase may have overwritten a concurrent change!`);
     });
 
 }
