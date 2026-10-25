@@ -16,7 +16,7 @@
  */
 
 import { ordinal }                        from '../json/canonical.ts';
-import { asText, clone, get, isArray, isObject, sameValue, set, unset, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, clone, get, isArray, isObject, sameValue, set, unset, without, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toTimestamp }                    from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
@@ -204,52 +204,100 @@ const idOf = (value: JSONValue | undefined): string =>
     isObject(value) && typeof value['@id'] === 'string' ? value['@id'] : '';
 
 /**
- * The arrays the C# implementation keeps in an order of its own, whatever order a change gives them in, each element once
- * (`Ordered` of POIPublicKey, EnergyMeter, EnergyMeterPublicKey and RoamingNetworkSigningKeyCertificate): it writes them
- * so, and so they are part of the content.
+ * The lists of identifications and of predefined values the content holds in the ordinal order of their texts, each once
+ * (section 2; `POIJSON.OrderedIds` of the C# implementation).
  */
-const ORDERED_ARRAYS: Readonly<Record<string, { readonly key: (item: JSONValue) => string, readonly order: (left: JSONValue, right: JSONValue) => number }>> = {
-    signingKeys:             { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
-    identityKeys:            { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
-    energyMeters:            { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
-    publicKeys:              { key: idOf, order: (left, right) => ordinal(idOf(left), idOf(right)) },
-    signingKeyCertificates:  {
-        key:    item => `${idOf(isObject(item) ? item['signingKey'] : undefined)}/${isObject(item) ? asText(item['keyId']) : ''}`,
-        order:  (left, right) => ordinal(idOf(isObject(left)  ? left['signingKey']  : undefined), idOf(isObject(right) ? right['signingKey'] : undefined)) ||
-                                 ordinal(isObject(left) ? asText(left['keyId']) : '', isObject(right) ? asText(right['keyId']) : ''),
-    },
-};
+const ORDERED_TEXTS = new Set([
+    'facilities', 'paymentOptions', 'uiFeatures', 'features', 'parkingRestrictions', 'services', 'standards', 'nutsCodes',
+    'vehicleTypes', 'euVehicleCategories', 'parkingSpaceIds', 'chargingTariffIds', 'acceptedEMobilityProviderIds',
+    'paymentMeans', 'paymentBrands', 'signatureMethods', 'connectorTypes', 'EVSEIds', 'chargingStationIds', 'chargingPoolIds',
+    'energyMeterIds', 'EVSEGroupIds', 'chargingStationGroupIds', 'chargingPoolGroupIds', 'chargingStationOperatorIds',
+    'eMobilityProviderIds', 'parkingSensorIds', 'parkingProductIds', 'measurands', 'notifiedFor',
+    'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'cardTypes', 'dimensions', 'usages',
+]);
+
+/** The days of a week as the content holds them: Monday first. */
+const DAYS_OF_WEEK = [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY' ];
+
+/** The timestamps of the content: UTC to the millisecond (section 2). */
+const TIMESTAMP_PROPERTIES = new Set([ 'created', 'lastChange', 'validFrom', 'validUntil', 'notBefore', 'notAfter', 'signedAt', 'supportUntil' ]);
+const TIMESTAMP            = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 /**
- * A value a change puts into the content, as the C# implementation keeps it: without `@context` in what it embeds
- * (embedded, an object names no context, 1.1), its ordered arrays in their order.
+ * The keys the content orders the given array by, if it orders it: identified elements by their identification, the
+ * certificates of signing keys by their keys, authentication modes by their type, the lists of ORDERED_TEXTS by their
+ * texts, the days of a week Monday first.
  */
-function embedded(value: JSONValue, property?: string): JSONValue {
+function orderKeys(items: JSONArray, property: string | undefined): string[] | undefined {
 
-    if (isArray(value)) {
+    if (property === 'signingKeyCertificates' && items.every(isObject))
+        return items.map(item => `${idOf(isObject(item) ? item['signingKey'] : undefined)}\u0000${isObject(item) ? asText(item['keyId']) : ''}`);
 
-        const items    = value.map(item => embedded(item));
-        const ordered  = property === undefined ? undefined : ORDERED_ARRAYS[property];
+    if (property === 'authenticationModes' && items.every(isObject))
+        return items.map(item => isObject(item) ? asText(item['type']) : '');
 
-        if (ordered === undefined || !items.every(isObject))
-            return items;
+    if (property === 'daysOfWeek')
+        return items.map(item => String(DAYS_OF_WEEK.indexOf(typeof item === 'string' ? item : '')).padStart(2, '0'));
 
-        if (new Set(items.map(ordered.key)).size !== items.length)
-            throw new POIError(`An element of '${property}' must not be given twice!`);
+    if (items.length > 0 && items.every(item => isObject(item) && typeof item['@id'] === 'string'))
+        return items.map(idOf);
 
-        return items.sort(ordered.order);
+    if (property !== undefined && ORDERED_TEXTS.has(property) && items.every(item => typeof item === 'string'))
+        return items.map(item => typeof item === 'string' ? item : '');
 
-    }
+    return undefined;
 
-    if (isObject(value)) {
-        const result: JSONObject = {};
-        for (const [name, item] of Object.entries(value))
-            if (name !== '@context')
-                set(result, name, embedded(item, name));
-        return result;
-    }
+}
 
-    return value;
+/**
+ * A new value as a change gives it, which is what the content holds (section 4, "New values"): applied as it is, and refused
+ * when it is written otherwise, as WWCP_POI refuses it. Of the written form of section 2 this library checks what it can tell
+ * without the types of the values: no object names a JSON-LD context (custom data aside, which is held as given), what the
+ * content orders is given in its order, each once, and timestamps are UTC to the millisecond. A value WWCP_POI writes
+ * otherwise in another way, e.g. an identification in another case, ends in other after ETags here.
+ */
+function asGiven(value: JSONValue, property: string | undefined, where: string): JSONValue {
+
+    const notHeld = (path: string, reason: string): POIError =>
+        new POIError(`${where}: ${path === '' ? 'it' : `'${path}'`} is not given as the content holds it: ${reason}!`);
+
+    const check = (item: JSONValue, name: string | undefined, path: string): void => {
+
+        if (name === 'customData')
+            return;
+
+        if (isArray(item)) {
+
+            const keys = orderKeys(item, name);
+
+            if (keys?.some((key, index) => index > 0 && ordinal(keys[index - 1] ?? '', key) >= 0) === true)
+                throw notHeld(path, 'its elements are in the order the content holds them in, each once');
+
+            item.forEach((element, index) => { check(element, undefined, `${path}[${String(index)}]`); });
+
+        }
+
+        else if (isObject(item)) {
+
+            for (const [key, element] of Object.entries(item)) {
+
+                if (key === '@context')
+                    throw notHeld(path, 'embedded, an object names no JSON-LD context');
+
+                check(element, key, path === '' ? key : `${path}.${key}`);
+
+            }
+
+        }
+
+        else if (typeof item === 'string' && name !== undefined && TIMESTAMP_PROPERTIES.has(name) && !TIMESTAMP.test(item))
+            throw notHeld(path, 'a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ');
+
+    };
+
+    check(value, property, property ?? '');
+
+    return clone(value);
 
 }
 
@@ -369,7 +417,7 @@ function checkOldValue(change: Change, current: JSONValue | undefined, index: nu
 
     const matches = change.oldValue === null
                         ? current === undefined
-                        : current !== undefined && sameValue(embedded(change.oldValue, change.propertyName), embedded(current, change.propertyName));
+                        : current !== undefined && sameValue(change.oldValue, current);
 
     if (!matches)
         throw new POIError(change.propertyName !== undefined && (change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty')
@@ -395,7 +443,7 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
     else {
         if (change.newValue === undefined)
             throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
-        set(entity, property, embedded(change.newValue, property));
+        set(entity, property, asGiven(change.newValue, property, `Change ${String(index)}, the ${what}`));
     }
 
     entity['lastChange'] = lastChange;
@@ -409,7 +457,8 @@ function entityToAdd(change: Change, index: number, what: string, createdAt: str
     if (!isObject(change.newValue) || change.newValue['@id'] !== change.entityId)
         throw new POIError(`Change ${index}: the ${what} to add must be a JSON object with the identification '${change.entityId}'!`);
 
-    const added = embedded(clone(change.newValue)) as JSONObject;
+    // The change set sets its lastChange, whatever an added entity gives.
+    const added = asGiven(without(change.newValue, 'lastChange'), undefined, `Change ${String(index)}, the ${what} to add`) as JSONObject;
 
     if (get(added, 'created') === undefined)
         added['created'] = createdAt;
@@ -712,7 +761,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             else {
                 if (change.newValue === undefined)
                     throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
-                set(child, property, embedded(change.newValue, property));
+                set(child, property, asGiven(change.newValue, property, `Change ${String(index)}, the ${what}`));
             }
 
             break;
@@ -724,7 +773,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             if (!isObject(change.newValue) || typeof change.newValue['@id'] !== 'string' || !sameId(change.newValue['@id'], change.entityId))
                 throw new POIError(`Change ${index}: the ${type.what} to add must be a JSON object with the identification '${change.entityId}'!`);
 
-            const added    = embedded(clone(change.newValue)) as JSONObject;
+            const added    = asGiven(without(change.newValue, 'lastChange'), undefined, `Change ${String(index)}, the ${what} to add`) as JSONObject;
             const children = get(party, type.property);
 
             if (children === undefined)

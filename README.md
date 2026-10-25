@@ -227,7 +227,7 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   of the specification, station proofs of its example network signed with its keys against a trust anchor, what to
   calculate of the documents of the run below, and documents to refuse (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
-- `tests/vectors/csharp-bc3b1bd`, what one run of the C# examples of WWCP_POI at commit `bc3b1bd` published (public data
+- `tests/vectors/csharp-80e4ccc`, what one run of the C# examples of WWCP_POI at commit `80e4ccc` published (public data
   only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same
   history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the head, and
   the ECDSA twin of a price statement.

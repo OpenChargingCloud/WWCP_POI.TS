@@ -3,7 +3,7 @@
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
- *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-25T14:40:00.000Z
+ *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-25T16:27:00.000Z
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
  * same. Attestations end 15 minutes after they are signed: the station proof of example A13 is checked at the time of its
@@ -39,8 +39,8 @@ function show(value: JSONValue | undefined): string {
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-bc3b1bd');
-const time       = at ?? (directory.includes('csharp-bc3b1bd') ? '2026-10-25T14:40:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-80e4ccc');
+const time       = at ?? (directory.includes('csharp-80e4ccc') ? '2026-10-25T16:27:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');

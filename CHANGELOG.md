@@ -2,7 +2,7 @@
 
 ## 0.1.0 (unreleased)
 
-The first milestone: the examples A1 to A13 of WWCP_POI (commit `bc3b1bd`) checked in TypeScript.
+The first milestone: the examples A1 to A13 of WWCP_POI (commit `80e4ccc`) checked in TypeScript.
 
 - Canonical JSON and deterministic CBOR of Styx; a lossless JSON parser keeping decimals as `System.Decimal` holds them.
 - COSE keys, RFC 9679 thumbprints, signatures ES256/384/512, ES256K, ESP*, ESB*, Ed25519, Ed448, ML-DSA-44/65/87.
@@ -74,3 +74,10 @@ refuses a change set identified otherwise, and one naming change sets in `metada
 `Commit.parse` reads the change set of a commit as well and refuses a commit with one parent whose change set has no
 changes or the identification of a merge. The test vectors are those of a new run of the C# examples at `bc3b1bd`
 (`tests/vectors/csharp-bc3b1bd`).
+
+A change set gives its new values as the content holds them, as WWCP_POI requires since `80e4ccc` (SPECIFICATION.md 2,
+4; docs/csharp-review.md, 10): a new value is applied as it is given, no longer written anew as the C# model would, and
+one that names a JSON-LD context in what it embeds (custom data aside, which keeps it), gives identified elements, keys,
+certificates or the lists of section 2 out of their order or twice, or a timestamp not UTC to the millisecond is
+refused. An old value is compared as it is given. The test vectors are those of a new run of the C# examples at
+`80e4ccc` (`tests/vectors/csharp-80e4ccc`).

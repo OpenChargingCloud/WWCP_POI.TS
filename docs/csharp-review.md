@@ -32,7 +32,7 @@ stays the review of the C# implementation.
 | 7 | Attestations without `validUntil`, keys checked at a self-chosen `signedAt` | medium | demonstrated (D3) | unchanged |
 | 8 | ✅ `lastChange` of what embeds a changed entity: code and specification disagree | medium (interop) | demonstrated | unchanged; **fixed** in `8e6a1fa`, the specification following the code |
 | 9 | A provider's change of an operator's group, by a stale owner record | medium | plausible | unchanged |
-| 10 | What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged |
+| 10 | ✅ What a signed change set says is not what the content holds | low (interop) | demonstrated | unchanged; **fixed** in `80e4ccc`, more than the review found |
 | 11 | Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged |
 | 12 | A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well |
 | 13 | The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated |
@@ -42,6 +42,8 @@ stays the review of the C# implementation.
 | 17 | An energy meter may name a certificate for another model than its station's | low-medium | confirmed | **new** |
 | 18 | What one party names blocks what another party withdraws | low | confirmed | **new** |
 | 19 | Smaller points | low | confirmed | extended |
+| 20 | Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server | medium (interop) | confirmed | **new**, found fixing 10 |
+| 21 | The custom data of an address is lost | low | confirmed | **new**, found fixing 10 |
 
 ✅ marks what WWCP_POI has fixed since; the finding stays as it was found, with how it was fixed.
 
@@ -326,7 +328,7 @@ read, the full scenario was not set up. `AddedEnergyMeterChildren` (`:1386-1452`
 meter templates and groups.
 
 
-## 10. What a signed change set says is not what the content holds
+## 10. ✅ What a signed change set says is not what the content holds
 
 **Demonstrated:** a change set's values are parsed into the C# model and written anew; what ends in the content differs
 from what was signed, and a reader applying change sets on JSON (as the TypeScript port does, and as section 4 describes
@@ -344,6 +346,29 @@ them) must know how:
 
 Harmless for the C# reader. **Fix:** state the order of every array of the content in section 2, and refuse a change set
 whose values are not in it, so that what is signed is what is held.
+
+An inventory of the readers and writers of the C# model found more than order and contexts: identifications in upper
+case (`de*aaa` held as `DE*AAA`), countries as alpha-3 (`de` as `DEU`), timestamps converted to UTC and cut to the
+millisecond, URLs given a scheme, language keys in lower case, unknown properties dropped, an empty array held as none,
+and lists of predefined values sorted (`standards`, `features`, `vehicleTypes`, …). The port knew of two of them: every
+other one made it calculate other `afterETags` than C# for a change set C# took. It also removed a JSON-LD context in
+`customData`, which C# keeps.
+
+**Fixed** in `80e4ccc` (SPECIFICATION.md 1.1, 2 "Written forms", 4 "New values"), as proposed and further: what a change
+set gives is what the content holds. Every handler of a change reads the changed entity again and compares what it
+writes with the new value, as canonical JSON - the property of an `UpdateProperty`, the entity of an `Add` without the
+timestamps the change set sets, the element of an element change (`TryHeldAsGiven`, `FindHeld`) - and refuses a value
+written otherwise, or one the content does not hold at all. `CreateChangeSet` and merges write every new value as it is
+held before it is signed, so that their callers give values as before. Section 2 lists the written forms the inventory
+found. The examples run unchanged; in the new run (`csharp-80e4ccc`) the elements of revision 13 name no context and the
+keys of revision 15 are in their order. `NewValueTests` of WWCP_POI shows seven values written otherwise refused when
+applied and written as held when prepared, and custom data held as given.
+
+The TypeScript port applies a new value as it is given and refuses one it can tell is written otherwise without the types
+of the values: a JSON-LD context outside custom data, identified elements and the lists of section 2 out of their order or
+given twice, a timestamp not UTC to the millisecond (`tests/newValues.test.ts`); it compares old values as they are given.
+Every other form it cannot tell ends in other `afterETags` than the change set names, unless a change set was made to
+pass: a known limit. Custom data does not hold its values as given in C# yet (finding 20).
 
 
 ## 11. Epoch 1 checkpoints name their epoch, the specification says they do not
@@ -514,6 +539,35 @@ who resolves it; or let a removal of the RNO remove or clear the references to w
 - ✅ **Dependencies of COSE.TS (resolved):** `@vanaheimr/cose@0.9.0` depended on `@vanaheimr/metrological-cbor@^0.10.0`,
   this library on `^0.11.0`: a consumer got two copies of the CBOR codec. `@vanaheimr/cose@0.10.0` depends on
   `^0.11.1`, and this library takes both at `^0.10.0` and `^0.11.1`: one copy.
+
+
+## 20. Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server
+
+**Where:** Styx `Illias/CustomData/ACustomDataNew.cs:135-139` (`ToJObject`: `JObject.Parse` with the defaults of
+Newtonsoft.Json), `CustomDataNew.cs:290-291`, `CustomDataValue.cs:349-366`; written by `POIEntityMetadata.cs:97-98`.
+
+`customData` is read through System.Text.Json and written back through `JObject.Parse`: a non-integral number becomes a
+`double` (`1.50` → `1.5`, digits beyond a double lost), and a text that looks like a timestamp becomes a .NET
+`DateTime`, written in the round-trip format (`"2024-01-01T12:00:00Z"` → `"2024-01-01T12:00:00.0000000Z"`); one with an
+offset is converted into the local time zone of the server. Two servers in different time zones then hold the same
+change otherwise: other `afterETags`, and one of them refuses the change set. Found by the inventory of finding 10
+(confirmed by reading; the defaults of Newtonsoft.Json inferred). Since finding 10, a value written so is refused, or
+written as held by `CreateChangeSet` - in the time zone of the server that prepares it. SPECIFICATION.md section 7 says
+so.
+
+**Fix:** read and write custom data as JSON, without converting numbers or texts (`DateParseHandling.None`,
+`FloatParseHandling.Decimal`, or the JSON text kept as it is).
+
+
+## 21. The custom data of an address is lost
+
+**Where:** Styx `Illias/Helpers/Address.cs:403,424,533-535`.
+
+An address reads its custom data from `"CustomData"` and writes it as `"customData"`: given in lower case it is dropped,
+given as `"CustomData"` it is written in lower case and dropped when read again. Found by the inventory of finding 10
+(confirmed by reading). Since finding 10, an address giving custom data is refused, as the content does not hold it.
+
+**Fix:** read `"customData"`.
 
 
 ## What was checked and found sound

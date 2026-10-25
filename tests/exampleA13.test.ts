@@ -40,7 +40,7 @@ describe('Example A13: who checks the meter', () => {
         expect(`DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: ${legalStatus}`).toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: germanCalibrationLaw');
         expect(`${text(release, 'name')} ${text(release, 'version')}, by ${text(manufacturer, 'name')}, ${text(manufacturer, 'craRole')}, supported until ${text(release, 'supportUntil')}, ` +
                `vulnerabilities to ${text(manufacturer, 'vulnerabilityContact')}, bill of materials ${text(release, 'softwareBillOfMaterials')}`)
-            .toBe('Chargy Transparency Software 1.5.0, by GraphDefined GmbH, manufacturer, supported until 2031-10-25T14:39:26.621Z, vulnerabilities to security@graphdefined.example, ' +
+            .toBe('Chargy Transparency Software 1.5.0, by GraphDefined GmbH, manufacturer, supported until 2031-10-25T16:25:31.482Z, vulnerabilities to security@graphdefined.example, ' +
                   'bill of materials https://www.graphdefined.example/chargy/1.5.0/sbom.cdx.json');
         expect(`${text(certificate, '@id')} for the ${text(certificate, 'chargingStationModel')} ${text(certificate, 'chargingStationModelVersion')}, under the ${text(certificate, 'legislation')}, ` +
                `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')} for ${(get(defined(body), 'notifiedFor') as string[]).join(', ')}`)
@@ -84,7 +84,7 @@ describe('Example A13: who checks the meter', () => {
         defined(find(changed))['chargingStationModel'] = 'GD-AC44';
 
         expect(() => verifyChargingStation(anchorPQ, changed, { at: AT }))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:80b1a440eb252f8068d4c07360d570ffe70b06ff0208177697f2763bb8e7602c of the proof, not of 2!');
+            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:f1ec58fdcadcb27129987c9813c71ed3e902e149d62b0957c60b5e817815dcf5 of the proof, not of 2!');
 
     });
 
