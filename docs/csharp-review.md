@@ -25,7 +25,7 @@ stays the review of the C# implementation.
 |---|---|---|---|---|
 | 1 | ✅ The holders counted for a quorum are named by the keys being counted | high | confirmed | unchanged; **fixed** in `3e32f48` |
 | 2 | ✅ ECDSA twins of price statements: false split views, broken chains | high | demonstrated | unchanged, again demonstrated; **fixed** in `dbf39b0` |
-| 3 | A removed or expired key still signs, through an older version | high | confirmed | unchanged |
+| 3 | ✅ A removed or expired key still signs, through an older version | high | confirmed | unchanged; **fixed** in `f2ae688` |
 | 4 | A change set counts as committed by its `@id` alone | medium-high | confirmed | unchanged |
 | 5 | A witness signs the first checkpoint of a history started from a snapshot unchecked | medium-high | confirmed | unchanged |
 | 6 | A subject attestation verifies a whole proof | medium | demonstrated (D4, D5) | unchanged |
@@ -126,7 +126,7 @@ program against the run of `dbf39b0` (`tests/vectors/csharp-dbf39b0/proofs/MakeP
 digest, which the server of checkpoint 4 takes as `Known`.
 
 
-## 3. A removed or expired key still signs, through an older version
+## 3. ✅ A removed or expired key still signs, through an older version
 
 **Where:** `WWCP_POI3/History/RoamingNetworkHistory.cs:760-784` (`Commit`),
 `WWCP_POI3/History/RoamingNetworkHistory.Persistence.cs` (`FindVersionFor`).
@@ -145,6 +145,23 @@ revision 16 of epoch 1; within epoch 1, its old keys would still sign this way. 
 
 **Fix:** a change set made for an older version must also be signed by keys valid in the head (or the tip it is merged
 with) at the time it is taken, or `createdAt` must not lie before the `lastChange` of the head.
+
+**Fixed** in `f2ae688` (SPECIFICATION.md 4.1, 4.2, 5.3, 8.6), the first way, without the second, which would refuse a
+change set waiting for the signatures of a quorum (4.2) whenever anything else is committed meanwhile:
+- **Merges:** two tips also conflict where a change set of the one since the merge base is signed by a key a best common
+  ancestor names for a party, while the other tip, still having that party, no longer names it, or names it as not
+  valid at the later of the change set's `createdAt` and the other version's `lastChange` (`RevokedKey`). Keys a branch
+  added itself are not compared, so a branch adding a party or replacing a key and signing with it still merges; a
+  party the other tip removed conflicts as its removal does. Every server makes the same merges, also of the commits
+  of peers (`TryAppend`).
+- **Commit:** a change set made for an older version is refused when it would conflict so with a tip it will be merged
+  with ("Prepare it again for the head!").
+- **When the server takes it:** `Commit` and `CoSign` count a key only when it is valid at `createdAt` and when the
+  server takes it, by its clock, and refuse a `createdAt` later than then; so a `createdAt` chosen before lets an
+  expired key sign nothing. Commits of peers are checked by what they say, not by that clock.
+
+`MergeTests` of WWCP_POI hold the scenario above and its expiry variants. The TypeScript port takes no merges and
+replays linear histories only, so nothing changes there.
 
 
 ## 4. A change set counts as committed by its `@id` alone
