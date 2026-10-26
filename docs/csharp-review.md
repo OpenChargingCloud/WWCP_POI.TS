@@ -718,8 +718,8 @@ and 17.
   proof (the content check of a full version does). The TypeScript port does. Demonstrated by the vectors
   `trust-certificate-operator` and `trust-statement-operator` (D6) of WWCPPOIConformanceTests. `Verify` refuses a key
   statement of another operator, in the words of this port, and counts no attestation by a signing key certified for
-  another one; `KeyStatementTests` holds both, each proof attested anew over what it gives. D6 closes once the
-  conformance tests pin it.
+  another one; `KeyStatementTests` holds both, each proof attested anew over what it gives. WWCPPOIConformanceTests no
+  longer lists D6 as a deviation: the two vectors hold both implementations to it.
 - ✅ **Checkpoint roles (no change of code needed):** required roles are checked as the role a signer declares;
   `examples/csharp/exampleA4.cs` accepts a signing key of the RNO in any role. The TypeScript port binds witness
   signatures to the key trusted for the witness named, and ignores, rather than refuses, signatures by keys it does not
