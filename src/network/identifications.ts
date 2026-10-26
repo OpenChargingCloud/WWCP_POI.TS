@@ -116,7 +116,7 @@ function ofAnother(parties: readonly JSONObject[], property: string, message: (c
  * The energy meters of the given charging station operators and grid operators (`AllEnergyMeters`): of their charging pools,
  * charging stations and EVSEs, and of their grid connection points.
  */
-function energyMetersOf(operators: readonly JSONObject[], gridOperators: readonly JSONObject[]): JSONObject[] {
+export function energyMetersOf(operators: readonly JSONObject[], gridOperators: readonly JSONObject[]): JSONObject[] {
 
     const meters: JSONObject[] = [];
 

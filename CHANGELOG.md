@@ -146,3 +146,12 @@ the version before has the keys of the body, is refused. `verifyChargingStation`
 `ConformityAssessmentBody` or `RoamingNetworkOperator`, in place of `bodyHasKeys`, which could not tell them apart once
 the body had keys. The test vectors stay those of the run at `987fa26`: none of its examples has a third epoch or a
 certificate stated in place of a body.
+
+A version naming a hardware revision, firmware version or serial number WWCP_POI refuses is refused, read or led to by a
+change set, as WWCP_POI reads them since `c31e5e3` and `3672b06` (`HardwareRevision`, `FirmwareVersion`,
+`SerialNumber`): a text as it is given, not empty and neither beginning nor ending with whitespace as `Char.IsWhiteSpace`
+tells it, of charging stations, energy meters and their templates, of the models of their manufacturers, each once there,
+and of certificates and the energy meters they were issued with, in the words of WWCP_POI (`invalidVersionText`, which
+`RoamingNetwork.parse` checks with `duplicateIdentification`). Whether one is of the model of what names it stays with
+the references, which this library leaves to WWCP_POI. The test vectors stay those of the run at `987fa26`, whose
+versions name none it refuses.

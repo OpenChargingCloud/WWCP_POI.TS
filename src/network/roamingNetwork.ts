@@ -21,6 +21,7 @@ import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type E
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
 import { duplicateIdentification }   from './identifications.ts';
+import { invalidVersionText }        from './versionTexts.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import { POIPublicKey }              from '../keys.ts';
 import { KeyStatement }              from '../proofs/keyStatement.ts';
@@ -196,8 +197,9 @@ export class RoamingNetwork {
     /**
      * Reads a roaming network and refuses it unless it is a valid version: of its `@context`, with `eTags` that are those
      * of its content, where it lists any, without keys of its own, with a valid roaming network operator, and naming no
-     * identification twice that WWCP_POI keeps unique within the roaming network (`duplicateIdentification`), also the
-     * version a change set leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it has
+     * identification twice that WWCP_POI keeps unique within the roaming network (`duplicateIdentification`), nor a hardware
+     * revision, firmware version or serial number WWCP_POI refuses (`invalidVersionText`), also the version a change set
+     * leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it has
      * (`matchesCommitETags`).
      */
     public static parse(value: JSONValue | undefined): RoamingNetwork {
@@ -226,10 +228,10 @@ export class RoamingNetwork {
         const operatorJSON = get(json, 'operator');
         const operator     = operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, id);
 
-        const duplicate    = duplicateIdentification(content);
+        const refusal      = duplicateIdentification(content) ?? invalidVersionText(content);
 
-        if (duplicate !== undefined)
-            throw new POIError(duplicate);
+        if (refusal !== undefined)
+            throw new POIError(refusal);
 
         const network      = new RoamingNetwork(id, content, operator, treeHashAlgorithms);
 
