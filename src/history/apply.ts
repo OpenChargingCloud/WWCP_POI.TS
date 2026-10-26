@@ -84,7 +84,7 @@ const PARTY_CHILDREN: Readonly<Record<string, readonly string[]>> = {
     ChargingStationManufacturer:       [ 'chargingStationModels' ],
     EnergyMeterManufacturer:           [ 'energyMeterModels' ],
     TransparencySoftwareManufacturer:  [ 'transparencySoftware' ],
-    ConformityAssessmentBody:          [ 'transparencySoftwareCertificates' ],
+    ConformityAssessmentBody:          [ 'certificates' ],
 };
 
 /**
@@ -112,8 +112,8 @@ const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
         property:    'chargingStationModels',
         what:        'charging station model',
         usage:       KeyUsages.Models,
-        changeable:  [ 'name', 'description', 'versions', 'productURL', 'datasheetURL', 'images', 'maxPower', 'currentTypes', 'connectorTypes',
-                       'numberOfEVSEs', 'customData' ],
+        changeable:  [ 'name', 'description', 'hardwareRevisions', 'firmwareVersions', 'productURL', 'datasheetURL', 'images', 'maxPower',
+                       'currentTypes', 'connectorTypes', 'numberOfEVSEs', 'customData' ],
         inParent:    'manufacturer',
     },
 
@@ -123,8 +123,8 @@ const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
         property:    'energyMeterModels',
         what:        'energy meter model',
         usage:       KeyUsages.Models,
-        changeable:  [ 'name', 'description', 'versions', 'productURL', 'datasheetURL', 'images', 'currentTypes', 'maxCurrent', 'accuracyClass',
-                       'measurands', 'signatureMethods', 'customData' ],
+        changeable:  [ 'name', 'description', 'hardwareRevisions', 'firmwareVersions', 'productURL', 'datasheetURL', 'images', 'currentTypes',
+                       'maxCurrent', 'accuracyClass', 'measurands', 'signatureMethods', 'customData' ],
         inParent:    'manufacturer',
     },
 
@@ -138,14 +138,15 @@ const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
                        'supportUntil', 'declarationOfConformity', 'softwareBillOfMaterials' ],
     },
 
-    TransparencySoftwareCertificate: {
+    ConformityCertificate: {
         parentType:  'ConformityAssessmentBody',
         parents:     'conformityAssessmentBodies',
-        property:    'transparencySoftwareCertificates',
-        what:        'transparency software certificate',
+        property:    'certificates',
+        what:        'certificate',
         usage:       KeyUsages.Certificates,
-        changeable:  [ 'legislation', 'chargingStationModel', 'chargingStationModelVersion', 'chargingStationManufacturerId', 'documentNumber',
-                       'documentURL', 'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'notBefore', 'notAfter' ],
+        changeable:  [ 'legislation', 'chargingStationModel', 'hardwareRevisions', 'firmwareVersions', 'chargingStationManufacturerId',
+                       'energyMeterModel', 'energyMeterManufacturerId', 'energyMeters', 'documentNumber', 'documentURL',
+                       'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'notBefore', 'notAfter' ],
     },
 
 };
@@ -165,8 +166,8 @@ const ENERGY_METER_CHILD_TYPES: Readonly<Record<string, EnergyMeterChildType>> =
     EnergyMeterTemplate: {
         property:    'energyMeterTemplates',
         what:        'energy meter template',
-        changeable:  [ 'name', 'description', 'dataSource', 'customData', 'role', 'manufacturerId', 'modelId', 'modelURL', 'hardwareVersion',
-                       'firmwareVersion', 'transparencySoftwareStatus', 'signatureMethods' ],
+        changeable:  [ 'name', 'description', 'dataSource', 'customData', 'role', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision',
+                       'firmwareVersion', 'transparencySoftwareStatus', 'signatureMethods', 'certificateIds' ],
     },
 
     EnergyMeterGroup: {
@@ -209,7 +210,7 @@ const idOf = (value: JSONValue | undefined): string =>
  */
 const ORDERED_TEXTS = new Set([
     'facilities', 'paymentOptions', 'uiFeatures', 'features', 'parkingRestrictions', 'services', 'standards', 'nutsCodes',
-    'vehicleTypes', 'euVehicleCategories', 'parkingSpaceIds', 'chargingTariffIds', 'acceptedEMobilityProviderIds',
+    'vehicleTypes', 'euVehicleCategories', 'parkingSpaceIds', 'certificateIds', 'chargingTariffIds', 'acceptedEMobilityProviderIds',
     'paymentMeans', 'paymentBrands', 'signatureMethods', 'connectorTypes', 'EVSEIds', 'chargingStationIds', 'chargingPoolIds',
     'energyMeterIds', 'EVSEGroupIds', 'chargingStationGroupIds', 'chargingPoolGroupIds', 'chargingStationOperatorIds',
     'eMobilityProviderIds', 'parkingSensorIds', 'parkingProductIds', 'measurands', 'notifiedFor',
@@ -674,7 +675,7 @@ function partyChildIn(content: JSONObject, type: PartyChildType, change: Change,
 /**
  * Applies a change of a model of a charging station or energy meter manufacturer, of a release of a transparency software
  * manufacturer or of a certificate of a conformity assessment body (`TryApplyModelChange`,
- * `TryApplyTransparencySoftwareChange`, `TryApplyTransparencySoftwareCertificateChange`): added to the party an `Add` names
+ * `TryApplyTransparencySoftwareChange`, `TryApplyConformityCertificateChange`): added to the party an `Add` names
  * as its parent, changed and removed in the one embedding it, a model in the manufacturer every change of it names; the
  * party changes with it.
  */

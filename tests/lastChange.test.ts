@@ -124,8 +124,8 @@ describe('The lastChange of what embeds a changed entity (4)', () => {
         // What embeds them: operators, pools, stations, manufacturers, conformity assessment bodies.
         expect([ ...types ].sort()).toEqual([
             'ChargingPool', 'ChargingStation', 'ChargingStationGroup', 'ChargingStationManufacturer', 'ChargingStationModel', 'ChargingStationOperator',
-            'ChargingStationTemplate', 'ChargingTariff', 'ConformityAssessmentBody', 'EVSE', 'EVSEGroup', 'EVSETemplate', 'EnergyMeterManufacturer',
-            'EnergyMeterModel', 'EnergyMeterTemplate', 'RoamingNetworkOperator', 'TransparencySoftware', 'TransparencySoftwareCertificate',
+            'ChargingStationTemplate', 'ChargingTariff', 'ConformityAssessmentBody', 'ConformityCertificate', 'EVSE', 'EVSEGroup', 'EVSETemplate',
+            'EnergyMeterManufacturer', 'EnergyMeterModel', 'EnergyMeterTemplate', 'RoamingNetworkOperator', 'TransparencySoftware',
             'TransparencySoftwareManufacturer',
         ]);
 

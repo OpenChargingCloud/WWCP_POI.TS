@@ -119,7 +119,7 @@ export const CHILD_ARRAYS: Readonly<Record<TreeNodeKind, Readonly<Record<string,
     },
 
     conformityAssessmentBody: {
-        transparencySoftwareCertificates:  'leaf',
+        certificates:                      'leaf',
     },
 
     leaf: {},

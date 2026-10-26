@@ -69,8 +69,8 @@ const EVSE_RULES: MemberRules = {
 
 /** Effective(ChargingStation, …) of ChargingStationOperator.Effective.cs. */
 const CHARGING_STATION_RULES: MemberRules = {
-    singles: [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'openingTimes',
-               'accessibility', 'calibrationInfo', 'certificationInfo', 'maxPower' ],
+    singles: [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'hardwareRevision',
+               'firmwareVersion', 'openingTimes', 'accessibility', 'calibrationInfo', 'certificationInfo', 'maxPower' ],
     unions:  {
         brands:               { key: byId,  order: 'ordinal' },
         images:               { key: byURL, order: 'given'   },
@@ -78,6 +78,7 @@ const CHARGING_STATION_RULES: MemberRules = {
         euVehicleCategories:  ordinalIds,
         features:             ordinalIds,
         parkingSpaceIds:      ordinalIds,
+        certificateIds:       ordinalIds,
     },
 };
 
@@ -115,10 +116,11 @@ const CHARGING_TARIFF_RULES: MemberRules = {
 
 /** EnergyMeterTemplate.Effective: the serial number and the public keys belong to the single device. */
 const ENERGY_METER_RULES: MemberRules = {
-    singles: [ 'role', 'manufacturerId', 'modelId', 'modelURL', 'hardwareVersion', 'firmwareVersion' ],
+    singles: [ 'role', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision', 'firmwareVersion' ],
     unions:  {
         transparencySoftwareStatus:  { key: bySoftwareId, order: 'ordinal' },
         signatureMethods:            ordinalIds,
+        certificateIds:              ordinalIds,
     },
 };
 

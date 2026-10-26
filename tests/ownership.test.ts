@@ -70,7 +70,7 @@ function addCertificate(before: RoamingNetwork): ChangeSet {
         '@context':        CHANGE_SET_CONTEXT,
         roamingNetworkId:  'rn1',
         createdAt:         T0,
-        changes:           [ { kind: 'Add', entityType: 'TransparencySoftwareCertificate', entityId: 'BSI-2026-0001', newValue: { '@id': 'BSI-2026-0001' },
+        changes:           [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'BSI-2026-0001', newValue: { '@id': 'BSI-2026-0001' },
                                parentEntityType: 'ConformityAssessmentBody', parentEntityId: 'BSI' } ],
         beforeETags:       eTags,
         afterETags:        eTags,
@@ -104,7 +104,7 @@ describe('The roaming network operator in place of a party without signing keys 
         const byInfrastructure = network('infrastructure');
 
         expect(() => { checkOwnership(byInfrastructure, addCertificate(byInfrastructure)); })
-            .toThrow("Change 0: Add of the TransparencySoftwareCertificate 'BSI-2026-0001' needs a signature by a signing key of the ConformityAssessmentBody 'BSI'!");
+            .toThrow("Change 0: Add of the ConformityCertificate 'BSI-2026-0001' needs a signature by a signing key of the ConformityAssessmentBody 'BSI'!");
 
     });
 

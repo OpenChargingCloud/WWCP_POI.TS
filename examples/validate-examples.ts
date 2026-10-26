@@ -3,7 +3,7 @@
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
- *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-25T16:27:00.000Z
+ *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-26T00:58:00.000Z
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
  * same. Attestations end 15 minutes after they are signed: the station proof of example A13 is checked at the time of its
@@ -39,8 +39,8 @@ function show(value: JSONValue | undefined): string {
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-80e4ccc');
-const time       = at ?? (directory.includes('csharp-80e4ccc') ? '2026-10-25T16:27:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-987fa26');
+const time       = at ?? (directory.includes('csharp-987fa26') ? '2026-10-26T00:58:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');
@@ -430,18 +430,23 @@ if (has('published/QA-DE-GEF-E1-1-proof.json'))
 
         console.log(`The station proof, revision ${station.revision}, at ${attested}: attested by ${station.attestedBy.join(', ')}`);
 
+        const name  = (value: JSONValue | undefined): string => show(isObject(value) ? Object.values(value)[0] : value);
+        const list  = (value: JSONValue | undefined): string => ((value as string[] | undefined) ?? []).join('/');
+
+        // The certificates the station and its meters name, each compared with the model, the hardware revision and the
+        // firmware version of what names it.
+        for (const { namedBy, certificate, body, bodyHasKeys, forThisModel } of station.certificates)
+            console.log(`${namedBy.entityType} ${namedBy.entityId}: ${show(certificate['@id'])} for the ${show(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${list(certificate['hardwareRevisions'])}, firmware ${list(certificate['firmwareVersions'])}${certificate['legislation'] === undefined ? '' : ` under the ${show(certificate['legislation'])}`}, by the ${show(body['@id'])}; keys of its own: ${bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for its model, revision and firmware: ${forThisModel ? 'yes' : 'no'}`);
+
         for (const software of station.transparencySoftware) {
-            const name = (value: JSONValue | undefined): string => show(isObject(value) ? Object.values(value)[0] : value);
-            console.log(`${software.energyMeterId}: ${software.legalStatus ?? ''}`);
-            console.log(`  ${name(software.release['name'])} ${show(software.release['version'])}, by ${name(software.manufacturer['name'])}, ${show(software.manufacturer['craRole'] ?? '')}`);
-            if (software.certificate !== undefined)
-                console.log(`  ${show(software.certificate['@id'])} for the ${show(software.certificate['chargingStationModel'])} ${show(software.certificate['chargingStationModelVersion'])} under the ${show(software.certificate['legislation'])}, by the ${show(software.body?.['@id'])}; keys of its own: ${software.bodyHasKeys === true ? 'yes' : 'no, the roaming network operator stated it'}; for the model of the station: ${software.forThisModel === true ? 'yes' : 'no'}`);
+            console.log(`${software.energyMeterId}: ${name(software.release['name'])} ${show(software.release['version'])}, ${software.legalStatus ?? ''}, as ${software.certificates.map(item => show(item.certificate['@id'])).join(' and ')} name it`);
+            console.log(`  by ${name(software.manufacturer['name'])}, ${show(software.manufacturer['craRole'] ?? '')}`);
         }
 
-        // The model of the station, as its manufacturer states it: a certificate is for one of its versions, the station names none.
+        // The model of the station, as its manufacturer states it, and the revision and the firmware the station names.
         const madeBy = station.manufacturer;
         if (madeBy?.model !== undefined)
-            console.log(`The station ${show(station.chargingStation['@id'])} is a ${show(madeBy.model['@id'])} of ${show(madeBy.manufacturer['@id'])}, versions ${((madeBy.model['versions'] as string[] | undefined) ?? []).join('/')}`);
+            console.log(`The station ${show(station.chargingStation['@id'])} is a ${show(madeBy.model['@id'])} of ${show(madeBy.manufacturer['@id'])}, hardware ${show(station.chargingStation['hardwareRevision'] ?? '-')} of ${list(madeBy.model['hardwareRevisions'])}, firmware ${show(station.chargingStation['firmwareVersion'] ?? '-')} of ${list(madeBy.model['firmwareVersions'])}`);
         for (const warning of station.warnings)
             console.log(`warning: ${warning}`);
 

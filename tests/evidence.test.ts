@@ -51,7 +51,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         ]);
 
         // b) As charging began: the station proof attested, the price statement valid.
-        expect(toTimestamp(started)).toBe('2026-10-25T16:25:28.374Z');
+        expect(toTimestamp(started)).toBe('2026-10-26T00:56:48.676Z');
         expect(verified.station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
 
         // c) Revision 13, the version of the station proof: in checkpoint 4, witnessed.
@@ -75,8 +75,9 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const meterModel  = defined(meterBy.model);
         expect(`${asText(station.chargingStation['@id'])}: ${asText((madeBy.manufacturer['name'] as JSONObject)['en'])} ${asText(model['@id'])}`).toBe('DE*GEF*S1: GraphDefined Charging Stations GD-DC300');
         expect(`${asText(meter['@id'])}: ${asText((meterBy.manufacturer['name'] as JSONObject)['en'])} ${asText(meterModel['@id'])}, serial ${asText(meter['serialNumber'])}, ${(meter['signatureMethods'] as string[]).join(', ')}, key ${asText(defined((meter['publicKeys'] as JSONObject[])[0])['@id']).slice(0, 8)}`)
-            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key ab51684c');
-        expect(`${asText(model['maxPower'])} W, versions ${(model['versions'] as string[]).join('/')}; class ${asText(meterModel['accuracyClass'])}`).toBe('300000 W, versions 1.0/1.1; class B');
+            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key b87f0197');
+        expect(`${asText(model['maxPower'])} W, hardware ${(model['hardwareRevisions'] as string[]).join('/')}, firmware ${(model['firmwareVersions'] as string[]).join('/')}; class ${asText(meterModel['accuracyClass'])}`)
+            .toBe('300000 W, hardware 1.0/1.1, firmware 2.4.0/2.5.0; class B');
         expect(station.warnings).toEqual([]);
 
         const tariff = defined(station.tariffs.get('DE*GEF*E1*1')?.[0]);
@@ -89,10 +90,10 @@ describe('Example A10: the evidence of a charging session, months later', () => 
     it('needs the checkpoints months later: the attestations alone have ended', () => {
 
         const monthsLater = toTimestamp(started + 90 * 24 * 60 * 60 * 1000);
-        expect(monthsLater).toBe('2027-01-23T16:25:28.374Z');
+        expect(monthsLater).toBe('2027-01-24T00:56:48.676Z');
 
         expect(() => ChargingStationProof.parse(evidence.chargingStationProof).verify(anchor, monthsLater))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:892648076534d1f7f7a7fa676bbc6b4ded3f0adfe0f405bd5e35466917da6da9 of the proof, not of 2!');
+            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:33e1fa205299bda1f10fc4ec40fb834f8860b48f24d1acb0831e12fd35aa1163 of the proof, not of 2!');
 
         // The commit proof in the witnessed checkpoint 4 still proves the version of the station proof.
         const proof  = ChargingStationProof.parse(evidence.chargingStationProof);
@@ -117,7 +118,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const other = clone(evidence.chargingStationProof as JSONObject);
         defined(evseOf(other))['maxPower'] = 300000;
         expect(() => ChargingStationProof.parse(other).verifyAgainstCommitProof(CheckpointProof.parse(evidence.commitProof)))
-            .toThrow('The proof leads to effectiveTree:sha256:hex:9423ab4b0ec40aabcd2b0b16105e18447ed1bc90eb919521b5ab35787fbaa1d5, not to effectiveTree:sha256:hex:892648076534d1f7f7a7fa676bbc6b4ded3f0adfe0f405bd5e35466917da6da9!');
+            .toThrow('The proof leads to effectiveTree:sha256:hex:aadc2ad6cf7e82be5325beaddaac13a6b3bb428b319d58d5ad2fccfcaf4a422d, not to effectiveTree:sha256:hex:33e1fa205299bda1f10fc4ec40fb834f8860b48f24d1acb0831e12fd35aa1163!');
 
         // e) Checkpoint 5 as it was before its witnesses signed it.
         const unwitnessed = clone((json['checkpoints'] as JSONArray)[1] as JSONObject);

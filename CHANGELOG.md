@@ -108,3 +108,16 @@ A change set naming `rebasedFrom` with a change, but an `Add` or `AddElement`, w
 refuses it since `1717ee2` (SPECIFICATION.md 4; docs/csharp-review.md, 12): only old values tell that a change set
 committed meanwhile changed what it changes, which such a rebase may have overwritten. One not rebased is read as before.
 The golden vector `changeSet-rebased-without-old-value` holds both implementations to it.
+
+A model of charging stations or energy meters names its `hardwareRevisions` and `firmwareVersions`, and a charging
+station and an energy meter one `hardwareRevision` and one `firmwareVersion` of it, as WWCP_POI does since `7e0b0ac`
+(docs/csharp-review.md, 16); a certificate (`ConformityCertificate`, the `certificates` of a conformity assessment body)
+is for a model of charging stations or of energy meters, in the hardware revisions and firmware versions it covers, and
+names its components, the transparency software and, of a station model, the energy meters it was issued with; a
+station and a meter name the certificates of their models in `certificateIds`, and the `transparencySoftwareStatus` of
+a meter names a release and its legal status, no certificate, as WWCP_POI does since `987fa26` (docs/csharp-review.md,
+17). Change sets change them, effective members take them of their templates, and a certificate is unique within the
+network. `verifyChargingStation` gives the `certificates` the station and its meters name, each with `forThisModel`:
+whether it is for the model, the hardware revision and the firmware version of what names it; the `transparencySoftware`
+of a meter gives the certificates naming its release, no longer a certificate of its own. The test vectors are those of
+a new run of the C# examples at `987fa26` (`tests/vectors/csharp-987fa26`).

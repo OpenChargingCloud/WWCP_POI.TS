@@ -76,14 +76,14 @@ describe('Example A12: the traffic report and the atlas', () => {
         const status = RuntimeStatus.fromSnapshot(snapshot);
         const now    = defined(status.get('EVSE', 'DE*GEF*E1*1', 'status'));
 
-        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-10-25T16:25:30.860Z');
+        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-10-26T00:56:51.035Z');
 
         const withoutStatus = clone(snapshot);
         delete withoutStatus['runtimeStatus'];
         expect(History.fromSnapshot(withoutStatus).head.commit.id).toBe(History.fromSnapshot(snapshot).head.commit.id);
 
         // A report that comes late, of five minutes ago: its status stays.
-        const late = parseStatusUpdate({ entityId: 'DE*GEF*E1*1', entityType: 'EVSE', kind: 'status', timestamp: '2026-10-25T16:20:30.860Z', value: 'available' });
+        const late = parseStatusUpdate({ entityId: 'DE*GEF*E1*1', entityType: 'EVSE', kind: 'status', timestamp: '2026-10-26T00:51:51.035Z', value: 'available' });
         expect(status.apply(late)).toBe('Outdated');
         expect(defined(status.get('EVSE', 'DE*GEF*E1*1')).value).toBe('charging');
 

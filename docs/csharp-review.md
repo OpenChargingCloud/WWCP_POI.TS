@@ -38,8 +38,8 @@ stays the review of the C# implementation.
 | 13 | ✅ The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated; **fixed** in `36bb176`, and in this port alike |
 | 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged |
 | 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged |
-| 16 | A certificate is for a version of a model, but no station or meter names one of its model's | medium | confirmed | **new** |
-| 17 | An energy meter names the certificate of a station model, and has none of its own | medium | confirmed | **new** |
+| 16 | ✅ A certificate is for a version of a model, but no station or meter names one of its model's | medium | confirmed | **new**; **fixed** in `7e0b0ac`, and in this port alike |
+| 17 | ✅ An energy meter names the certificate of a station model, and has none of its own | medium | confirmed | **new**; **fixed** in `987fa26`, and in this port alike |
 | 18 | What one party names blocks what another party withdraws | low | confirmed | **new** |
 | 19 | Smaller points | low | confirmed | extended |
 | 20 | ✅ Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server | medium (interop) | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
@@ -527,7 +527,7 @@ added it tells, and the app does not have it.
 proof carries it. The TypeScript port reports what the proof shows, `bodyHasKeys`, and says so.
 
 
-## 16. A certificate is for a version of a model, but no station or meter names one of its model's
+## 16. ✅ A certificate is for a version of a model, but no station or meter names one of its model's
 
 **Where:** `WWCP_POI3/RoamingNetwork/ChargingStationManufacturer/ChargingStationModel/ChargingStationModel.cs:160` and
 `WWCP_POI3/RoamingNetwork/EnergyMeterManufacturer/EnergyMeterModel/EnergyMeterModel.cs:166` (`Versions`, one list),
@@ -566,8 +566,9 @@ the app shows is wider than the certificate.
 - **The model** of a charging station or an energy meter names its `hardwareRevisions` and its `firmwareVersions`, two
   lists in place of `versions`.
 - **The station** and its template name their `hardwareRevision` and `firmwareVersion`, as **the meter** and its
-  template do already; each is checked against the lists of its model, a reference error otherwise. A firmware update is
-  a change of the station or meter its operator signs, so that the history tells which firmware measured when.
+  template do already, there as `hardwareVersion`, to be named `hardwareRevision` as well; each is checked against the
+  lists of its model, a reference error otherwise. A firmware update is a change of the station or meter its operator
+  signs, so that the history tells which firmware measured when.
 - **The certificate** of a station model, and that of a meter model (17), names the hardware revisions and the firmware
   versions it covers, each one of its model's; an amendment adds firmware versions to it.
 - An app compares the hardware revision and the firmware version of the station with the certificate of the station,
@@ -576,8 +577,19 @@ the app shows is wider than the certificate.
 The TypeScript port reports `forThisModel` as the C# example decides it (manufacturer, model, and a version of the
 model) and says so.
 
+**Fixed** in `7e0b0ac`, and in this port alike: a model of charging stations or energy meters names its
+`hardwareRevisions` and `firmwareVersions` in place of `versions`; a charging station and its template name a
+`hardwareRevision` and a `firmwareVersion`, an energy meter and its template as before, its `hardwareVersion` now
+`hardwareRevision`, each one of its model and only with it, as the station or meter is at runtime (a template without a
+model gives them to members of their own model); a certificate names the `hardwareRevisions` and `firmwareVersions` of
+its model it covers, at least one of each, and refuses the `chargingStationModelVersion` of before. The references are
+checked after every change set, so that a revision or firmware version still named stays in its model. Example A13
+compares the hardware revision and the firmware version of the station with its certificate. This port applies the
+changes of them and takes them of templates; the references, as those to manufacturers and models before, it leaves to
+WWCP_POI.
 
-## 17. An energy meter names the certificate of a station model, and has none of its own
+
+## 17. ✅ An energy meter names the certificate of a station model, and has none of its own
 
 **Where:** `WWCP_POI2/RoamingNetwork/TransparencySoftware/TransparencySoftwareCertificate.cs:33-38,141-154` (a document
 "for a charging station model/version", naming its manufacturer, model and version),
@@ -588,14 +600,16 @@ model) and says so.
 (`UnknownTransparencyReference`, the energy meters and their templates), `docs/ConformityAssessmentBody.md` ("Energy
 meters name its certificates"), `examples/csharp/exampleA13.cs:239-249`.
 
-The metering of a charging station has two certificates, of different subjects: the certificate of the **energy meter**,
-for a model of meters of its manufacturer (e.g. the EU type examination certificate of an AC meter under the MID), and
-the certificate of the **charging station**, for a model of stations of its manufacturer as the measuring instrument it
-is, with the meters it mounts, its display and the transparency software verified with it (in Germany the type
-examination certificate under the Mess- und Eichgesetz). WWCP_POI knows one, the `TransparencySoftwareCertificate`. By
-what it names, `chargingStationManufacturerId`, `chargingStationModel`, `chargingStationModelVersion` and the releases
-it verifies or finds compatible, it is the certificate of a station model. But the energy meters name it, in their
-`transparencySoftwareStatus`, not the station. So:
+A certificate is for a model of **charging stations** or a model of **energy meters**, each of its manufacturer: e.g.
+the EU type examination certificate of an AC meter under the MID, or, in Germany, the type examination certificate of a
+charging station as the measuring instrument it is, under the Mess- und Eichgesetz. It names the components it was
+issued with. One is the **transparency software**: a product of its own, of its own manufacturer, as WWCP_POI has it
+(a `TransparencySoftwareManufacturer` and its releases), which the certification of a station needs verified as that
+of a meter does. Another, for a station, are the **energy meters** it mounts. WWCP_POI knows one certificate, the
+`TransparencySoftwareCertificate`: named after one of its components, for a station model only
+(`chargingStationManufacturerId`, `chargingStationModel`, `chargingStationModelVersion`), with the releases it verifies
+or finds compatible as its only components, and named by the energy meters, in their `transparencySoftwareStatus`, not
+by the station. So:
 
 - The network checks that a certificate a meter names exists and covers the release the meter names, not that it is for
   the model of the station the meter is part of, although since `801bbce` both the station and the certificate name the
@@ -605,30 +619,47 @@ it verifies or finds compatible, it is the certificate of a station model. But t
 - A meter of a charging pool or of a grid connection point, part of no station, names a certificate of a station model
   just as well.
 - The certificate of the meter itself has no place: the meter names its model, but no body can state a certificate for
-  a model of meters or a version of it, and no app can show one. The station names its certificate nowhere but in
+  a model of meters, with the transparency software it was verified with, and no app can show one. Nor can a
+  certificate of a station name the meters it was issued with. The station names its certificate nowhere but in
   `certificationInfo`, a URL.
 
 Checking only the reference, a certificate a meter names against the model of its station, would write the confusion
 down: the `certificateId` of a meter would be the certificate of its station for good, and the certificate of the meter
 would still have no place.
 
-**Fix:** tell the two certificates apart.
+**Fix:** one kind of certificate, for a model of charging stations or of energy meters, naming its components.
 
-- **The certificate of a station model** is named by the charging station and its template, e.g. `certificateIds`, and
-  checked against the manufacturer and model of the station and, with 16, its hardware revision and firmware version.
-  It proves the legal status of the transparency software releases: a meter's `transparencySoftwareStatus` keeps the
-  release and its legal status, and a certificate it names must be one its station names, a reference error otherwise;
-  a meter part of no station names none.
-- **The certificate of a meter model** is a document of its own kind, embedded in the body issuing it as well: it names
-  the manufacturer and the model of energy meters it is for, the hardware revisions and firmware versions it covers (16),
-  its legislation, number, URL and validity, and no releases. The energy meter and its template name it, e.g.
-  `certificateId`, checked against the manufacturer and model of the meter and, with 16, its hardware revision and
-  firmware version.
-- The proof of a charging station gives both, so that an app shows the certificate of each meter next to the
-  certificate of the station.
+- **The certificate**, e.g. `Certificate` in the `certificates` of the body issuing it, in place of the
+  `TransparencySoftwareCertificate`, is for exactly one model, of charging stations or of energy meters, with its
+  manufacturer, in the hardware revisions and firmware versions it covers (16). It names its components: the
+  transparency software releases it verifies or finds compatible, for a station as for a meter, and, for a station, the
+  models of the energy meters it was issued with, with their hardware revisions and firmware versions. Its legislation,
+  number, URL and validity stay as they are.
+- **The station and the meter** name their certificates, each with its template, e.g. `certificateIds`: a station
+  certificates of a station model, a meter certificates of a meter model, each checked against their manufacturer,
+  model, hardware revision and firmware version, a reference error otherwise. Where a certificate of a station names
+  meters, every meter of the station is one of them, of its model, revision and firmware.
+- **The transparency software status** of a meter names a release and its legal status, no certificate. A certificate
+  of the meter or of its station naming the release among its components proves the status; an app finds it among
+  them. A meter part of no station has its own certificates for it only.
+- The proof of a charging station gives the certificates of the station and of its meters, with the skeletons of their
+  bodies, so that an app shows each next to what it is for.
 
 The TypeScript port reports, as example A13 does, whether the certificate a meter names is for the model of its station
-(`forThisModel`), and keeps the certificate where WWCP_POI keeps it until it tells the two apart.
+(`forThisModel`), and keeps the certificate where WWCP_POI keeps it until WWCP_POI names it where it belongs.
+
+**Fixed** in `987fa26`, and in this port alike: `ConformityCertificate` (the `certificates` of a body, context
+`…/certificate/v1`; not `Certificate` in C#, a name of Styx and of WWCP_Core) is for exactly one model, of charging
+stations or of energy meters, with its manufacturer, in the hardware revisions and firmware versions it covers, and names
+its components: the releases it verifies or finds compatible, and of a charging station model the energy meters it was
+issued with (`energyMeters`). A charging station, an energy meter and their templates name the certificates of their
+models in `certificateIds`; WWCP_POI checks after every change set that each is of their kind, for their model, covering
+their revision and firmware, and, where a certificate of a station names energy meters, that every meter of the station
+is one of them. A `transparencySoftwareStatus` names a release and its legal status, no certificate, and refuses a
+`certificateId`. The proof of a charging station gives the certificates the station and its meters name. In example A13
+the PTB certifies the GD-DC300 with the KDM-500 and Chargy as its components, and the KDM-500 with Chargy. This port
+gives the `certificates` of a verified station, each with `forThisModel`, and with the transparency software of a meter
+the certificates naming its release; the references a version holds it leaves to WWCP_POI, as it does those of 16.
 
 
 ## 18. What one party names blocks what another party withdraws

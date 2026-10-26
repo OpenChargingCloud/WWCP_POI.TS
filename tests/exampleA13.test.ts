@@ -11,8 +11,9 @@ import { verifyChargingStation } from '../src/verifier/chargingStation.ts';
 import { clone, get, isArray, isObject, type JSONObject, type JSONValue } from '../src/json/value.ts';
 
 
-// Example A13: who checks the meter. The transparency software manufacturer GraphDefined states its release of Chargy, the
-// PTB certifies it for the GD-DC300 under the MID, each signing what it states; DE*GEF names both for its DC energy meters,
+// Example A13: who checks the meter. The transparency software manufacturer GraphDefined states its release of Chargy; the
+// PTB certifies the GD-DC300 under the MID with the KDM-500 and Chargy as its components, and the KDM-500 with Chargy, each
+// signing what it states; DE*GEF names the certificates for its DC stations and their meters, and Chargy for the meters,
 // and the station proof of DE*GEF*E1*1 gives them, checked as ExampleA13.Validate() does.
 
 const proof = readJSON('published/QA-DE-GEF-E1-1-proof.json') as JSONObject;
@@ -24,7 +25,7 @@ const text = (object: JSONObject | undefined, property: string): string =>
 
 describe('Example A13: who checks the meter', () => {
 
-    it('checks the station proof against the trust anchor of epoch 2, and shows the release and the certificate of the meter', () => {
+    it('checks the station proof against the trust anchor of epoch 2, and shows the certificates of station and meter and the release', () => {
 
         const station = verifyChargingStation(anchorPQ, proof, { at: AT, evseId: 'DE*GEF*E1*1' });
 
@@ -32,38 +33,55 @@ describe('Example A13: who checks the meter', () => {
         expect(station.commitId).toHaveLength(128);
         expect(station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
 
+        const versions = (object: JSONObject | undefined, property: string): string =>
+            object === undefined ? '' : (get(object, property) as string[]).join('/');
+
+        // The station and its meter, each a model of its manufacturer in a hardware revision and a firmware version.
+        const madeBy   = defined(station.manufacturer);
+        const meterBy  = defined(station.energyMeterModels.get('DE*GEF*M1*1'));
+        const meter    = defined(station.energyMeters.find(item => item['@id'] === 'DE*GEF*M1*1'));
+
+        expect(`The charging station ${text(station.chargingStation, '@id')}: a ${text(madeBy.model, '@id')} of ${text(madeBy.manufacturer, '@id')}, ${text(madeBy.model, 'name')}, ` +
+               `hardware ${text(station.chargingStation, 'hardwareRevision')}, firmware ${text(station.chargingStation, 'firmwareVersion')}`)
+            .toBe('The charging station DE*GEF*S1: a GD-DC300 of GraphDefined, GraphDefined DC 300, hardware 1.0, firmware 2.5.0');
+        expect(`The energy meter ${text(meter, '@id')}: a ${text(meterBy.model, '@id')} of ${text(meterBy.manufacturer, '@id')}, ${text(meterBy.model, 'name')}, ` +
+               `hardware ${text(meter, 'hardwareRevision')}, firmware ${text(meter, 'firmwareVersion')}`)
+            .toBe('The energy meter DE*GEF*M1*1: a KDM-500 of KERNBERG, Kernberg DC meter 500 A, hardware 2.1, firmware 3.2');
+        expect(`${versions(madeBy.model, 'hardwareRevisions')}, ${versions(madeBy.model, 'firmwareVersions')}`).toBe('1.0/1.1, 2.4.0/2.5.0');
+
+        // The certificates they name, each of the PTB, for the model, the hardware revision and the firmware version of what
+        // names it, with its components: Chargy, and for the station the KDM-500 it mounts.
+        expect(station.certificates.map(({ namedBy, certificate, body, bodyHasKeys, forThisModel }) =>
+                   `${namedBy.entityType} ${namedBy.entityId}: ${text(certificate, '@id')}${certificate['legislation'] === undefined ? '' : `, under the ${text(certificate, 'legislation')}`}, ` +
+                   `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')}, keys of its own: ${bodyHasKeys}; ` +
+                   `for the ${asText(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${versions(certificate, 'hardwareRevisions')}, firmware ${versions(certificate, 'firmwareVersions')}: ${forThisModel}; ` +
+                   `with ${versions(certificate, 'verifiedTransparencySoftwareIds')}${(get(certificate, 'energyMeters') as JSONObject[] | undefined ?? []).map(item => `, the ${text(item, 'modelId')} of ${text(item, 'manufacturerId')} ${versions(item, 'hardwareRevisions')}, firmware ${versions(item, 'firmwareVersions')}`).join('')}`))
+            .toEqual([ 'ChargingStation DE*GEF*S1: PTB-2026-0042, under the MID, by the PTB, notified body 0102, keys of its own: true; for the GD-DC300 1.0, firmware 2.5.0: true; ' +
+                       'with chargy-1.5.0, the KDM-500 of KERNBERG 2.1, firmware 3.2',
+                       'EnergyMeter DE*GEF*M1*1: PTB-2026-0017, by the PTB, notified body 0102, keys of its own: true; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0',
+                       'EnergyMeter DE*GEF*M1*2: PTB-2026-0017, by the PTB, notified body 0102, keys of its own: true; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0' ]);
+
+        // The release of the meter, with its legal status, proven by both certificates, which name it among their components.
         const software = station.transparencySoftware.filter(item => item.energyMeterId === 'DE*GEF*M1*1');
         expect(software).toHaveLength(1);
 
-        const { legalStatus, release, manufacturer, certificate, body, bodyHasKeys, forThisModel } = defined(software[0]);
+        const { legalStatus, release, manufacturer, certificates } = defined(software[0]);
 
-        expect(`DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: ${legalStatus}`).toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: germanCalibrationLaw');
-        expect(`${text(release, 'name')} ${text(release, 'version')}, by ${text(manufacturer, 'name')}, ${text(manufacturer, 'craRole')}, supported until ${text(release, 'supportUntil')}, ` +
+        expect(`DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: ${text(release, 'name')} ${text(release, 'version')}, ${legalStatus}, as ${certificates.map(item => text(item.certificate, '@id')).join(' and ')} name it`)
+            .toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: Chargy Transparency Software 1.5.0, germanCalibrationLaw, as PTB-2026-0042 and PTB-2026-0017 name it');
+        expect(`by ${text(manufacturer, 'name')}, ${text(manufacturer, 'craRole')}, supported until ${text(release, 'supportUntil')}, ` +
                `vulnerabilities to ${text(manufacturer, 'vulnerabilityContact')}, bill of materials ${text(release, 'softwareBillOfMaterials')}`)
-            .toBe('Chargy Transparency Software 1.5.0, by GraphDefined GmbH, manufacturer, supported until 2031-10-25T16:25:31.482Z, vulnerabilities to security@graphdefined.example, ' +
+            .toBe('by GraphDefined GmbH, manufacturer, supported until 2031-10-26T00:56:51.634Z, vulnerabilities to security@graphdefined.example, ' +
                   'bill of materials https://www.graphdefined.example/chargy/1.5.0/sbom.cdx.json');
-        expect(`${text(certificate, '@id')} for the ${text(certificate, 'chargingStationModel')} ${text(certificate, 'chargingStationModelVersion')}, under the ${text(certificate, 'legislation')}, ` +
-               `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')} for ${(get(defined(body), 'notifiedFor') as string[]).join(', ')}`)
-            .toBe('PTB-2026-0042 for the GD-DC300 1.0, under the MID, by the PTB, notified body 0102 for MID');
-
-        // The PTB has keys of its own (it signed its certificate itself, as the commit of revision 6 shows); the certificate is
-        // for the model of the station, as its manufacturer states it with its versions, in one of them.
-        expect(bodyHasKeys).toBe(true);
-        expect(forThisModel).toBe(true);
-
-        const madeBy = defined(station.manufacturer);
-        expect(`the station ${text(station.chargingStation, '@id')} is a ${text(madeBy.model, '@id')} of ${text(madeBy.manufacturer, '@id')}, ${text(madeBy.model, 'name')}, ` +
-               `versions ${(get(defined(madeBy.model), 'versions') as string[]).join('/')}`)
-            .toBe('the station DE*GEF*S1 is a GD-DC300 of GraphDefined, GraphDefined DC 300, versions 1.0/1.1');
 
         // The manufacturer and the body are given as skeletons: their own properties, without their other children.
         expect(get(manufacturer, 'transparencySoftware')).toBeUndefined();
-        expect(get(defined(body), 'transparencySoftwareCertificates')).toBeUndefined();
+        expect(get(defined(station.certificates[0]).body, 'certificates')).toBeUndefined();
         expect(station.warnings).toEqual([]);
 
     });
 
-    it('gives the PTB only: no meter of the station names a certificate of the BSI', () => {
+    it('gives the PTB only: neither the station nor its meter names a certificate of the BSI', () => {
 
         const bodies = get(proof['roamingNetwork'] as JSONObject, 'conformityAssessmentBodies') as JSONObject;
         const given  = (get(bodies, '@leaves') as JSONObject[]).map(leaf => (leaf['@entity'] as JSONObject)['@id']);
@@ -84,7 +102,7 @@ describe('Example A13: who checks the meter', () => {
         defined(find(changed))['chargingStationModel'] = 'GD-AC44';
 
         expect(() => verifyChargingStation(anchorPQ, changed, { at: AT }))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:f1ec58fdcadcb27129987c9813c71ed3e902e149d62b0957c60b5e817815dcf5 of the proof, not of 2!');
+            .toThrow('lead to different roots');
 
     });
 
@@ -115,12 +133,12 @@ describe('Example A13: who checks the meter', () => {
         const graphDefined = defined((get(history.head.network.content, 'transparencySoftwareManufacturers') as JSONObject[])[0]);
         expect((get(graphDefined, 'transparencySoftware') as JSONObject[]).map(item => item['@id'])).toEqual([ 'chargy-1.5.0' ]);
 
-        // Revision 6, the certificate of the PTB, signed by its key for certificates; revision 7, the DC energy meters.
+        // Revision 6, the certificates of the PTB, signed by its key for certificates; revision 7, the DC stations and meters.
         history.append(defined(all[5]));
         history.append(defined(all[6]));
 
         const ptb = defined((get(history.head.network.content, 'conformityAssessmentBodies') as JSONObject[]).find(item => item['@id'] === 'PTB'));
-        expect((get(ptb, 'transparencySoftwareCertificates') as JSONObject[]).map(item => `${asText(item['@id'])} ${asText(item['legislation'])}`)).toEqual([ 'PTB-2026-0042 MID' ]);
+        expect((get(ptb, 'certificates') as JSONObject[]).map(item => `${asText(item['@id'])} ${asText(item['legislation'] ?? '-')}`)).toEqual([ 'PTB-2026-0017 -', 'PTB-2026-0042 MID' ]);
 
         const bsi = defined((get(history.head.network.content, 'conformityAssessmentBodies') as JSONObject[]).find(item => item['@id'] === 'BSI'));
         expect(get(bsi, 'signingKeys')).toBeUndefined();

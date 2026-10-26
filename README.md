@@ -62,10 +62,11 @@ const checked = await client.chargingStation({ evseId: 'DE*GEF*E1*1' });
 checked.station.roamingNetwork.name;                 // 'Quality Assurance', as the operator signed it, not as the QR code says
 checked.station.chargingStation;                     // the station as it is at runtime, with what its templates give it
 checked.station.tariffs.get('DE*GEF*E1*1');          // the charging tariffs the EVSE takes
-checked.station.manufacturer?.model;                 // its model, as its manufacturer states it: versions, ratings, datasheet
+checked.station.manufacturer?.model;                 // its model, as its manufacturer states it: revisions, firmware, ratings
 checked.station.energyMeters;                        // with their public keys, for transparency software
 checked.station.energyMeterModels;                   // per meter: its manufacturer and model
-checked.station.transparencySoftware;                // per meter: the release, its manufacturer, the certificate, its body
+checked.station.certificates;                        // of the station and its meters: each for a model, with its components
+checked.station.transparencySoftware;                // per meter: the release, its manufacturer, the certificates naming it
 checked.prices.get('EVSE:DE*GEF*E1*1')?.statement;   // the price statement valid now, signed by DE*GEF
 checked.documents;                                   // as they came: keep them as evidence of the session
 ```
@@ -98,14 +99,19 @@ const station  = verifyChargingStation(anchor, proofJSON, { evseId: 'DE*GEF*E1*1
 const prices   = verifyPriceStatements(station, priceStatementsJSON);
 ```
 
-Who checks the meter (example A13): the transparency software each energy meter names, with the certificate of a
-conformity assessment body, as the proof gives them. POI proves who states them, not that they are true. A certificate
-is for a version of a model; `forThisModel` tells whether it is for the model of the station and a version of it, the
-station naming no version ([docs/csharp-review.md](docs/csharp-review.md), 16).
+Who checks the meter (example A13): the certificates the station and its energy meters name, each of a conformity
+assessment body for a model of charging stations or of energy meters, in hardware revisions and firmware versions, with
+its components, the transparency software and, of a station, the meters it mounts; and the transparency software each
+meter names with its legal status, proven by the certificates naming it. POI proves who states them, not that they are
+true. `forThisModel` tells whether a certificate is for the model, the hardware revision and the firmware version of
+what names it ([docs/csharp-review.md](docs/csharp-review.md), 16, 17).
 
 ```ts
-for (const { energyMeterId, legalStatus, release, manufacturer, certificate, body, forThisModel } of station.transparencySoftware)
-    console.log(energyMeterId, legalStatus, release['version'], manufacturer['craRole'], certificate?.['legislation'], body?.['@id'], forThisModel);
+for (const { namedBy, certificate, body, bodyHasKeys, forThisModel } of station.certificates)
+    console.log(namedBy.entityId, certificate['@id'], certificate['legislation'], body['@id'], bodyHasKeys, forThisModel);
+
+for (const { energyMeterId, legalStatus, release, manufacturer, certificates } of station.transparencySoftware)
+    console.log(energyMeterId, legalStatus, release['version'], manufacturer['craRole'], certificates.map(({ certificate }) => certificate['@id']));
 ```
 
 Months later, the evidence of the session (example A10): the station proof attested and the price statement valid as
@@ -229,7 +235,7 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   of the specification, station proofs of its example network signed with its keys against a trust anchor, what to
   calculate of the documents of the run below, and documents to refuse (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
-- `tests/vectors/csharp-80e4ccc`, what one run of the C# examples of WWCP_POI at commit `80e4ccc` published (public data
+- `tests/vectors/csharp-987fa26`, what one run of the C# examples of WWCP_POI at commit `987fa26` published (public data
   only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same
   history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the head, and
   the ECDSA twin of a price statement.

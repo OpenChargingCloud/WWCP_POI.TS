@@ -20,7 +20,7 @@ import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json
 
 // Identifications WWCP_POI keeps unique within the roaming network, not only within their party, as RoamingNetwork.cs checks
 // them for every version and after the last change of every change set (`DuplicateGridConnectionPoint`, `DuplicateEnergyMeter`,
-// `DuplicateParking`, `DuplicateTransparencySoftware`, `DuplicateTransparencySoftwareCertificate`, `DuplicateEnergyMeterGroup`,
+// `DuplicateParking`, `DuplicateTransparencySoftware`, `DuplicateConformityCertificate`, `DuplicateEnergyMeterGroup`,
 // `DuplicateProviderGroup`, `DuplicateChargingTariffOffer`, `DuplicateEnergyMeterTemplate`), compared as their C# types
 // compare them. One set per kind holds those of every party: within a party a valid version holds each once as well, and a
 // group carries the prefix of its own party, so that two parties meet only where a provider and an operator have the same.
@@ -186,8 +186,8 @@ export function duplicateIdentification(content: JSONObject): string | undefined
            duplicateParking(parkingOperators, operators) ??
            ofAnother(softwareManufacturers, 'transparencySoftware', (release, manufacturer, other) =>
                `The transparency software release '${release}' of the manufacturer '${manufacturer}' is one of the manufacturer '${other}' already!`) ??
-           ofAnother(bodies, 'transparencySoftwareCertificates', (certificate, body, other) =>
-               `The transparency software certificate '${certificate}' of the conformity assessment body '${body}' is one of the conformity assessment body '${other}' already!`) ??
+           ofAnother(bodies, 'certificates', (certificate, body, other) =>
+               `The certificate '${certificate}' of the conformity assessment body '${body}' is one of the conformity assessment body '${other}' already!`) ??
            givenTwice('energy meter group',      childrenOf(meterOwners, 'energyMeterGroups'),      ignoringCase) ??
            givenTwice('EVSE group',              childrenOf(groupOwners, 'EVSEGroups'),             groupId('EG')) ??
            givenTwice('charging station group',  childrenOf(groupOwners, 'chargingStationGroups'),  groupId('SG')) ??
