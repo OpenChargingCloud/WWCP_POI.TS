@@ -162,3 +162,11 @@ certificates and the energy meters they were issued with, each once in a model, 
 leaves to WWCP_POI. The test vectors stay those of the run at `987fa26`, whose versions name none it refuses; the vectors
 `version-text-*` of WWCPPOIConformanceTests, its head so changed, hold both implementations to it, refused in the same
 words (`reason`).
+
+The golden vectors of WWCPPOIConformanceTests hold, besides the run of the C# examples, small histories it signs itself
+(`tests/vectors/poi-histories.json`), replayed step by step in `tests/conformance.test.ts`: who signs in place of a
+party without keys, who states a certificate, old values and rebases, keys expired and removed, new values as the
+content holds them, `lastChange` of what embeds a change, and three epochs (csharp-review 3, 8, 10, 12 to 15). Ten of
+them - the references a version holds, the groups of e-mobility providers, grid connection points - this library
+leaves to WWCP_POI, and does not run. One pins a deviation of this library: a change set signed, besides by its owner,
+by a key of a party not valid at its `createdAt` is taken here, and refused by WWCP_POI (D8 of WWCPPOIConformanceTests).

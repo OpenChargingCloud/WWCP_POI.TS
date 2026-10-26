@@ -94,12 +94,16 @@ export const trust = load('poi-trust.json') as {
     readonly stationProofs:  ReadonlyArray<Vector & { expected: 'accepted' | 'refused', trustAnchor: string, proof: string, at: string, evseId: string, root: string }>;
 };
 
+/** A step of a replay: its document a file of the frozen run (poi-history.json), or one of its history (poi-histories.json). */
 export type ReplayStep =
-    | { readonly op: 'fromSnapshot',    readonly file: string }
-    | { readonly op: 'append',          readonly file: string }
-    | { readonly op: 'takeCheckpoint',  readonly file: string }
+    | { readonly op: 'fromSnapshot',    readonly file?: string, readonly document?: string }
+    | { readonly op: 'append',          readonly file?: string, readonly document?: string }
+    | { readonly op: 'takeCheckpoint',  readonly file?: string, readonly document?: string }
     | { readonly op: 'startNextEpoch',  readonly genesisCommitId: string }
     | { readonly op: 'expectHead',      readonly epoch: number, readonly revision: number, readonly commitId: string, readonly eTags?: string[] };
+
+/** A step of a replay that takes a document. */
+export type DocumentStep = Extract<ReplayStep, { readonly file?: string }>;
 
 export const history = load('poi-history.json') as {
     readonly run:               string;
@@ -131,6 +135,38 @@ export interface RefusalVector extends Vector {
 }
 
 export const refusals = load('poi-refusals.json') as { readonly vectors: readonly RefusalVector[] };
+
+/**
+ * Histories WWCPPOIConformanceTests made and signed itself, their documents JSON text by name, and replays of them: one
+ * `accepted` takes every step, one `refused` every step but the last, which it refuses, and takes `control` in its place.
+ */
+export interface HistoryReplayVector extends Vector {
+    readonly basis:          string;
+    readonly history:        string;
+    readonly commitAndCheckpointSignatures: string;
+    readonly expected:       'accepted' | 'refused';
+    readonly steps:          readonly ReplayStep[];
+    readonly control?:       string;
+    /** What the refusal names, as both implementations word it. */
+    readonly reason?:        string;
+}
+
+export const histories = load('poi-histories.json') as {
+    readonly histories:  ReadonlyArray<{ readonly id: string, readonly description: string, readonly documents: Readonly<Record<string, string>> }>;
+    readonly replays:    readonly HistoryReplayVector[];
+};
+
+/** A document of a history of poi-histories.json, read as POI reads JSON. */
+export function historyDocument(historyId: string, name: string | undefined): JSONValue {
+
+    const text = histories.histories.find(item => item.id === historyId)?.documents[name ?? ''];
+
+    if (text === undefined)
+        throw new Error(`The history '${historyId}' has no document '${name ?? ''}'`);
+
+    return parseJSON(text);
+
+}
 
 
 // ---- Documents of the frozen run ----------------------------------------------------------------------------------

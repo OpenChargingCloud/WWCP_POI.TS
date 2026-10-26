@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    applies, canonical, deviates, encodings, history, patched, refusals, runDocument, runText, specification, trust,
-    type RefusalVector,
+    applies, canonical, deviates, encodings, histories, history, historyDocument, patched, refusals, runDocument, runText,
+    specification, trust, type DocumentStep, type RefusalVector, type ReplayStep,
 } from './conformance.ts';
 
 import { parseJSON, parseJSONObject }       from '../src/json/parse.ts';
@@ -220,45 +220,96 @@ describe('Golden vectors: what the C# examples published, frozen', () => {
             // The replay checks the content; who may sign commits and checkpoints is the verifier's business, not its.
             expect(vector.commitAndCheckpointSignatures).toBe('unchecked');
 
-            let current: History | undefined;
+            replay(vector.steps, step => runDocument(step.file ?? ''));
 
-            const now = (): History => {
-                if (current === undefined)
-                    throw new Error('A replay starts with a snapshot!');
-                return current;
-            };
+        });
 
-            for (const replayStep of vector.steps) {
-                switch (replayStep.op) {
+});
 
-                    case 'fromSnapshot':
-                        current = History.fromSnapshot(runDocument(replayStep.file));
-                        break;
 
-                    case 'append': {
-                        const commits: JSONValue = runDocument(replayStep.file);
-                        for (const commit of isArray(commits) ? commits : [ commits ])
-                            now().append(commit);
-                        break;
-                    }
+/**
+ * Takes one step of a replay, its document given by `documentOf`, and returns the history after it: throws where the
+ * history refuses it, or where the head is not the one expected.
+ */
+function replayStep(current: History | undefined, step: ReplayStep, documentOf: (step: DocumentStep) => JSONValue): History {
 
-                    case 'takeCheckpoint':
-                        now().takeCheckpoint(runDocument(replayStep.file));
-                        break;
+    const now = (): History => {
+        if (current === undefined)
+            throw new Error('A replay starts with a snapshot!');
+        return current;
+    };
 
-                    case 'startNextEpoch':
-                        current = now().startNextEpoch();
-                        expect(current.root.commit.id).toBe(replayStep.genesisCommitId);
-                        break;
+    switch (step.op) {
 
-                    case 'expectHead':
-                        expect([ now().epoch.number, now().head.commit.revision, now().head.commit.id ]).toEqual([ replayStep.epoch, replayStep.revision, replayStep.commitId ]);
-                        if (replayStep.eTags !== undefined)
-                            expect(now().head.network.eTags().map(etagToText)).toEqual(replayStep.eTags);
-                        break;
+        case 'fromSnapshot':
+            return History.fromSnapshot(documentOf(step));
 
-                }
+        case 'append': {
+            const commits: JSONValue = documentOf(step);
+            for (const commit of isArray(commits) ? commits : [ commits ])
+                now().append(commit);
+            return now();
+        }
+
+        case 'takeCheckpoint':
+            now().takeCheckpoint(documentOf(step));
+            return now();
+
+        case 'startNextEpoch': {
+            const next = now().startNextEpoch();
+            expect(next.root.commit.id).toBe(step.genesisCommitId);
+            return next;
+        }
+
+        case 'expectHead':
+            expect([ now().epoch.number, now().head.commit.revision, now().head.commit.id ]).toEqual([ step.epoch, step.revision, step.commitId ]);
+            if (step.eTags !== undefined)
+                expect(now().head.network.eTags().map(etagToText)).toEqual(step.eTags);
+            return now();
+
+    }
+
+}
+
+/** Takes the steps of a replay one after the other: the history after the last one. */
+const replay = (steps: readonly ReplayStep[], documentOf: (step: DocumentStep) => JSONValue): History | undefined =>
+    steps.reduce<History | undefined>((current, step) => replayStep(current, step, documentOf), undefined);
+
+
+describe('Golden vectors: histories WWCPPOIConformanceTests signed, what they take and refuse', () => {
+
+    for (const vector of histories.replays.filter(applies))
+        it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
+
+            // The replay checks the content; who may sign commits and checkpoints is the verifier's business, not its.
+            expect(vector.commitAndCheckpointSignatures).toBe('unchecked');
+
+            const documentOf = (step: DocumentStep): JSONValue => historyDocument(vector.history, step.document);
+
+            if (vector.expected === 'accepted') {
+                replay(vector.steps, documentOf);
+                return;
             }
+
+            const before  = vector.steps.slice(0, -1);
+            const last    = vector.steps.at(-1);
+
+            if (last === undefined || vector.control === undefined)
+                throw new Error(`The refusal ${vector.id} names no step to refuse, or no control`);
+
+            // The control: in place of the refused document, the one refused but for what the replay is about is taken.
+            replay([ ...before, { ...last, document: vector.control } as ReplayStep ], documentOf);
+
+            const current = replay(before, documentOf);
+
+            // Refused for what the vector is about, where it names it; a known deviation pinned: once it is refused, the
+            // marker goes in WWCPPOIConformanceTests.
+            if (deviates(vector))
+                replayStep(current, last, documentOf);
+            else if (vector.reason === undefined)
+                expect(() => replayStep(current, last, documentOf)).toThrow();
+            else
+                expect(() => replayStep(current, last, documentOf)).toThrow(vector.reason);
 
         });
 
