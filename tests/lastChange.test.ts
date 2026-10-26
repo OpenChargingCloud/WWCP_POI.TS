@@ -11,7 +11,7 @@ import { clone, isObject, set, without, type JSONObject, type JSONValue } from '
 
 
 // A change set sets the lastChange of every entity embedding one it adds, changes or removes, up to the roaming network
-// (SPECIFICATION.md section 4, docs/csharp-review.md finding 8): the lastChange of an entity tells the last change of its
+// (SPECIFICATION.md section 4, csharp-review 8): the lastChange of an entity tells the last change of its
 // representation, as its ETag does. Afterwards ETags calculated without them are refused.
 
 const changeSetsOf = (commitsOf: readonly JSONValue[]): JSONObject[] =>

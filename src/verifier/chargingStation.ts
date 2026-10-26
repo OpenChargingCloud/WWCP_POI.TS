@@ -91,12 +91,12 @@ export interface NamedCertificate {
     readonly body:           JSONObject;
     /**
      * Who states it: the body itself, or the roaming network operator in place of a body without signing keys, as the
-     * certificate says by its `statedBy` (4.1, docs/csharp-review.md, 15), also once the body has keys.
+     * certificate says by its `statedBy` (4.1, csharp-review 15), also once the body has keys.
      */
     readonly statedBy:       'ConformityAssessmentBody' | 'RoamingNetworkOperator';
     /**
      * Whether it is for the model of what names it, with its manufacturer, in the hardware revision and the firmware version
-     * it names (docs/csharp-review.md, 16 and 17): a certificate of a charging station model for the station, one of an
+     * it names (csharp-review 16 and 17): a certificate of a charging station model for the station, one of an
      * energy meter model for the meter.
      */
     readonly forThisModel:   boolean;

@@ -15,7 +15,7 @@ import { SigningKeyCertificate } from '../src/proofs/signingKeyCertificate.ts';
 
 // The roaming network operator signs in place of a party without signing keys (SPECIFICATION.md section 4.1), e.g. the
 // certificates of a conformity assessment body not taking part, by a signing key that may sign `party`, the usage of
-// everything it owns, as the examples certify its keys, or the usage of what it changes (docs/csharp-review.md, 13).
+// everything it owns, as the examples certify its keys, or the usage of what it changes (csharp-review 13).
 // Signed here with the Ed25519 keys of section 6, whose private seeds the specification gives: the identity key of DE*RNO
 // certifies a signing key for one usage alone, and that key signs a certificate of the BSI, which has no keys.
 

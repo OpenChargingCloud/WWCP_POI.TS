@@ -28,7 +28,9 @@ ML-DSA-44/65/87.
 from what the C# examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations
 the C# implementation makes; also from a second run of the C# examples, with new keys. See [Tests](#tests).
 
-What a review of the C# implementation found while porting it is in [docs/csharp-review.md](docs/csharp-review.md).
+What a review of the C# implementation found while porting it is in
+[docs/csharp-review.md of WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/csharp-review.md),
+cited here as *csharp-review N*.
 
 Whether both implementations really calculate, take and refuse the same is the business of
 [WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests): golden test vectors, run against
@@ -105,7 +107,7 @@ its components, the transparency software and, of a station, the meters it mount
 meter, and a station signing measurements itself, names with its legal status, proven by the certificates naming it.
 POI proves who states them, not that they are true. `statedBy` tells whether the body states a certificate or the
 roaming network operator in its place, as the certificate says, and `forThisModel` whether it is for the model, the
-hardware revision and the firmware version of what names it ([docs/csharp-review.md](docs/csharp-review.md), 15, 16, 17).
+hardware revision and the firmware version of what names it (csharp-review 15, 16, 17).
 
 ```ts
 for (const { namedBy, certificate, body, statedBy, forThisModel } of station.certificates)

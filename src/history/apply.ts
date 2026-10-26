@@ -1386,7 +1386,7 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
  * Who states a certificate the change set adds or changes (4.1, `CertificateStatedByError`): the roaming network operator,
  * signing it in place of a conformity assessment body without signing keys in the version before, names itself as its
  * `statedBy`, `roamingNetworkOperator`; a body signing it itself, with its keys, names none. So a reader of a proof tells
- * them apart also once the body has keys (docs/csharp-review.md, 15).
+ * them apart also once the body has keys (csharp-review 15).
  */
 function checkStatedBy(before: RoamingNetwork, content: JSONObject, changeSet: ChangeSet): void {
 

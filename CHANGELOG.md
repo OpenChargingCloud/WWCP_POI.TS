@@ -4,6 +4,11 @@
 
 The first milestone: the examples A1 to A13 of WWCP_POI (commit `80e4ccc`) checked in TypeScript.
 
+The findings of the review this port made of the C# implementation are cited as csharp-review N, N the number of the
+finding in
+[docs/csharp-review.md of WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/csharp-review.md);
+`docs/` of this repository held it up to `b9c786e`.
+
 - Canonical JSON and deterministic CBOR of Styx; a lossless JSON parser keeping decimals as `System.Decimal` holds them.
 - COSE keys, RFC 9679 thumbprints, signatures ES256/384/512, ES256K, ESP*, ESB*, Ed25519, Ed448, ML-DSA-44/65/87.
 - Trust anchors (QR code, URL, JSON), key statements, certificates of signing keys; trust following the key statements
@@ -25,9 +30,9 @@ The first milestone: the examples A1 to A13 of WWCP_POI (commit `80e4ccc`) check
 Moving from the examples at `2d9511d` to `bbd4cbd` also made the ownership of changes the one of the C# implementation
 where the port differed: identity keys of the roaming network operator counted for every change of a party, not only for
 its keys; where it signs in place of a party without keys, its signing keys counted when they may sign `party`, not
-when they may sign the usage of the change (docs/csharp-review.md, 13); its identity and signing keys counted alike for
+when they may sign the usage of the change (csharp-review 13); its identity and signing keys counted alike for
 everything it owns; and the signing keys of a party could not rotate its signing keys. The values of change sets are
-kept in the order the C# implementation keeps them in (docs/csharp-review.md, 10).
+kept in the order the C# implementation keeps them in (csharp-review 10).
 
 Moving on to `801bbce`, the manufacturers became parties: the roaming network operator adds and removes them, they change
 their own properties and state their models with a key that may sign `models`, every change of a model naming its
@@ -55,12 +60,12 @@ there is one.
 
 The digest of a price statement leaves its signature value out, as WWCP_POI does since `dbf39b0` (SPECIFICATION.md 12.1):
 the SHA-256 of its signature input. The ECDSA twin `(r, n − s)` of a statement, which anybody can make of it, is the same
-statement, of the same digest (docs/csharp-review.md, 2); `PriceStatement.sameSignedContent` is gone. The test vectors
+statement, of the same digest (csharp-review 2); `PriceStatement.sameSignedContent` is gone. The test vectors
 are those WWCPPOIConformanceTests generates for it, with a new run of the C# examples at `dbf39b0`
 (`tests/vectors/csharp-dbf39b0`).
 
 The holders of a quorum are counted as the trust anchor names them, as WWCP_POI does since `3e32f48` (SPECIFICATION.md
-4.1, 8.6; docs/csharp-review.md, 1): a trust anchor names the keys per holder, the `@id` of its key or the array of the
+4.1, 8.6; csharp-review 1): a trust anchor names the keys per holder, the `@id` of its key or the array of the
 `@id`s of its keys (`TrustAnchor.holders`; in the URL the holders separated by `,`, the keys of one holder by `;`).
 `KeyStatement.verifyHolders` counts the holders as the verifier knows them and refuses a statement naming the trusted
 keys otherwise; a station proof, `OperatorTrust` and the signatures of checkpoints count an attestation or a signature
@@ -68,7 +73,7 @@ for the holder of the trusted identity key that certified its key. A change set 
 holder than before is refused.
 
 A change set is identified by its content, as WWCP_POI does since `bc3b1bd` (SPECIFICATION.md 4, 5.2;
-docs/csharp-review.md, 4): its `@id` is the SHA-256 of its canonical JSON with its `@context`, without `@id` and
+csharp-review 4): its `@id` is the SHA-256 of its canonical JSON with its `@context`, without `@id` and
 signatures (`changeSetIdentification`), so that nobody commits another change set in the place of one. `ChangeSet.parse`
 refuses a change set identified otherwise, and one naming change sets in `metadata.rebasedFrom` it was not rebased from;
 `Commit.parse` reads the change set of a commit as well and refuses a commit with one parent whose change set has no
@@ -76,14 +81,14 @@ changes or the identification of a merge. The test vectors are those of a new ru
 (`tests/vectors/csharp-bc3b1bd`).
 
 A change set gives its new values as the content holds them, as WWCP_POI requires since `80e4ccc` (SPECIFICATION.md 2,
-4; docs/csharp-review.md, 10): a new value is applied as it is given, no longer written anew as the C# model would, and
+4; csharp-review 10): a new value is applied as it is given, no longer written anew as the C# model would, and
 one that names a JSON-LD context in what it embeds (custom data aside, which keeps it), gives identified elements, keys,
 certificates or the lists of section 2 out of their order or twice, or a timestamp not UTC to the millisecond is
 refused. An old value is compared as it is given. The test vectors are those of a new run of the C# examples at
 `80e4ccc` (`tests/vectors/csharp-80e4ccc`).
 
 An attestation gives its `validUntil`, at most 24 hours after its `signedAt`, as WWCP_POI requires since `be07037`
-(SPECIFICATION.md 8.5, 8.6, 12.1; docs/csharp-review.md, 7): `Attestation.parse` refuses one without or valid longer
+(SPECIFICATION.md 8.5, 8.6, 12.1; csharp-review 7): `Attestation.parse` refuses one without or valid longer
 (`MAX_ATTESTATION_VALIDITY`), so that none is valid forever. The `signedAt` of an attestation or a price statement is the
 choice of its signer: the signing key of an attestation counts when it is valid when it attested and at the time the proof
 is checked, and a price statement is current no longer than its key.
@@ -100,23 +105,23 @@ vectors `version-twice-*` of WWCPPOIConformanceTests hold both implementations t
 
 The roaming network operator signs in place of a party without signing keys, e.g. the certificates of a conformity
 assessment body or the grid connection points of a grid operator not taking part, by a signing key that may sign
-`party`, as the examples certify its keys, as WWCP_POI does since `36bb176` (SPECIFICATION.md 4.1; docs/csharp-review.md,
-13): `checkOwnership` counts its signing keys that may sign `party` besides those that may sign the usage of the change.
+`party`, as the examples certify its keys, as WWCP_POI does since `36bb176` (SPECIFICATION.md 4.1; csharp-review 13):
+`checkOwnership` counts its signing keys that may sign `party` besides those that may sign the usage of the change.
 A change set taken before is taken still.
 
 A change set naming `rebasedFrom` with a change, but an `Add` or `AddElement`, without `oldValue` is refused, as WWCP_POI
-refuses it since `1717ee2` (SPECIFICATION.md 4; docs/csharp-review.md, 12): only old values tell that a change set
+refuses it since `1717ee2` (SPECIFICATION.md 4; csharp-review 12): only old values tell that a change set
 committed meanwhile changed what it changes, which such a rebase may have overwritten. One not rebased is read as before.
 The golden vector `changeSet-rebased-without-old-value` holds both implementations to it.
 
 A model of charging stations or energy meters names its `hardwareRevisions` and `firmwareVersions`, and a charging
 station and an energy meter one `hardwareRevision` and one `firmwareVersion` of it, as WWCP_POI does since `7e0b0ac`
-(docs/csharp-review.md, 16); a certificate (`ConformityCertificate`, the `certificates` of a conformity assessment body)
+(csharp-review 16); a certificate (`ConformityCertificate`, the `certificates` of a conformity assessment body)
 is for a model of charging stations or of energy meters, in the hardware revisions and firmware versions it covers, and
 names its components, the transparency software and, of a station model, the energy meters it was issued with; a
 station and a meter name the certificates of their models in `certificateIds`, and the `transparencySoftwareStatus` of
-a meter names a release and its legal status, no certificate, as WWCP_POI does since `987fa26` (docs/csharp-review.md,
-17). Change sets change them, effective members take them of their templates, and a certificate is unique within the
+a meter names a release and its legal status, no certificate, as WWCP_POI does since `987fa26` (csharp-review 17).
+Change sets change them, effective members take them of their templates, and a certificate is unique within the
 network. `verifyChargingStation` gives the `certificates` the station and its meters name, each with `forThisModel`:
 whether it is for the model, the hardware revision and the firmware version of what names it; the `transparencySoftware`
 of a meter gives the certificates naming its release, no longer a certificate of its own. The test vectors are those of
@@ -134,14 +139,14 @@ names among its `transparencySoftware`, proven by the certificates of the statio
 measurements itself.
 
 The first checkpoint of an epoch takes signatures of the algorithms of its epoch and of the epoch before, no other, as
-WWCP_POI does since `65e658d` (SPECIFICATION.md 11.3; docs/csharp-review.md, 14): a history started by
+WWCP_POI does since `65e658d` (SPECIFICATION.md 11.3; csharp-review 14): a history started by
 `startNextEpoch` knows the profiles of the epoch it closed, one started from a snapshot those its `epoch` names as
 `previousProfiles` (`History.previousEpochProfiles`), and those of the first epoch are the default ones; without them
 it takes the algorithms of its own epoch alone. A snapshot of the epoch 2 naming profiles of the epoch before is refused.
 
 A certificate the roaming network operator adds or changes in place of a conformity assessment body without signing keys
 says so, `"statedBy": "roamingNetworkOperator"`, as WWCP_POI requires since `65e658d` (SPECIFICATION.md 4.1;
-docs/csharp-review.md, 15): a change set adding or changing a certificate whose `statedBy` does not say who signs it, as
+csharp-review 15): a change set adding or changing a certificate whose `statedBy` does not say who signs it, as
 the version before has the keys of the body, is refused. `verifyChargingStation` gives each certificate with `statedBy`,
 `ConformityAssessmentBody` or `RoamingNetworkOperator`, in place of `bodyHasKeys`, which could not tell them apart once
 the body had keys. The test vectors stay those of the run at `987fa26`: none of its examples has a third epoch or a

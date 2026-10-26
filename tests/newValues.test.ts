@@ -9,8 +9,8 @@ import { applyChangeSet } from '../src/history/apply.ts';
 import { clone, isObject, set, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
 
 
-// What a change set gives is what the content holds (SPECIFICATION.md section 4, "New values"; docs/csharp-review.md,
-// finding 10): this library applies a new value as it is given, and refuses one the content would hold otherwise, as far
+// What a change set gives is what the content holds (SPECIFICATION.md section 4, "New values"; csharp-review 10):
+// this library applies a new value as it is given, and refuses one the content would hold otherwise, as far
 // as it can tell without the types of the values. The change sets of the run give every value so.
 
 const changeSets = commitsOfEpoch1().map(commit => defined((commit as JSONObject)['changeSet'], 'The change set of a commit') as JSONObject);

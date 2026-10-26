@@ -11,7 +11,7 @@ import { toHex, utf8 }   from '../src/encoding/text.ts';
 
 
 // A change set is identified by its content (SPECIFICATION.md section 4), so that nobody commits another one in the place
-// of one, e.g. of one waiting for signatures (docs/csharp-review.md, finding 4). One rebased names those it was rebased
+// of one, e.g. of one waiting for signatures (csharp-review 4). One rebased names those it was rebased
 // from by their @id and ETags, which everyone calculates again.
 
 const changeSets = [ ...commits('published/QA-commits-since-genesis.json'), ...commits('published/QA-epoch-2-commits-since-genesis.json') ]
