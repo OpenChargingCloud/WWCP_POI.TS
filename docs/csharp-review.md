@@ -18,8 +18,9 @@ implementation and this port to the same golden test vectors. Where the two take
 written down and pinned there, in
 [docs/implementation-deviations.md](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/implementation-deviations.md)
 (cited below as *D1* to *D6*): it demonstrates findings 6, 7 and 19 with vectors, and found two deviations more, a JSON
-reader for hashing that takes what is no JSON (D1) and the revision of a station proof left unchecked (D2). This document
-stays the review of the C# implementation.
+reader for hashing that takes what is no JSON (D1) and the revision of a station proof left unchecked (D2), both fixed
+in WWCP_POI `2c90847`, so that the two agree on every vector. This document stays the review of the C#
+implementation.
 
 | # | Finding | Severity | Status | Since `bbd4cbd` |
 |---|---|---|---|---|
