@@ -67,18 +67,24 @@ const EVSE_RULES: MemberRules = {
     },
 };
 
-/** Effective(ChargingStation, …) of ChargingStationOperator.Effective.cs. */
+/**
+ * Effective(ChargingStation, …) of ChargingStationOperator.Effective.cs: the serial number and the public keys of a station
+ * that signs measurements itself belong to the single device, as those of an energy meter do.
+ */
 const CHARGING_STATION_RULES: MemberRules = {
-    singles: [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'hardwareRevision',
-               'firmwareVersion', 'openingTimes', 'accessibility', 'calibrationInfo', 'certificationInfo', 'maxPower' ],
+    singles: [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'modelURL',
+               'hardwareRevision', 'firmwareVersion', 'openingTimes', 'accessibility', 'calibrationInfo', 'certificationInfo',
+               'maxPower' ],
     unions:  {
-        brands:               { key: byId,  order: 'ordinal' },
-        images:               { key: byURL, order: 'given'   },
-        vehicleTypes:         ordinalIds,
-        euVehicleCategories:  ordinalIds,
-        features:             ordinalIds,
-        parkingSpaceIds:      ordinalIds,
-        certificateIds:       ordinalIds,
+        brands:                      { key: byId,  order: 'ordinal' },
+        images:                      { key: byURL, order: 'given'   },
+        vehicleTypes:                ordinalIds,
+        euVehicleCategories:         ordinalIds,
+        features:                    ordinalIds,
+        parkingSpaceIds:             ordinalIds,
+        certificateIds:              ordinalIds,
+        transparencySoftwareStatus:  { key: bySoftwareId, order: 'ordinal' },
+        signatureMethods:            ordinalIds,
     },
 };
 

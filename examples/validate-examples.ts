@@ -439,7 +439,7 @@ if (has('published/QA-DE-GEF-E1-1-proof.json'))
             console.log(`${namedBy.entityType} ${namedBy.entityId}: ${show(certificate['@id'])} for the ${show(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${list(certificate['hardwareRevisions'])}, firmware ${list(certificate['firmwareVersions'])}${certificate['legislation'] === undefined ? '' : ` under the ${show(certificate['legislation'])}`}, by the ${show(body['@id'])}; keys of its own: ${bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for its model, revision and firmware: ${forThisModel ? 'yes' : 'no'}`);
 
         for (const software of station.transparencySoftware) {
-            console.log(`${software.energyMeterId}: ${name(software.release['name'])} ${show(software.release['version'])}, ${software.legalStatus ?? ''}, as ${software.certificates.map(item => show(item.certificate['@id'])).join(' and ')} name it`);
+            console.log(`${software.namedBy.entityId}: ${name(software.release['name'])} ${show(software.release['version'])}, ${software.legalStatus ?? ''}, as ${software.certificates.map(item => show(item.certificate['@id'])).join(' and ')} name it`);
             console.log(`  by ${name(software.manufacturer['name'])}, ${show(software.manufacturer['craRole'] ?? '')}`);
         }
 

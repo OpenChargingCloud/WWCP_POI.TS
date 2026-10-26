@@ -62,7 +62,11 @@ describe('Example A13: who checks the meter', () => {
                        'EnergyMeter DE*GEF*M1*2: PTB-2026-0017, by the PTB, notified body 0102, keys of its own: true; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0' ]);
 
         // The release of the meter, with its legal status, proven by both certificates, which name it among their components.
-        const software = station.transparencySoftware.filter(item => item.energyMeterId === 'DE*GEF*M1*1');
+        // The station signs no measurements itself and names none.
+        expect(station.transparencySoftware.map(({ namedBy }) => `${namedBy.entityType} ${namedBy.entityId}`))
+            .toEqual([ 'EnergyMeter DE*GEF*M1*1', 'EnergyMeter DE*GEF*M1*2' ]);
+
+        const software = station.transparencySoftware.filter(({ namedBy }) => namedBy.entityId === 'DE*GEF*M1*1');
         expect(software).toHaveLength(1);
 
         const { legalStatus, release, manufacturer, certificates } = defined(software[0]);

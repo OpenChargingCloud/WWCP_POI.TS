@@ -226,8 +226,9 @@ const TIMESTAMP            = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 /**
  * The keys the content orders the given array by, if it orders it: identified elements by their identification, the
- * certificates of signing keys by their keys, authentication modes by their type, the lists of ORDERED_TEXTS by their
- * texts, the days of a week Monday first.
+ * certificates of signing keys by their keys, authentication modes by their type, the transparency software status of an
+ * energy meter or a charging station by its release, the lists of ORDERED_TEXTS by their texts, the days of a week Monday
+ * first.
  */
 function orderKeys(items: JSONArray, property: string | undefined): string[] | undefined {
 
@@ -236,6 +237,9 @@ function orderKeys(items: JSONArray, property: string | undefined): string[] | u
 
     if (property === 'authenticationModes' && items.every(isObject))
         return items.map(item => isObject(item) ? asText(item['type']) : '');
+
+    if (property === 'transparencySoftwareStatus' && items.every(isObject))
+        return items.map(item => isObject(item) ? asText(item['transparencySoftwareId']) : '');
 
     if (property === 'daysOfWeek')
         return items.map(item => String(DAYS_OF_WEEK.indexOf(typeof item === 'string' ? item : '')).padStart(2, '0'));

@@ -102,16 +102,16 @@ const prices   = verifyPriceStatements(station, priceStatementsJSON);
 Who checks the meter (example A13): the certificates the station and its energy meters name, each of a conformity
 assessment body for a model of charging stations or of energy meters, in hardware revisions and firmware versions, with
 its components, the transparency software and, of a station, the meters it mounts; and the transparency software each
-meter names with its legal status, proven by the certificates naming it. POI proves who states them, not that they are
-true. `forThisModel` tells whether a certificate is for the model, the hardware revision and the firmware version of
-what names it ([docs/csharp-review.md](docs/csharp-review.md), 16, 17).
+meter, and a station signing measurements itself, names with its legal status, proven by the certificates naming it.
+POI proves who states them, not that they are true. `forThisModel` tells whether a certificate is for the model, the
+hardware revision and the firmware version of what names it ([docs/csharp-review.md](docs/csharp-review.md), 16, 17).
 
 ```ts
 for (const { namedBy, certificate, body, bodyHasKeys, forThisModel } of station.certificates)
     console.log(namedBy.entityId, certificate['@id'], certificate['legislation'], body['@id'], bodyHasKeys, forThisModel);
 
-for (const { energyMeterId, legalStatus, release, manufacturer, certificates } of station.transparencySoftware)
-    console.log(energyMeterId, legalStatus, release['version'], manufacturer['craRole'], certificates.map(({ certificate }) => certificate['@id']));
+for (const { namedBy, legalStatus, release, manufacturer, certificates } of station.transparencySoftware)
+    console.log(namedBy.entityId, legalStatus, release['version'], manufacturer['craRole'], certificates.map(({ certificate }) => certificate['@id']));
 ```
 
 Months later, the evidence of the session (example A10): the station proof attested and the price statement valid as

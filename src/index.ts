@@ -73,7 +73,7 @@ export { ArchiveSegment, parseArchiveSegmentInfo, verifySegmentLine, type Archiv
 // Verifiers
 export { OperatorTrust }                                     from './verifier/trust.ts';
 export { verifyVersion, describeVersion, type VerifiedVersion } from './verifier/version.ts';
-export { verifyChargingStation, verifyPriceStatements, type Manufactured, type MeterTransparencySoftware, type NamedCertificate, type VerifiedChargingStation, type VerifiedPrice } from './verifier/chargingStation.ts';
+export { verifyChargingStation, verifyPriceStatements, type Manufactured, type NamedCertificate, type NamedTransparencySoftware, type VerifiedChargingStation, type VerifiedPrice } from './verifier/chargingStation.ts';
 export { parseTrustedWitnesses, verifyCheckpointLine, verifyCheckpointSignatures, type CheckpointSignatures, type TrustedWitness } from './verifier/checkpoints.ts';
 export { parseEvidence, verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';
 export { POIClient, type CheckedChargingStation, type Fetch } from './client.ts';

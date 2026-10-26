@@ -42,14 +42,17 @@ export interface VerifiedChargingStation {
     readonly operatorSigningKeys: readonly POIPublicKey[];
     /** The manufacturer the station names, with the model it names, as the proof gives them. */
     readonly manufacturer:    Manufactured | undefined;
-    /** The energy meters of the station and its EVSEs, with their public keys, for transparency software. */
+    /** The energy meters of the station and its EVSEs, with their public keys, for transparency software; the station names its own, where it signs measurements itself. */
     readonly energyMeters:    readonly JSONObject[];
     /** The manufacturer and the model each energy meter names, as the proof gives them, by the identification of the meter. */
     readonly energyMeterModels: ReadonlyMap<string, Manufactured>;
     /** The certificates the station and its energy meters name, each for a model, as the proof gives them. */
     readonly certificates:    readonly NamedCertificate[];
-    /** Who checks the meters: the transparency software each energy meter names, with the certificates proving it, as the proof gives them. */
-    readonly transparencySoftware: readonly MeterTransparencySoftware[];
+    /**
+     * Who checks the measurements: the transparency software the station, where it signs measurements itself, and each
+     * energy meter name, with the certificates proving it, as the proof gives them.
+     */
+    readonly transparencySoftware: readonly NamedTransparencySoftware[];
 
     readonly commitId:        string;
     readonly revision:        number;
@@ -102,20 +105,22 @@ export interface NamedCertificate {
 
 
 /**
- * A transparency software an energy meter names (`transparencySoftwareStatus`), as the proof of its station gives it
- * (example A13): the release in the skeleton of its transparency software manufacturer, with its legal status for the
- * meter, which names no certificate: the certificates of the meter and of its station naming the release among their
- * components prove it. POI proves who states them, not that they are true.
+ * A transparency software an energy meter or the charging station names (`transparencySoftwareStatus`), as the proof of
+ * the station gives it (example A13): the release in the skeleton of its transparency software manufacturer, with its
+ * legal status for the measurements of what names it, which names no certificate: the certificates of what names it and,
+ * for a meter, of its station naming the release among their components prove it. A station names releases where it signs
+ * measurements itself, with its own public keys. POI proves who states them, not that they are true.
  */
-export interface MeterTransparencySoftware {
-    readonly energyMeterId:  string;
-    /** The legal status the meter's values are checked under, e.g. `germanCalibrationLaw`. */
+export interface NamedTransparencySoftware {
+    /** What names it: the station or one of its energy meters. */
+    readonly namedBy:        { readonly entityType: 'ChargingStation' | 'EnergyMeter', readonly entityId: string };
+    /** The legal status the measurements are checked under, e.g. `germanCalibrationLaw`. */
     readonly legalStatus:    string | undefined;
     /** The release, as its manufacturer states it: name, version, licenses, support period, declaration of conformity, bill of materials. */
     readonly release:        JSONObject;
     /** Its manufacturer, as its skeleton: its own properties, e.g. its role under the CRA and where vulnerabilities are reported. */
     readonly manufacturer:   JSONObject;
-    /** The certificates of the meter and of its station naming the release, verified or compatible, among their components. */
+    /** The certificates of what names it and, for a meter, of its station naming the release, verified or compatible, among their components. */
     readonly certificates:   readonly NamedCertificate[];
 }
 
@@ -213,35 +218,39 @@ function certificatesOf(attested: JSONObject, station: JSONObject, energyMeters:
 
 
 /**
- * The transparency software the given energy meters name, from the releases the proof gives, with the certificates of
- * the meter and of the station naming each among their components.
+ * The transparency software the station and the given energy meters name, from the releases the proof gives, with the
+ * certificates of what names it and, for a meter, of the station naming each among their components.
  */
-function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energyMeters: readonly JSONObject[], certificates: readonly NamedCertificate[], warnings: string[]): MeterTransparencySoftware[] {
+function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energyMeters: readonly JSONObject[], certificates: readonly NamedCertificate[], warnings: string[]): NamedTransparencySoftware[] {
 
-    const releases  = objects(get(attested, 'transparencySoftwareManufacturers')).flatMap(manufacturer =>
-                          objects(get(manufacturer, 'transparencySoftware')).map(release => ({ release, manufacturer })));
+    const releases   = objects(get(attested, 'transparencySoftwareManufacturers')).flatMap(manufacturer =>
+                           objects(get(manufacturer, 'transparencySoftware')).map(release => ({ release, manufacturer })));
 
-    const result: MeterTransparencySoftware[] = [];
+    const stationId  = asText(station['@id']);
+    const named      = [ { entity: station, entityType: 'ChargingStation' as const, what: 'charging station' },
+                         ...energyMeters.map(meter => ({ entity: meter, entityType: 'EnergyMeter' as const, what: 'energy meter' })) ];
 
-    for (const meter of energyMeters)
-        for (const assignment of objects(get(meter, 'transparencySoftwareStatus'))) {
+    const result: NamedTransparencySoftware[] = [];
 
-            const meterId    = asText(meter['@id']);
+    for (const { entity, entityType, what } of named)
+        for (const assignment of objects(get(entity, 'transparencySoftwareStatus'))) {
+
+            const entityId   = asText(entity['@id']);
             const releaseId  = textOf(assignment, 'transparencySoftwareId');
             const release    = releases.find(item => item.release['@id'] === releaseId);
 
             if (release === undefined) {
-                warnings.push(`the transparency software '${releaseId ?? ''}' of the energy meter '${meterId}' is not given by the proof`);
+                warnings.push(`the transparency software '${releaseId ?? ''}' of the ${what} '${entityId}' is not given by the proof`);
                 continue;
             }
 
             result.push({
-                energyMeterId:  meterId,
+                namedBy:        { entityType, entityId },
                 legalStatus:    textOf(assignment, 'legalStatus'),
                 release:        release.release,
                 manufacturer:   skeletonOf(release.manufacturer, 'transparencySoftware'),
                 certificates:   certificates.filter(({ namedBy, certificate }) =>
-                                    (namedBy.entityId === meterId || (namedBy.entityType === 'ChargingStation' && namedBy.entityId === asText(station['@id']))) &&
+                                    (namedBy.entityId === entityId || (namedBy.entityType === 'ChargingStation' && namedBy.entityId === stationId)) &&
                                     [ ...texts(get(certificate, 'verifiedTransparencySoftwareIds')), ...texts(get(certificate, 'compatibleTransparencySoftwareIds')) ].includes(releaseId ?? '')),
             });
 

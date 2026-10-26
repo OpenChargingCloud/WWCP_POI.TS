@@ -40,7 +40,7 @@ stays the review of the C# implementation.
 | 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged |
 | 16 | ✅ A certificate is for a version of a model, but no station or meter names one of its model's | medium | confirmed | **new**; **fixed** in `7e0b0ac`, and in this port alike |
 | 17 | ✅ An energy meter names the certificate of a station model, and has none of its own | medium | confirmed | **new**; **fixed** in `987fa26`, and in this port alike |
-| 18 | What one party names blocks what another party withdraws | low | confirmed | **new** |
+| 18 | ✅ What one party names blocks what another party withdraws | low | confirmed | **new**; **fixed** in `52f1172`, the specification following the code |
 | 19 | Smaller points | low | confirmed | extended |
 | 20 | ✅ Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server | medium (interop) | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
 | 21 | ✅ The custom data of an address is lost | low | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
@@ -662,7 +662,7 @@ gives the `certificates` of a verified station, each with `forThisModel`, and wi
 the certificates naming its release; the references a version holds it leaves to WWCP_POI, as it does those of 16.
 
 
-## 18. What one party names blocks what another party withdraws
+## 18. ✅ What one party names blocks what another party withdraws
 
 **Where:** `WWCP_POI3/RoamingNetwork/RoamingNetwork.ChangeSets.cs:1137-1155` (the references checked after every change
 set), `docs/ChargingStation.md` ("a manufacturer or a model can not be removed while a station names it"),
@@ -679,6 +679,15 @@ so for models; the specification's "removing a party removes everything it embed
 
 **Fix:** say in section 4.1 that a party can not be removed, nor anything withdrawn, while another party names it, and
 who resolves it; or let a removal of the RNO remove or clear the references to what it removes.
+
+**Fixed** in `52f1172`, the specification following the code: section 4.1 says that what another party names, a party,
+a model, a hardware revision or firmware version, a release, a certificate, a grid connection point, a charging station
+or a parking space, is not withdrawn while it names it, also not by the RNO; the party naming it changes first, or both
+change it in one change set both sign, so that the RNO removes a party another one still names only together with that
+party. A refusal for it says so: when the references a change set leaves were resolved by the version before it,
+`TryApplyChangeSet` adds that the change set withdraws what is still named, and how it is withdrawn.
+`ManufacturerModelTests` holds it. This port leaves the references a version holds to WWCP_POI, as it does those of 16
+and 17.
 
 
 ## 19. Smaller points

@@ -121,3 +121,14 @@ network. `verifyChargingStation` gives the `certificates` the station and its me
 whether it is for the model, the hardware revision and the firmware version of what names it; the `transparencySoftware`
 of a meter gives the certificates naming its release, no longer a certificate of its own. The test vectors are those of
 a new run of the C# examples at `987fa26` (`tests/vectors/csharp-987fa26`).
+
+A charging station signing measurements itself names its `serialNumber`, `transparencySoftwareStatus`,
+`signatureMethods` and `publicKeys` as an energy meter does, and the `modelURL` of its model; an EVSE names its
+`iso15118Certificate`, as WWCP_POI does since `52f1172`. Change sets change them; an effective station takes the model
+URL, the releases and the signature methods of its templates besides its own, never the serial number, the public keys
+or the ISO 15118 certificate of the single device; and a change set giving the releases of a station or a meter out of
+the order of their identifications, or one twice, is refused. `verifyChargingStation` gives the releases the station
+names among its `transparencySoftware`, proven by the certificates of the station; each entry names what names it,
+`namedBy` as of a certificate, in place of `energyMeterId` (`NamedTransparencySoftware` in place of
+`MeterTransparencySoftware`). The test vectors stay those of the run at `987fa26`: no station of its examples signs
+measurements itself.
