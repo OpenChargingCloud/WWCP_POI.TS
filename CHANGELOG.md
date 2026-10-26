@@ -168,5 +168,8 @@ The golden vectors of WWCPPOIConformanceTests hold, besides the run of the C# ex
 party without keys, who states a certificate, old values and rebases, keys expired and removed, new values as the
 content holds them, `lastChange` of what embeds a change, and three epochs (csharp-review 3, 8, 10, 12 to 15). Ten of
 them - the references a version holds, the groups of e-mobility providers, grid connection points - this library
-leaves to WWCP_POI, and does not run. One pins a deviation of this library: a change set signed, besides by its owner,
-by a key of a party not valid at its `createdAt` is taken here, and refused by WWCP_POI (D8 of WWCPPOIConformanceTests).
+leaves to WWCP_POI, and does not run. They found a deviation of this library (D8 of WWCPPOIConformanceTests): a change
+set signed, besides by its owner, by a key of a party not valid at its `createdAt` was taken here, and refused by
+WWCP_POI. Every signature by a key of a party of the version is now by one valid at the `createdAt` of the change set,
+also one besides the signatures of the owners, refused otherwise in the words of WWCP_POI (`TryGetSigners`); only a new
+identity key, which proves its possession, may be one valid later (SPECIFICATION.md 4.1).

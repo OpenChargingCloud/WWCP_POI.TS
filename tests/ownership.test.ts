@@ -36,24 +36,45 @@ const signedBy = (seed: string, bytes: Uint8Array): string =>
     sign(null, bytes, createPrivateKey({ key: Buffer.concat([ Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from(seed, 'hex') ]),
                                          format: 'der', type: 'pkcs8' })).toString('base64');
 
-/** A roaming network whose operator DE*RNO certified its signing key for the given usage alone, with the BSI without keys. */
-function network(usage: string): RoamingNetwork {
+/** A signing key of DE*RNO its identity key certifies: for the usages given, valid as given. */
+interface Certified {
+    readonly key:         { readonly id: string, readonly cose: string };
+    readonly usages:      readonly string[];
+    readonly notBefore?:  string;
+    readonly notAfter?:   string;
+}
 
-    const certificate: JSONObject = {
-        roamingNetworkOperatorId:  'DE*RNO',
-        signingKey:                { '@id': SIGNING.id, key: SIGNING.cose, usages: [ usage ] },
-        signedAt:                  CREATED,
-        algorithm:                 'Ed25519',
-        keyId:                     IDENTITY.id,
-        value:                     'AA==',
+/**
+ * A roaming network whose operator DE*RNO certified its signing key for the given usage alone, and the other signing keys
+ * given, with the BSI without keys.
+ */
+function network(usage: string, ...others: Certified[]): RoamingNetwork {
+
+    const certificateOf = ({ key: signing, usages, notBefore, notAfter }: Certified): JSONObject => {
+
+        const certificate: JSONObject = {
+            roamingNetworkOperatorId:  'DE*RNO',
+            signingKey:                { '@id': signing.id, key: signing.cose, ...(notBefore === undefined ? {} : { notBefore }),
+                                         ...(notAfter === undefined ? {} : { notAfter }), usages: [ ...usages ] },
+            signedAt:                  CREATED,
+            algorithm:                 'Ed25519',
+            keyId:                     IDENTITY.id,
+            value:                     'AA==',
+        };
+
+        certificate['value'] = signedBy(IDENTITY.seed, SigningKeyCertificate.parse(certificate).signingBytes());
+
+        return certificate;
+
     };
 
-    certificate['value'] = signedBy(IDENTITY.seed, SigningKeyCertificate.parse(certificate).signingBytes());
+    // In the order of the @ids of their signing keys, as the content holds them.
+    const certificates = [ { key: SIGNING, usages: [ usage ] }, ...others ].sort((left, right) => left.key.id < right.key.id ? -1 : 1).map(certificateOf);
 
     return RoamingNetwork.parse({
         '@context':                  ROAMING_NETWORK_CONTEXT,
         '@id':                       'rn1',
-        operator:                    { '@id': 'DE*RNO', identityKeys: [ { '@id': IDENTITY.id, key: IDENTITY.cose } ], signingKeyCertificates: [ certificate ],
+        operator:                    { '@id': 'DE*RNO', identityKeys: [ { '@id': IDENTITY.id, key: IDENTITY.cose } ], signingKeyCertificates: certificates,
                                        created: CREATED, lastChange: CREATED },
         conformityAssessmentBodies:  [ { '@id': 'BSI', created: CREATED, lastChange: CREATED } ],
         created:                     CREATED,
@@ -62,29 +83,36 @@ function network(usage: string): RoamingNetwork {
 
 }
 
-/** A change set adding a certificate to the BSI, signed by the signing key of DE*RNO. */
-function addCertificate(before: RoamingNetwork): ChangeSet {
+/** A change set of the given changes, created at T0, signed by the given keys of section 6. */
+function changeSetOf(before: RoamingNetwork, changes: JSONObject[], signers: ReadonlyArray<{ readonly id: string, readonly seed: string }>): ChangeSet {
 
     const eTags = before.changeSetETags().map(eTag => etagToJSON(eTag));
     const json: JSONObject = {
         '@context':        CHANGE_SET_CONTEXT,
         roamingNetworkId:  'rn1',
         createdAt:         T0,
-        changes:           [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'BSI-2026-0001', newValue: { '@id': 'BSI-2026-0001' },
-                               parentEntityType: 'ConformityAssessmentBody', parentEntityId: 'BSI' } ],
+        changes,
         beforeETags:       eTags,
         afterETags:        eTags,
     };
 
     json['@id'] = changeSetIdentification(json);
 
-    const signature: ChangeSetSignature = { algorithm: 'Ed25519', keyId: SIGNING.id, value: '' };
+    const unsigned = ChangeSet.parse(json);
 
-    json['signatures'] = [ { ...signature, value: signedBy(SIGNING.seed, ChangeSet.parse(json).signingBytes(signature)) } ];
+    json['signatures'] = signers.map(signer => {
+        const signature: ChangeSetSignature = { algorithm: 'Ed25519', keyId: signer.id, value: '' };
+        return { ...signature, value: signedBy(signer.seed, unsigned.signingBytes(signature)) };
+    });
 
     return ChangeSet.parse(json);
 
 }
+
+/** A change set adding a certificate to the BSI, signed by the signing key of DE*RNO, or by the keys given. */
+const addCertificate = (before: RoamingNetwork, signers = [ SIGNING ]): ChangeSet =>
+    changeSetOf(before, [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'BSI-2026-0001', newValue: { '@id': 'BSI-2026-0001' },
+                            parentEntityType: 'ConformityAssessmentBody', parentEntityId: 'BSI' } ], signers);
 
 
 describe('The roaming network operator in place of a party without signing keys (4.1)', () => {
@@ -105,6 +133,46 @@ describe('The roaming network operator in place of a party without signing keys 
 
         expect(() => { checkOwnership(byInfrastructure, addCertificate(byInfrastructure)); })
             .toThrow("Change 0: Add of the ConformityCertificate 'BSI-2026-0001' needs a signature by a signing key of the ConformityAssessmentBody 'BSI'!");
+
+    });
+
+});
+
+
+// Every signature of a change set by a key of a party of the version is by one valid at its createdAt, also one besides
+// the signatures of its owners, as WWCP_POI takes it (`TryGetSigners`; SPECIFICATION.md 4.1, 4.2; D8 of
+// WWCPPOIConformanceTests): only a new identity key, proving its possession, may be one valid later.
+
+describe('Every signature by a key of a party valid at the createdAt of its change set', () => {
+
+    const OTHER  = key('ea671729');
+
+    it('also one besides the signature of its owner', () => {
+
+        const valid    = network('party', { key: OTHER, usages: [ 'party' ] });
+        const expired  = network('party', { key: OTHER, usages: [ 'party' ], notAfter:  '2026-10-25T11:59:59.999Z' });
+        const later    = network('party', { key: OTHER, usages: [ 'party' ], notBefore: '2026-10-25T12:00:00.001Z' });
+
+        expect(() => { checkOwnership(valid, addCertificate(valid, [ SIGNING, OTHER ])); }).not.toThrow();
+
+        for (const version of [ expired, later ])
+            expect(() => { checkOwnership(version, addCertificate(version, [ SIGNING, OTHER ])); })
+                .toThrow(`Signature 1: the key '${OTHER.id}' of the RoamingNetworkOperator 'DE*RNO' is not valid at ${T0}!`);
+
+    });
+
+    it('but a new identity key, which proves its possession only, also before its notBefore', () => {
+
+        const before   = network('party');
+        const NEW      = key('a287cebc');
+        const SIGNS    = key('8cb46c0f');
+
+        const added    = changeSetOf(before, [ { kind: 'Add', entityType: 'ChargingStationOperator', entityId: 'DE*GEF',
+                                                 newValue: { '@id': 'DE*GEF', signingKeys: [ { '@id': SIGNS.id, key: SIGNS.cose } ],
+                                                             identityKeys: [ { '@id': NEW.id, key: NEW.cose, notBefore: '2026-11-01T00:00:00.000Z' } ] } } ],
+                                     [ SIGNING, NEW ]);
+
+        expect(() => { checkOwnership(before, added); }).not.toThrow();
 
     });
 

@@ -1209,7 +1209,14 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
     for (const key of [ ...rnoSigning, ...rnoIdentity, ...[ ...parties.values() ].flatMap(party => [ ...party.signingKeys, ...party.identityKeys ]), ...newIdentityKeys ])
         allKeys.set(key.id, key);
 
-    // Every signature valid, by a known key.
+    // The keys of the parties of the version, with the party naming them.
+    const partyKeys = [
+        ...(rno === undefined ? [] : [ ...rnoSigning, ...rnoIdentity ].map(key => ({ party: `RoamingNetworkOperator '${rno.id}'`, key }))),
+        ...[ ...parties.values() ].flatMap(party => [ ...party.signingKeys, ...party.identityKeys ].map(key => ({ party: `${party.type} '${party.id}'`, key }))),
+    ];
+
+    // Every signature valid, by a known key, a key of a party valid at createdAt (`TryGetSigners`): also one besides the
+    // signatures of the owners. A new identity key proves its possession only, also one valid only later.
     const valid = new Set<string>();
 
     changeSet.signatures.forEach((signature, index) => {
@@ -1218,6 +1225,10 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
 
         if (key === undefined)
             throw new POIError(`Signature ${index} is by the key '${signature.keyId}', which is no key of a party of this roaming network!`);
+
+        for (const partyKey of partyKeys.filter(item => item.key.id === signature.keyId))
+            if (!partyKey.key.isValidAt(createdAt))
+                throw new POIError(`Signature ${index}: the key '${partyKey.key.id}' of the ${partyKey.party} is not valid at ${toTimestamp(createdAt)}!`);
 
         try {
             changeSet.verifySignature(signature, key);
