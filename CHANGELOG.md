@@ -150,8 +150,10 @@ certificate stated in place of a body.
 A version naming a hardware revision, firmware version or serial number WWCP_POI refuses is refused, read or led to by a
 change set, as WWCP_POI reads them since `c31e5e3` and `3672b06` (`HardwareRevision`, `FirmwareVersion`,
 `SerialNumber`): a text as it is given, not empty and neither beginning nor ending with whitespace as `Char.IsWhiteSpace`
-tells it, of charging stations, energy meters and their templates, of the models of their manufacturers, each once there,
-and of certificates and the energy meters they were issued with, in the words of WWCP_POI (`invalidVersionText`, which
-`RoamingNetwork.parse` checks with `duplicateIdentification`). Whether one is of the model of what names it stays with
-the references, which this library leaves to WWCP_POI. The test vectors stay those of the run at `987fa26`, whose
-versions name none it refuses.
+tells it, of charging stations, energy meters and their templates, of the models of their manufacturers, and of
+certificates and the energy meters they were issued with, each once in a model, a certificate and such an energy meter
+(`ModelVersions.Of`), in the words of WWCP_POI (`invalidVersionText`, which `RoamingNetwork.parse` checks with
+`duplicateIdentification`). Whether one is of the model of what names it stays with the references, which this library
+leaves to WWCP_POI. The test vectors stay those of the run at `987fa26`, whose versions name none it refuses; the vectors
+`version-text-*` of WWCPPOIConformanceTests, its head so changed, hold both implementations to it, refused in the same
+words (`reason`).

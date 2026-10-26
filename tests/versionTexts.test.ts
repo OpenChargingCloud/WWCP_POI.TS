@@ -101,13 +101,38 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
         expect(() => read({ energyMeterManufacturers: [ entity('EMH', { energyMeterModels: [ { '@id': 'eHZ', firmwareVersions: [ '1', '2', '1' ] } ] }) ] }))
             .toThrow("A firmware version of the energy meter model 'eHZ' must not be given twice!");
 
+        // ModelVersions.Of takes the versions once both were read: an invalid firmware version before a hardware revision twice.
+        expect(() => read(stationModel({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ ' 2.4.1' ] })))
+            .toThrow("The charging station model 'GD-DC300': Invalid firmware version ' 2.4.1'!");
+
     });
 
-    it('of a certificate and of the energy meters it was issued with, by their path; a certificate may name one twice', () => {
+    it('of a certificate and of the energy meters it was issued with, by their path, each once', () => {
 
-        expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ '2.4.1' ],
+        expect(() => read(certificate({ hardwareRevisions: [ '1.0', 'A', 'a' ], firmwareVersions: [ '2.4.1' ],
                                         energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', firmwareVersions: [ '1' ] } ] })))
             .not.toThrow();
+
+        // As ModelVersions.Of refuses them, by ConformityCertificate and CertifiedEnergyMeter (WWCP_POI2).
+        expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ '2.4.1' ] })))
+            .toThrow("A hardware revision of the certificate 'PTB-2026-0042' must not be given twice!");
+
+        expect(() => read(certificate({ firmwareVersions: [ '2.4.1', '2.4.1' ] })))
+            .toThrow("A firmware version of the certificate 'PTB-2026-0042' must not be given twice!");
+
+        expect(() => read(certificate({ energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', hardwareRevisions: [ '1', '1' ] } ] })))
+            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: A hardware revision of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
+
+        // In the order WWCP_POI reads them: the texts of the certificate, each energy meter, then the certificate's twice.
+        expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ ' 2.4.1' ] })))
+            .toThrow("The certificate 'PTB-2026-0042': firmwareVersions[0]: Invalid text representation of a firmware version: ' 2.4.1'!");
+
+        expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ],
+                                        energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', firmwareVersions: [ '1', '1' ] } ] })))
+            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: A firmware version of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
+
+        expect(() => read(certificate({ energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', hardwareRevisions: [ '1', '1' ], firmwareVersions: [ '1 ' ] } ] })))
+            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: firmwareVersions[0]: Invalid text representation of a firmware version: '1 '!");
 
         expect(() => read(certificate({ hardwareRevisions: [ '1.0', ' 1.1' ] })))
             .toThrow("The certificate 'PTB-2026-0042': hardwareRevisions[1]: Invalid text representation of a hardware revision: ' 1.1'!");

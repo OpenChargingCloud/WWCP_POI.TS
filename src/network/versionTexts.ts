@@ -21,17 +21,23 @@ import { energyMetersOf }                                           from './iden
 
 // Hardware revisions, firmware versions and serial numbers as WWCP_POI reads them, as HardwareRevision, FirmwareVersion and
 // SerialNumber (WWCP_POI2, since c31e5e3 and 3672b06): a text exactly as it is given, not empty and neither beginning nor
-// ending with whitespace, compared ordinally, case included. The models of charging stations and energy meters name each of
-// their hardware revisions and firmware versions once (`ModelVersions.Of`). WWCP_POI refuses a version naming another where
-// it reads it; whether a station, a meter or a certificate names a revision or version of its model it checks with the
-// references, which this library leaves to WWCP_POI.
+// ending with whitespace, compared ordinally, case included. The models of charging stations and energy meters, the
+// certificates and the energy meters a certificate was issued with name each of their hardware revisions and firmware
+// versions once (`ModelVersions.Of`). WWCP_POI refuses a version naming another where it reads it; whether a station, a
+// meter or a certificate names a revision or version of its model it checks with the references, which this library
+// leaves to WWCP_POI.
 
 
 const objectsOf = (value: JSONValue | undefined): JSONObject[] =>
     isArray(value) ? value.filter(isObject) : [];
 
+const textOf = (entity: JSONObject, property: string): string => {
+    const value = entity[property];
+    return typeof value === 'string' ? value : '';
+};
+
 const idOf = (entity: JSONObject): string =>
-    typeof entity['@id'] === 'string' ? entity['@id'] : '';
+    textOf(entity, '@id');
 
 /**
  * Whitespace as `Char.IsWhiteSpace` tells it, which `String.Trim` and `String.IsNullOrWhiteSpace` take: not quite what
@@ -69,8 +75,25 @@ const TEMPLATE_TEXTS  = { hardwareRevision: 'hardware revision', firmwareVersion
 const MODEL_VERSIONS  = { hardwareRevisions: 'hardware revision', firmwareVersions: 'firmware version' };
 
 /**
- * The error, when the given model names a hardware revision or firmware version `TryParseIds` refuses, or one twice, which
- * `ModelVersions.Of` refuses: of a charging station or energy meter model.
+ * The error, when the given holder names a hardware revision or firmware version twice, which `ModelVersions.Of` refuses
+ * once both were read (`A hardware revision of the charging station model 'GD-DC300' must not be given twice!`): a model,
+ * a certificate or an energy meter a certificate was issued with, `whose` in words, after its path where it has one.
+ */
+function versionTwice(holder: JSONObject, whose: string, path = ''): string | undefined {
+
+    for (const [property, description] of Object.entries(MODEL_VERSIONS)) {
+        const versions = get(holder, property);
+        if (isArray(versions) && new Set(versions).size !== versions.length)
+            return `${path}A ${description} of ${whose} must not be given twice!`;
+    }
+
+    return undefined;
+
+}
+
+/**
+ * The error, when the given model names a hardware revision or firmware version `TryParseIds` refuses, or then one twice,
+ * which `ModelVersions.Of` refuses: of a charging station or energy meter model.
  */
 function invalidModelVersion(what: string, model: JSONObject): string | undefined {
 
@@ -89,19 +112,16 @@ function invalidModelVersion(what: string, model: JSONObject): string | undefine
         if (invalid !== undefined)
             return `The ${what} '${idOf(model)}': Invalid ${description} '${shown(invalid)}'!`;
 
-        if (new Set(versions).size !== versions.length)
-            return `A ${description} of the ${what} '${idOf(model)}' must not be given twice!`;
-
     }
 
-    return undefined;
+    return versionTwice(model, `the ${what} '${idOf(model)}'`);
 
 }
 
 /**
  * The error, when the given hardware revisions or firmware versions of a certificate, or of an energy meter it was issued
  * with, are refused as `StrictJSON.Array` reads them, by its path (`hardwareRevisions[0]: Invalid text representation of
- * a hardware revision: ' 1.0'!`). A certificate may name one twice.
+ * a hardware revision: ' 1.0'!`).
  */
 function invalidCertifiedVersion(holder: JSONObject, path: string): string | undefined {
 
@@ -127,15 +147,26 @@ function invalidCertifiedVersion(holder: JSONObject, path: string): string | und
 
 }
 
-/** The error, when the given certificate or one of the energy meters it was issued with names a version WWCP_POI refuses. */
+/**
+ * The error, when the given certificate or one of the energy meters it was issued with names a version WWCP_POI refuses,
+ * in the order `ConformityCertificate` and `CertifiedEnergyMeter` read them: the texts of the certificate, each energy
+ * meter with its texts and then the versions it names twice, and last the versions the certificate names twice.
+ */
 function invalidCertificateVersion(certificate: JSONObject): string | undefined {
+
+    const meterError = (meter: JSONObject, index: number): string | undefined =>
+        invalidCertifiedVersion(meter, `energyMeters[${String(index)}]: `) ??
+        versionTwice(meter, `the certified energy meter model '${textOf(meter, 'modelId')}' of '${textOf(meter, 'manufacturerId')}'`,
+                     `energyMeters[${String(index)}]: `);
 
     const error = invalidCertifiedVersion(certificate, '') ??
                   objectsOf(get(certificate, 'energyMeters')).
-                      map((meter, index) => invalidCertifiedVersion(meter, `energyMeters[${String(index)}]: `)).
+                      map(meterError).
                       find(found => found !== undefined);
 
-    return error === undefined ? undefined : `The certificate '${idOf(certificate)}': ${error}`;
+    return error !== undefined
+               ? `The certificate '${idOf(certificate)}': ${error}`
+               : versionTwice(certificate, `the certificate '${idOf(certificate)}'`);
 
 }
 
