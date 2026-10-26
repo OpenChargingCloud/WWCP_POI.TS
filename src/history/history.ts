@@ -23,7 +23,7 @@ import { Commit }                         from './commit.ts';
 import { Checkpoint }                     from './checkpoint.ts';
 import { ChangeSet }                      from './changeSet.ts';
 import { applyChangeSet }                 from './apply.ts';
-import { FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, type Epoch, type EpochLink } from './epoch.ts';
+import { EpochProfiles, FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, type Epoch, type EpochLink } from './epoch.ts';
 import { POIError, required }             from '../errors.ts';
 
 
@@ -64,8 +64,18 @@ export class History {
                         public readonly epoch:     Epoch,
                         /** The final checkpoint of the epoch before, which the first checkpoint of this one names (11.3). */
                         public readonly previousEpoch: EpochLink | undefined,
+                        private readonly previousProfiles: EpochProfiles | undefined,
                         private readonly options:  HistoryOptions) {
         this.versions.push(root);
+    }
+
+    /**
+     * The profiles of the epoch before, if they are known: the first checkpoint of this epoch is signed with the algorithms
+     * of both (11.3). Those of the first epoch are the default ones; those of a later one this history knows from the epoch
+     * it was started from, or from the snapshot it started from (`PreviousEpochProfiles`).
+     */
+    public get previousEpochProfiles(): EpochProfiles | undefined {
+        return this.epoch.number === 1 ? undefined : this.epoch.number === 2 ? EpochProfiles.FIRST : this.previousProfiles;
     }
 
 
@@ -98,7 +108,8 @@ export class History {
     /**
      * Starts a history from a snapshot, `{ timestamp?, commit, roamingNetwork, effectiveLastChanges?, runtimeStatus?,
      * epoch?, checkpoint? }` (10.5, 11.3): the version leads to the ETags of its commit, the commit is one of the epoch the
-     * snapshot names, the first one when it names none; the commit of a checkpoint is the commit of the snapshot, with its
+     * snapshot names, `{epoch, profiles, previous?, previousProfiles?}`, the first one when it names none, the profiles of
+     * the epoch before only from the third epoch on; the commit of a checkpoint is the commit of the snapshot, with its
      * revision and ETags, and the checkpoint carries the signatures required. The runtime status beside the version is not
      * part of it, and not taken.
      */
@@ -112,6 +123,7 @@ export class History {
         let commit:   Commit;
         let epoch:    Epoch = FIRST_EPOCH;
         let previous: EpochLink | undefined;
+        let previousProfiles: EpochProfiles | undefined;
 
         try {
             network = RoamingNetwork.parse(get(json, 'roamingNetwork'));
@@ -131,7 +143,13 @@ export class History {
             const epochJSON = requireObject(get(json, 'epoch'), 'The epoch of a snapshot');
             epoch     = parseEpoch(epochJSON, 'The epoch of a snapshot');
             previous  = get(epochJSON, 'previous') === undefined ? undefined : parseEpochLink(get(epochJSON, 'previous'));
+            previousProfiles = get(epochJSON, 'previousProfiles') === undefined ? undefined : EpochProfiles.parse(get(epochJSON, 'previousProfiles'));
         }
+
+        if (previousProfiles !== undefined && epoch.number <= 2)
+            throw new POIError(epoch.number === 1
+                                   ? 'The first epoch has no epoch before, nor its profiles!'
+                                   : 'The epoch before the epoch 2 is the first one, of the default profiles: they are not given!');
 
         if (commit.roamingNetworkId !== network.id || !network.matchesCommitETags(commit.eTags))
             throw new POIError('The roaming network of the snapshot does not lead to the ETags of its commit!');
@@ -141,7 +159,7 @@ export class History {
            (!sameEpoch(epoch, { number: commit.epoch, profiles: commit.profiles }) || (previous !== undefined && !sameETags(commit.eTags, previous.eTags))))
             throw new POIError(`The genesis '${commit.id}' of the snapshot is not one of its epoch ${epoch.number}!`);
 
-        const history = new History({ network, commit }, epoch, previous, options);
+        const history = new History({ network, commit }, epoch, previous, previousProfiles, options);
 
         history.checkCommitEpoch(commit);
 
@@ -202,6 +220,7 @@ export class History {
     /**
      * Refuses a checkpoint of another epoch; the first one of a later epoch must name the final checkpoint of the one before
      * this history started from, and is signed with the algorithms of both epochs, every later one only with those of its own.
+     * Without the profiles of the epoch before, only those of its own are taken (`CheckpointSignatureAlgorithmError`).
      */
     private checkCheckpointEpoch(checkpoint: Checkpoint): void {
 
@@ -217,9 +236,25 @@ export class History {
             !sameETags(checkpoint.previous.eTags, this.previousEpoch.eTags)))
             throw new POIError(`The checkpoint '${checkpoint.id}' names another final checkpoint of the epoch before than this history started from!`);
 
-        if (checkpoint.previous === undefined)
-            for (const signature of checkpoint.signatures)
-                this.checkAlgorithm(signature.algorithm, `a signature of the checkpoint '${checkpoint.id}'`);
+        for (const signature of checkpoint.signatures)
+            this.checkCheckpointAlgorithm(checkpoint.previous !== undefined, signature.algorithm, `a signature of the checkpoint '${checkpoint.id}'`);
+
+    }
+
+    private checkCheckpointAlgorithm(firstOfAnEpoch: boolean, algorithm: string, what: string): void {
+
+        if (!firstOfAnEpoch || this.epoch.profiles.allowsSignatureAlgorithm(algorithm)) {
+            this.checkAlgorithm(algorithm, what);
+            return;
+        }
+
+        const before = this.previousEpochProfiles;
+
+        if (before === undefined)
+            throw new POIError(`The signature algorithm '${algorithm}' of ${what} is not one of the epoch ${this.epoch.number}, ${this.epoch.profiles.signatureAlgorithms.join(', ')}, and the profiles of the epoch ${this.epoch.number - 1} are not known here!`);
+
+        if (!before.allowsSignatureAlgorithm(algorithm))
+            throw new POIError(`The signature algorithm '${algorithm}' of ${what} is neither one of the epoch ${this.epoch.number}, ${this.epoch.profiles.signatureAlgorithms.join(', ')}, nor of the epoch ${this.epoch.number - 1}, ${before.signatureAlgorithms.join(', ')}!`);
 
     }
 
@@ -388,13 +423,14 @@ export class History {
     /**
      * Starts the next epoch from the version of the final checkpoint of this one (11.4): applies nothing, so its genesis is
      * the one of `nextEpochGenesis`, whoever starts it. A genesis published with signatures is the same when its `@id` is.
+     * It knows the profiles of this epoch, for the signatures of its first checkpoint.
      */
     public startNextEpoch(options: HistoryOptions = this.options): History {
 
         const genesis  = this.nextEpochGenesis();
         const final    = required(this.finalCheckpoint,  `The epoch ${this.epoch.number} has no final checkpoint yet!`);
         const epoch    = required(final.next,            `The epoch ${this.epoch.number} has no final checkpoint yet!`);
-        const next     = new History(genesis, epoch, { epoch: final.epoch, checkpointId: final.id, eTags: final.eTags }, options);
+        const next     = new History(genesis, epoch, { epoch: final.epoch, checkpointId: final.id, eTags: final.eTags }, this.epoch.profiles, options);
 
 
         this.nextEpochStarted = true;

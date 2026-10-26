@@ -132,12 +132,12 @@ export interface Epoch {
 
 export const FIRST_EPOCH: Epoch = { number: 1, profiles: EpochProfiles.FIRST };
 
-/** Reads `{epoch, profiles}`, e.g. the `next` of a final checkpoint (11.2). */
+/** Reads `{epoch, profiles}`, e.g. the `next` of a final checkpoint (11.2), or the epoch of a snapshot (11.3). */
 export function parseEpoch(value: JSONValue | undefined, what = 'An epoch'): Epoch {
 
     const json = requireObject(value, what);
 
-    onlyProperties(json, [ '@context', 'epoch', 'profiles', 'previous' ], what);
+    onlyProperties(json, [ '@context', 'epoch', 'profiles', 'previous', 'previousProfiles' ], what);
 
     if (get(json, '@context') !== undefined && get(json, '@context') !== EPOCH_CONTEXT)
         throw new POIError(`The JSON-LD context of the epoch must be '${EPOCH_CONTEXT}'!`);

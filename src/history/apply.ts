@@ -146,7 +146,7 @@ const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
         usage:       KeyUsages.Certificates,
         changeable:  [ 'legislation', 'chargingStationModel', 'hardwareRevisions', 'firmwareVersions', 'chargingStationManufacturerId',
                        'energyMeterModel', 'energyMeterManufacturerId', 'energyMeters', 'documentNumber', 'documentURL',
-                       'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'notBefore', 'notAfter' ],
+                       'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'notBefore', 'notAfter', 'statedBy' ],
     },
 
 };
@@ -1366,6 +1366,8 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
     });
 
+    checkStatedBy(before, content, changeSet);
+
     // A change set sets the lastChange of the roaming network always (4).
     content['lastChange'] = createdAt;
 
@@ -1376,6 +1378,45 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     checkKeyHolders(before, after);
 
     return after;
+
+}
+
+
+/**
+ * Who states a certificate the change set adds or changes (4.1, `CertificateStatedByError`): the roaming network operator,
+ * signing it in place of a conformity assessment body without signing keys in the version before, names itself as its
+ * `statedBy`, `roamingNetworkOperator`; a body signing it itself, with its keys, names none. So a reader of a proof tells
+ * them apart also once the body has keys (docs/csharp-review.md, 15).
+ */
+function checkStatedBy(before: RoamingNetwork, content: JSONObject, changeSet: ChangeSet): void {
+
+    const type     = required(PARTY_CHILD_TYPES['ConformityCertificate'], 'Certificates are children of their bodies!');
+    const keyless  = objectsOf(get(before.content, type.parents))
+                         .filter(body => objectsOf(get(body, 'signingKeys')).length === 0)
+                         .map(body => asText(body['@id']));
+
+    for (const change of changeSet.changes) {
+
+        const found = change.entityType === 'ConformityCertificate' && change.kind !== 'Remove' ? partyChildOf(content, type, change.entityId) : undefined;
+
+        if (found === undefined)
+            continue;
+
+        const certificateId  = asText(found.child['@id']);
+        const bodyId         = asText(found.party['@id']);
+        const statedBy       = get(found.child, 'statedBy');
+
+        if (statedBy !== undefined && statedBy !== 'roamingNetworkOperator')
+            throw new POIError(`The certificate '${certificateId}' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by '${asText(statedBy)}'!`);
+
+        const byOperator     = keyless.some(id => sameId(id, bodyId));
+
+        if (byOperator !== (statedBy !== undefined))
+            throw new POIError(byOperator
+                                   ? `The certificate '${certificateId}' of the conformity assessment body '${bodyId}' without signing keys is stated by the roaming network operator in its place: its statedBy is 'roamingNetworkOperator'!`
+                                   : `The certificate '${certificateId}' of the conformity assessment body '${bodyId}' is stated by the body itself, with its keys: it names no statedBy!`);
+
+    }
 
 }
 

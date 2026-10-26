@@ -132,3 +132,17 @@ names among its `transparencySoftware`, proven by the certificates of the statio
 `namedBy` as of a certificate, in place of `energyMeterId` (`NamedTransparencySoftware` in place of
 `MeterTransparencySoftware`). The test vectors stay those of the run at `987fa26`: no station of its examples signs
 measurements itself.
+
+The first checkpoint of an epoch takes signatures of the algorithms of its epoch and of the epoch before, no other, as
+WWCP_POI does since `65e658d` (SPECIFICATION.md 11.3; docs/csharp-review.md, 14): a history started by
+`startNextEpoch` knows the profiles of the epoch it closed, one started from a snapshot those its `epoch` names as
+`previousProfiles` (`History.previousEpochProfiles`), and those of the first epoch are the default ones; without them
+it takes the algorithms of its own epoch alone. A snapshot of the epoch 2 naming profiles of the epoch before is refused.
+
+A certificate the roaming network operator adds or changes in place of a conformity assessment body without signing keys
+says so, `"statedBy": "roamingNetworkOperator"`, as WWCP_POI requires since `65e658d` (SPECIFICATION.md 4.1;
+docs/csharp-review.md, 15): a change set adding or changing a certificate whose `statedBy` does not say who signs it, as
+the version before has the keys of the body, is refused. `verifyChargingStation` gives each certificate with `statedBy`,
+`ConformityAssessmentBody` or `RoamingNetworkOperator`, in place of `bodyHasKeys`, which could not tell them apart once
+the body had keys. The test vectors stay those of the run at `987fa26`: none of its examples has a third epoch or a
+certificate stated in place of a body.

@@ -103,12 +103,13 @@ Who checks the meter (example A13): the certificates the station and its energy 
 assessment body for a model of charging stations or of energy meters, in hardware revisions and firmware versions, with
 its components, the transparency software and, of a station, the meters it mounts; and the transparency software each
 meter, and a station signing measurements itself, names with its legal status, proven by the certificates naming it.
-POI proves who states them, not that they are true. `forThisModel` tells whether a certificate is for the model, the
-hardware revision and the firmware version of what names it ([docs/csharp-review.md](docs/csharp-review.md), 16, 17).
+POI proves who states them, not that they are true. `statedBy` tells whether the body states a certificate or the
+roaming network operator in its place, as the certificate says, and `forThisModel` whether it is for the model, the
+hardware revision and the firmware version of what names it ([docs/csharp-review.md](docs/csharp-review.md), 15, 16, 17).
 
 ```ts
-for (const { namedBy, certificate, body, bodyHasKeys, forThisModel } of station.certificates)
-    console.log(namedBy.entityId, certificate['@id'], certificate['legislation'], body['@id'], bodyHasKeys, forThisModel);
+for (const { namedBy, certificate, body, statedBy, forThisModel } of station.certificates)
+    console.log(namedBy.entityId, certificate['@id'], certificate['legislation'], body['@id'], statedBy, forThisModel);
 
 for (const { namedBy, legalStatus, release, manufacturer, certificates } of station.transparencySoftware)
     console.log(namedBy.entityId, legalStatus, release['version'], manufacturer['craRole'], certificates.map(({ certificate }) => certificate['@id']));

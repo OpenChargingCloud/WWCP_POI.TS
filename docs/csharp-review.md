@@ -36,12 +36,12 @@ stays the review of the C# implementation.
 | 11 | ✅ Epoch 1 checkpoints name their epoch, the specification says they do not | low (interop) | demonstrated | unchanged; **fixed** in `9280f0b`, the specification following the code |
 | 12 | ✅ A change without `oldValue` is not checked at all | low | confirmed | unchanged; the models as well; **fixed** in `1717ee2`, where it mattered, and in this port alike |
 | 13 | ✅ The roaming network operator can not sign in place of a body or grid operator without keys | medium | demonstrated | unchanged, again demonstrated; **fixed** in `36bb176`, and in this port alike |
-| 14 | The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged |
-| 15 | Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged |
+| 14 | ✅ The first checkpoint of a later epoch takes signatures of any algorithm | low | confirmed | unchanged; **fixed** in `65e658d`, and in this port alike |
+| 15 | ✅ Who stated a certificate can not be told once its body has keys | low | confirmed | unchanged; **fixed** in `65e658d`, and in this port alike |
 | 16 | ✅ A certificate is for a version of a model, but no station or meter names one of its model's | medium | confirmed | **new**; **fixed** in `7e0b0ac`, and in this port alike |
 | 17 | ✅ An energy meter names the certificate of a station model, and has none of its own | medium | confirmed | **new**; **fixed** in `987fa26`, and in this port alike |
 | 18 | ✅ What one party names blocks what another party withdraws | low | confirmed | **new**; **fixed** in `52f1172`, the specification following the code |
-| 19 | Smaller points | low | confirmed | extended |
+| 19 | Smaller points | low | confirmed | extended; **mostly fixed** in `65e658d`, two left open as questions of design |
 | 20 | ✅ Custom data: numbers as binary floating-point numbers, timestamps in the time zone of the server | medium (interop) | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
 | 21 | ✅ The custom data of an address is lost | low | confirmed | **new**, found fixing 10; **fixed** in Styx `06b592d3` |
 
@@ -498,7 +498,7 @@ section 6, whose private seeds the specification gives (`rnoHolders` of `checkOw
 usage).
 
 
-## 14. The first checkpoint of a later epoch takes signatures of any algorithm
+## 14. ✅ The first checkpoint of a later epoch takes signatures of any algorithm
 
 **Where:** `WWCP_POI3/History/RoamingNetworkHistory.Epochs.cs:389-394` (`CheckpointSignatureAlgorithmError`),
 `SPECIFICATION.md` section 11.3.
@@ -512,8 +512,17 @@ checkpoint takes signatures of algorithms neither epoch 2 nor 3 accepts, e.g. af
 The TypeScript port accepts every algorithm for it as well, as it knows the profiles of the epoch before only from that
 checkpoint.
 
+**Fixed** in `65e658d`, and in this port alike: a history knows the profiles of the epoch before
+(`PreviousEpochProfiles`, `History.previousEpochProfiles`): those of the first epoch are the default ones; a history
+started by `TryStartNextEpoch` (`startNextEpoch`) knows those of the epoch it closed, and a snapshot of an epoch after
+the second names them in its `epoch`, `{epoch, profiles, previous?, previousProfiles?}`, which `ToSnapshotJSON` and the
+store write. The first checkpoint of an epoch takes a signature, and `TryMakeCheckpoint` and `TryCloseEpoch` a signer, of
+the algorithms of either epoch alone; without the profiles of the epoch before, of its own alone (SPECIFICATION.md 11.3).
+`EpochTests` holds it through three epochs, ES256 and ML-DSA-65 in the second, ML-DSA-65 alone in the third, Ed25519
+refused; `tests/epochAlgorithms.test.ts` in this port, with checkpoints made after the epoch 2 of QA.
 
-## 15. Who stated a certificate can not be told once its body has keys
+
+## 15. ✅ Who stated a certificate can not be told once its body has keys
 
 **Where:** `docs/ConformityAssessmentBody.md` ("A reader tells them apart: a body without keys signed none of its
 certificates"), example A13 (*Limits*), `RoamingNetworkEffectiveTree.cs` (the proof gives the skeleton of the body).
@@ -525,6 +534,15 @@ added it tells, and the app does not have it.
 
 **Fix:** let the certificate name who stated it (e.g. `statedBy`), or keep the signature of its change in it, so that the
 proof carries it. The TypeScript port reports what the proof shows, `bodyHasKeys`, and says so.
+
+**Fixed** in `65e658d`, and in this port alike: a certificate the RNO adds or changes in place of a body without
+signing keys says so, `"statedBy": "roamingNetworkOperator"` (`StatedByRoamingNetworkOperator`); one the body signs names
+none. A change set adding or changing a certificate whose `statedBy` does not say who signs it, as the version before has
+the keys of the body, is refused; a body that got its keys since changes a certificate the RNO stated only by removing its
+`statedBy`, stating it itself (SPECIFICATION.md 4.1). The proof gives it with the certificate. `TransparencyTests` holds
+it; this port refuses such change sets alike (`tests/certificateStatedBy.test.ts`) and gives every certificate of a
+verified station with `statedBy`, `ConformityAssessmentBody` or `RoamingNetworkOperator`, in place of `bodyHasKeys`.
+No example states a certificate in place of a body, so the vectors stay those of the run at `987fa26`.
 
 
 ## 16. ✅ A certificate is for a version of a model, but no station or meter names one of its model's
@@ -695,34 +713,51 @@ and 17.
 - ✅ **Trust anchor quorum (fixed in `3e32f48`):** `minConsensus` is checked against the number of keys, not of holders
   (`RoamingNetworkTrustAnchor.cs`, `TryCheck`); see 1. Since the trust anchor names its keys per holder, `TryCheck`
   checks `minConsensus` against the number of holders.
-- **Certificates and statements of another operator in a proof:** `RoamingNetworkProof.Verify` does not compare the
-  `roamingNetworkOperatorId` of the certificates and of the key statement with the operator of the proof (the content
-  check of a full version does). The TypeScript port does. Demonstrated by the vectors `trust-certificate-operator` and
-  `trust-statement-operator` (D6) of WWCPPOIConformanceTests.
-- **Checkpoint roles:** required roles are checked as the role a signer declares; `examples/csharp/exampleA4.cs` accepts a
-  signing key of the RNO in any role. The TypeScript port binds witness signatures to the key trusted for the witness
-  named, and ignores, rather than refuses, signatures by keys it does not trust (so nobody blocks a checkpoint by adding
-  one).
-- **Key statements trusted unchecked in the examples:** `ExampleA4.SigningKeyOf` (`examples/csharp/exampleA4.cs:260-276`)
-  trusts every identity key the key statement of the version it is given names, without verifying the statement against
-  the trust anchor. Example A11 hands it the version of the snapshot of checkpoint 5, which nothing checked against the
+- ✅ **Certificates and statements of another operator in a proof (fixed in `65e658d`):** `RoamingNetworkProof.Verify`
+  does not compare the `roamingNetworkOperatorId` of the certificates and of the key statement with the operator of the
+  proof (the content check of a full version does). The TypeScript port does. Demonstrated by the vectors
+  `trust-certificate-operator` and `trust-statement-operator` (D6) of WWCPPOIConformanceTests. `Verify` refuses a key
+  statement of another operator, in the words of this port, and counts no attestation by a signing key certified for
+  another one; `KeyStatementTests` holds both, each proof attested anew over what it gives. D6 closes once the
+  conformance tests pin it.
+- ✅ **Checkpoint roles (no change of code needed):** required roles are checked as the role a signer declares;
+  `examples/csharp/exampleA4.cs` accepts a signing key of the RNO in any role. The TypeScript port binds witness
+  signatures to the key trusted for the witness named, and ignores, rather than refuses, signatures by keys it does not
+  trust (so nobody blocks a checkpoint by adding one). Checked again: the verifiers of the examples bind each role to its
+  keys, `ExampleA4.SigningKeyOf` takes signatures in the role `roamingNetworkOperator` alone, `ExampleA6` those of a
+  witness by the key trusted for the witness it names; so the claim on example A4 does not hold. The delegates
+  `VerifyCheckpointSignatureDelegate` and `VerifyCommitSignatureDelegate` say since `65e658d` that their key must
+  be the one trusted for the role and the signer a signature names. That WWCP_POI refuses a checkpoint carrying a
+  signature it does not trust, where this port ignores it, stays as it is.
+- ✅ **Key statements trusted unchecked in the examples (fixed in `65e658d`):** `ExampleA4.SigningKeyOf`
+  (`examples/csharp/exampleA4.cs:260-276`) trusts every identity key the key statement of the version it is given names,
+  without verifying the statement against the trust anchor. Example A11 hands it the version of the snapshot of checkpoint 5, which nothing checked against the
   trust anchor (only the trusted witnesses protect the verifier there), example A12 the published `QA.json` (its
   *Limits* say so). The examples are what implementers copy: a verifier following the history should verify the key
   statement where it starts, and follow it by succession only through commits it checked. The TypeScript port does
-  (`OperatorTrust.of`, `OperatorTrust.followedBy`).
-- **Price statements taken along into an epoch they are not of:** `TryStartNextEpoch` takes the current statements of
-  epoch 1, signed with ES256, into epoch 2, which a peer starting in epoch 2 refuses (example A12, *Limits*).
-- **Models describe, nothing compares:** a model states `maxPower`, `currentTypes`, `connectorTypes` and `numberOfEVSEs`
+  (`OperatorTrust.of`, `OperatorTrust.followedBy`). **Fixed** in `65e658d`: `ExampleA4.SigningKeyOf` trusts the
+  identity keys a key statement names only once it verified the statement against the trust anchor it is given, and the
+  witnesses of example A6 follow the key statement by succession, commit by commit (`ExampleA4.Followed`): so they follow
+  the ML-DSA keys of epoch 2, which the old keys stated, and refuse a version whose statement the keys they trust did not
+  sign. The examples run as before, but for the words of example A13 on who states a certificate (15).
+- **Price statements taken along into an epoch they are not of (open):** `TryStartNextEpoch` takes the current
+  statements of epoch 1, signed with ES256, into epoch 2, which a peer starting in epoch 2 refuses (example A12,
+  *Limits*). Left open as a question of design, which example A12 calls open as well: whether a peer takes the statements
+  taken along with the algorithms of the epoch before, as the signatures of the first checkpoint, or the epoch takes along
+  only those of its own algorithms and the chains of the others begin anew.
+- **Models describe, nothing compares (open):** a model states `maxPower`, `currentTypes`, `connectorTypes` and `numberOfEVSEs`
   (charging stations), `currentTypes`, `maxCurrent` and `signatureMethods` (energy meters); a station of 300 kW may name
   a model of 44 kW, a meter signing with a method its model does not name. The network checks only that the model
-  exists. An app showing the model's data next to the station's may show both, contradicting each other.
-- **Keyless parties in section 4.1:** `SPECIFICATION.md:276` says a party is added with keys of each kind, "a grid
-  operator also with none"; the code (`TryCheckPartyChange`) and the rest of section 4.1 allow a conformity assessment
-  body without keys as well.
-- **Building the examples:** `examples/csharp/examples.csproj` references `Hermod`, `Styx`, `WWCP_Node` as sibling
-  checkouts, and `WWCP_Node` needs `Norn` and `Urdr` as well, at the commits the RoamingHubCLI pins; `examples/README.md`
-  says only `dotnet run`. On Windows, a checkout below a long path needs `git config core.longpaths true`. Example A12
-  opens two servers on `127.0.0.1`.
+  exists. An app showing the model's data next to the station's may show both, contradicting each other. Left open as a
+  question of design: whether the data of a model is a limit for what names it, or a description beside it.
+- ✅ **Keyless parties in section 4.1 (fixed in `65e658d`):** `SPECIFICATION.md:276` says a party is added with
+  keys of each kind, "a grid operator also with none"; the code (`TryCheckPartyChange`) and the rest of section 4.1 allow
+  a conformity assessment body without keys as well. Section 4.1 says so now.
+- ✅ **Building the examples (fixed in `65e658d`):** `examples/csharp/examples.csproj` references `Hermod`, `Styx`,
+  `WWCP_Node` as sibling checkouts, and `WWCP_Node` needs `Norn` and `Urdr` as well, at the commits the RoamingHubCLI
+  pins; `examples/README.md` says only `dotnet run`. On Windows, a checkout below a long path needs
+  `git config core.longpaths true`. Example A12 opens two servers on `127.0.0.1`. `examples/README.md` says all of it
+  now.
 - ✅ **Dependencies of COSE.TS (resolved):** `@vanaheimr/cose@0.9.0` depended on `@vanaheimr/metrological-cbor@^0.10.0`,
   this library on `^0.11.0`: a consumer got two copies of the CBOR codec. `@vanaheimr/cose@0.10.0` depends on
   `^0.11.1`, and this library takes both at `^0.10.0` and `^0.11.1`: one copy.

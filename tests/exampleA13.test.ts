@@ -51,15 +51,15 @@ describe('Example A13: who checks the meter', () => {
 
         // The certificates they name, each of the PTB, for the model, the hardware revision and the firmware version of what
         // names it, with its components: Chargy, and for the station the KDM-500 it mounts.
-        expect(station.certificates.map(({ namedBy, certificate, body, bodyHasKeys, forThisModel }) =>
+        expect(station.certificates.map(({ namedBy, certificate, body, statedBy, forThisModel }) =>
                    `${namedBy.entityType} ${namedBy.entityId}: ${text(certificate, '@id')}${certificate['legislation'] === undefined ? '' : `, under the ${text(certificate, 'legislation')}`}, ` +
-                   `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')}, keys of its own: ${bodyHasKeys}; ` +
+                   `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')}, stated by: ${statedBy}; ` +
                    `for the ${asText(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${versions(certificate, 'hardwareRevisions')}, firmware ${versions(certificate, 'firmwareVersions')}: ${forThisModel}; ` +
                    `with ${versions(certificate, 'verifiedTransparencySoftwareIds')}${(get(certificate, 'energyMeters') as JSONObject[] | undefined ?? []).map(item => `, the ${text(item, 'modelId')} of ${text(item, 'manufacturerId')} ${versions(item, 'hardwareRevisions')}, firmware ${versions(item, 'firmwareVersions')}`).join('')}`))
-            .toEqual([ 'ChargingStation DE*GEF*S1: PTB-2026-0042, under the MID, by the PTB, notified body 0102, keys of its own: true; for the GD-DC300 1.0, firmware 2.5.0: true; ' +
+            .toEqual([ 'ChargingStation DE*GEF*S1: PTB-2026-0042, under the MID, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the GD-DC300 1.0, firmware 2.5.0: true; ' +
                        'with chargy-1.5.0, the KDM-500 of KERNBERG 2.1, firmware 3.2',
-                       'EnergyMeter DE*GEF*M1*1: PTB-2026-0017, by the PTB, notified body 0102, keys of its own: true; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0',
-                       'EnergyMeter DE*GEF*M1*2: PTB-2026-0017, by the PTB, notified body 0102, keys of its own: true; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0' ]);
+                       'EnergyMeter DE*GEF*M1*1: PTB-2026-0017, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0',
+                       'EnergyMeter DE*GEF*M1*2: PTB-2026-0017, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0' ]);
 
         // The release of the meter, with its legal status, proven by both certificates, which name it among their components.
         // The station signs no measurements itself and names none.

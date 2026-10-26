@@ -90,11 +90,10 @@ export interface NamedCertificate {
     /** The conformity assessment body that issued it, as its skeleton. */
     readonly body:           JSONObject;
     /**
-     * Whether the body has keys of its own. A body without keys signed none of its certificates: the roaming network operator
-     * stated them in its place. One with keys may have got them after the certificate was stated: who signed it, the commits
-     * tell, not the proof (example A13, docs/csharp-review.md, 15).
+     * Who states it: the body itself, or the roaming network operator in place of a body without signing keys, as the
+     * certificate says by its `statedBy` (4.1, docs/csharp-review.md, 15), also once the body has keys.
      */
-    readonly bodyHasKeys:    boolean;
+    readonly statedBy:       'ConformityAssessmentBody' | 'RoamingNetworkOperator';
     /**
      * Whether it is for the model of what names it, with its manufacturer, in the hardware revision and the firmware version
      * it names (docs/csharp-review.md, 16 and 17): a certificate of a charging station model for the station, one of an
@@ -202,7 +201,7 @@ function certificatesOf(attested: JSONObject, station: JSONObject, energyMeters:
                 namedBy:       { entityType, entityId },
                 certificate,
                 body:          skeletonOf(body, 'certificates'),
-                bodyHasKeys:   isArray(get(body, 'signingKeys')) && (get(body, 'signingKeys') as JSONValue[]).length > 0,
+                statedBy:      get(certificate, 'statedBy') === 'roamingNetworkOperator' ? 'RoamingNetworkOperator' : 'ConformityAssessmentBody',
                 forThisModel:  textOf(certificate, model)        !== undefined &&
                                textOf(certificate, model)        === textOf(entity, 'modelId') &&
                                textOf(certificate, manufacturer) === textOf(entity, 'manufacturerId') &&

@@ -435,8 +435,8 @@ if (has('published/QA-DE-GEF-E1-1-proof.json'))
 
         // The certificates the station and its meters name, each compared with the model, the hardware revision and the
         // firmware version of what names it.
-        for (const { namedBy, certificate, body, bodyHasKeys, forThisModel } of station.certificates)
-            console.log(`${namedBy.entityType} ${namedBy.entityId}: ${show(certificate['@id'])} for the ${show(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${list(certificate['hardwareRevisions'])}, firmware ${list(certificate['firmwareVersions'])}${certificate['legislation'] === undefined ? '' : ` under the ${show(certificate['legislation'])}`}, by the ${show(body['@id'])}; keys of its own: ${bodyHasKeys ? 'yes' : 'no, the roaming network operator stated it'}; for its model, revision and firmware: ${forThisModel ? 'yes' : 'no'}`);
+        for (const { namedBy, certificate, body, statedBy, forThisModel } of station.certificates)
+            console.log(`${namedBy.entityType} ${namedBy.entityId}: ${show(certificate['@id'])} for the ${show(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${list(certificate['hardwareRevisions'])}, firmware ${list(certificate['firmwareVersions'])}${certificate['legislation'] === undefined ? '' : ` under the ${show(certificate['legislation'])}`}, by the ${show(body['@id'])}; stated by ${statedBy === 'ConformityAssessmentBody' ? 'itself' : 'the roaming network operator in its place'}; for its model, revision and firmware: ${forThisModel ? 'yes' : 'no'}`);
 
         for (const software of station.transparencySoftware) {
             console.log(`${software.namedBy.entityId}: ${name(software.release['name'])} ${show(software.release['version'])}, ${software.legalStatus ?? ''}, as ${software.certificates.map(item => show(item.certificate['@id'])).join(' and ')} name it`);
