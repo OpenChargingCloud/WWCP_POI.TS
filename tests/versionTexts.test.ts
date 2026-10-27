@@ -39,8 +39,11 @@ const gef = (station: JSONObject = {}, meter: JSONObject = {}, more: JSONObject 
 const stationModel = (more: JSONObject): JSONObject =>
     ({ chargingStationManufacturers: [ entity('GD', { chargingStationModels: [ { '@id': 'GD-DC300', ...more } ] }) ] });
 
+/** A certificate WWCP_POI reads (`certificates.test.ts`), with the given properties. */
 const certificate = (more: JSONObject): JSONObject =>
-    ({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB-2026-0042', chargingStationModel: 'GD-DC300', ...more } ] }) ] });
+    ({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB-2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300',
+                                                                       hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.4.1' ],
+                                                                       verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], ...more } ] }) ] });
 
 
 describe('Hardware revisions, firmware versions and serial numbers', () => {
@@ -110,7 +113,7 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
     it('of a certificate and of the energy meters it was issued with, by their path, each once', () => {
 
         expect(() => read(certificate({ hardwareRevisions: [ '1.0', 'A', 'a' ], firmwareVersions: [ '2.4.1' ],
-                                        energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', firmwareVersions: [ '1' ] } ] })))
+                                        energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', hardwareRevisions: [ '1' ], firmwareVersions: [ '1' ] } ] })))
             .not.toThrow();
 
         // As ModelVersions.Of refuses them, by ConformityCertificate and CertifiedEnergyMeter (WWCP_POI2).

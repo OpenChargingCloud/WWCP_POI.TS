@@ -158,7 +158,8 @@ change set, as WWCP_POI reads them since `c31e5e3` and `3672b06` (`HardwareRevis
 tells it, of charging stations, energy meters and their templates, of the models of their manufacturers, and of
 certificates and the energy meters they were issued with, each once in a model, a certificate and such an energy meter
 (`ModelVersions.Of`), in the words of WWCP_POI (`invalidVersionText`, which `RoamingNetwork.parse` checks with
-`duplicateIdentification`). Whether one is of the model of what names it stays with the references, which this library
+`duplicateIdentification`, and for certificates `invalidCertificates`, below). Whether one is of the model of what names
+it stays with the references, which this library
 leaves to WWCP_POI. The test vectors stay those of the run at `987fa26`, whose versions name none it refuses; the vectors
 `version-text-*` of WWCPPOIConformanceTests, its head so changed, hold both implementations to it, refused in the same
 words (`reason`).
@@ -173,3 +174,17 @@ set signed, besides by its owner, by a key of a party not valid at its `createdA
 WWCP_POI. Every signature by a key of a party of the version is now by one valid at the `createdAt` of the change set,
 also one besides the signatures of the owners, refused otherwise in the words of WWCP_POI (`TryGetSigners`); only a new
 identity key, which proves its possession, may be one valid later (SPECIFICATION.md 4.1).
+
+A version naming a certificate WWCP_POI refuses to read is refused, read or led to by a change set, as
+`ConformityCertificate` and `CertifiedEnergyMeter` of WWCP_POI read them (`src/network/certificates.ts`,
+`invalidCertificates`, which `RoamingNetwork.parse` checks after `invalidVersionText`): for exactly one model, with its
+manufacturer; at least one hardware revision and one firmware version, also of each energy meter it was issued with, as
+an object of its manufacturer and its model; an absolute `documentURL`, a legislation not empty, timestamps with an
+explicit offset, `notBefore` not after `notAfter` to the tick; at least one release, each once (compared ordinally once
+trimmed, as WWCP_POI does), none both verified and compatible (compared without case); energy meters of a charging
+station model only, each model once, compared without case. Refused in the words and in the order of WWCP_POI: first
+what it reads as the arguments of a certificate, by their path, then what its constructor checks. Its versions as
+texts moved there from `invalidVersionText`, in the same words. The vectors `version-certificate-*` of
+WWCPPOIConformanceTests found that this library took all of them (D9) and hold both implementations to it. Whether a
+certificate's model, versions, releases and legislation are those of the network stays with the references, which this
+library leaves to WWCP_POI; an unknown property, also of a certificate, this library does not refuse.
