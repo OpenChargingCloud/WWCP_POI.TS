@@ -70,6 +70,14 @@ export { History, type EpochStatus, type HistoryOptions, type SnapshotOptions, t
 export { EpochProfiles, FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, EPOCH_CONTEXT, EPOCH_LINK_CONTEXT, EPOCH_PROFILES_CONTEXT, STYX_CANONICAL_JSON, type Epoch, type EpochLink } from './history/epoch.ts';
 export { ArchiveSegment, parseArchiveSegmentInfo, verifySegmentLine, type ArchiveSegmentInfo } from './history/archive.ts';
 
+// QI-Digital documents, a proof of concept: read and checked, not signed
+export { QIDigitalDocument, QIDigitalSignature }            from './qidigital/document.ts';
+export { DigitalCalibrationCertificate, DCCMeasurementResult, DCCResult, DCCStatement, DCC_PERFORMANCE_LOCATIONS, type DCCPerformanceLocation } from './qidigital/calibrationCertificate.ts';
+export { DigitalCertificateOfConformity, DCOC_MODULES, approvesQualitySystem, type DCoCModule } from './qidigital/certificateOfConformity.ts';
+export { DigitalDeclarationOfConformity, DDoCNotifiedBody } from './qidigital/declarationOfConformity.ts';
+export { QIDigitalItem, QIDigitalLegislation, QIDigitalManufacturer, QIDigitalModel, QIDigitalPerson, QIDigitalQuantity, QIDigitalStandard, QI_DIGITAL_CONFORMITIES, type QIDigitalConformity, type QIDigitalItemType, type QIDigitalManufacturerType, type QIDigitalModelType } from './qidigital/parts.ts';
+export { qiDigitalContext, type I18NText as QIDigitalI18NText } from './qidigital/json.ts';
+
 // Verifiers
 export { OperatorTrust }                                     from './verifier/trust.ts';
 export { verifyVersion, describeVersion, type VerifiedVersion } from './verifier/version.ts';

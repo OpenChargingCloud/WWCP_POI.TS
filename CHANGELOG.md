@@ -205,3 +205,21 @@ A signed commit or checkpoint, also the commit of a snapshot, is refused without
 WWCP_POI does (`CheckSignatures`): before, its signatures were taken unchecked when `HistoryOptions.verifyCommit` or
 `verifyCheckpoint` was left out (O3 of WWCPPOIConformanceTests). `verifyCommit` checks the commit of a snapshot as well,
 its version before unknown there (`before` undefined).
+
+QI-Digital documents, the proof of concept of WWCP_POI (`WWCP_POI3/RoamingNetwork/QIDigital`, as of `6a0f96e`, which
+example A14 uses), are read and checked, not signed (`src/qidigital/`): the digital calibration certificate of a charging
+station or an energy meter (`DigitalCalibrationCertificate`), the digital certificate of conformity of a model or, of a
+module of quality assurance, of the quality system of a manufacturer (`DigitalCertificateOfConformity`), and the digital
+declaration of conformity of a model (`DigitalDeclarationOfConformity`). Each is refused in the words and the order of
+WWCP_POI: only its own properties, its context, timestamps exactly as signed, numbers as numbers, what its constructor
+checks after its properties were read. Its signature input and its digest are what WWCP_POI writes again of what it read
+(`Content()`), not the text as given: numbers without trailing zeros, a whole one as an integer, identifications trimmed,
+a charging station as `DE*GEF*S1`, `mainSigner` false, an empty list or text and a revision 0 as WWCP_POI writes them.
+Checked against a roaming network as WWCP_POI checks them: the issuer a party of it, its key one that may sign the
+document and valid when it signed and at `at`; the notified body with its number, notified for the legislation; the
+model, its manufacturer, revisions and versions; the charging station or energy meter of a calibration certificate as it
+is at runtime, with what its templates give it. And against each other: a declaration and each certificate it names, a
+certificate and the item of a calibration certificate it covers. Where WWCP_POI leaves out of a text in languages what is
+no text or of no language it knows, silently, so that it travels unsigned with a signed document, it is refused here.
+A URL is read as Hermod reads it as far as a document URL needs it: trimmed, https unless it names a scheme, of http or
+https with a host.
