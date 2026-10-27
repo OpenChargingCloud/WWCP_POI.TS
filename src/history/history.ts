@@ -15,10 +15,13 @@
  * limitations under the License.
  */
 
-import { onlyProperties, requireObject }  from '../common.ts';
+import { onlyProperties, requireArray, requireObject } from '../common.ts';
 import { get, type JSONValue }            from '../json/value.ts';
 import { sameETags }                      from '../etags.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
+import { Attestation }                    from '../proofs/attestation.ts';
+import { ChargingStationProof }           from '../proofs/stationProof.ts';
+import type { TrustAnchor }               from '../proofs/trustAnchor.ts';
 import { Commit }                         from './commit.ts';
 import { Checkpoint }                     from './checkpoint.ts';
 import { ChangeSet }                      from './changeSet.ts';
@@ -33,12 +36,35 @@ export interface Version {
     readonly commit:   Commit;
 }
 
-/** How a history checks what it takes: the signatures of commits and checkpoints are the caller's to require. */
+/**
+ * How a history checks what it takes: the signatures of commits and checkpoints are the caller's to require. Without a
+ * verifier it refuses a signed commit or checkpoint, as WWCP_POI does: signatures it cannot check are not taken unchecked.
+ */
 export interface HistoryOptions {
-    /** Refuses a commit whose signatures are not those required, e.g. of the roaming network operator by its quorum. */
-    readonly verifyCommit?:      (commit: Commit, before: RoamingNetwork, after: RoamingNetwork) => void;
-    /** Refuses a checkpoint whose signatures are not those required. */
+    /**
+     * Refuses a commit whose signatures are not those required, e.g. of the roaming network operator by its quorum; `before`
+     * is the version before, unknown for the commit of a snapshot. Required for a signed commit.
+     */
+    readonly verifyCommit?:      (commit: Commit, before: RoamingNetwork | undefined, after: RoamingNetwork) => void;
+    /** Refuses a checkpoint whose signatures are not those required. Required for a signed checkpoint. */
     readonly verifyCheckpoint?:  (checkpoint: Checkpoint) => void;
+}
+
+/**
+ * How a history starts from a snapshot of another server (10.5, *Anchored*): only anchored in the trust anchor of its
+ * roaming network, fail closed. A snapshot of a checkpoint is anchored by the checkpoint, signed as the roaming network
+ * operator as the trust anchor requires; a snapshot of the head by the attestations it carries (8.5).
+ */
+export interface SnapshotOptions extends HistoryOptions {
+    /** The trust anchor of the roaming network, e.g. as an app scanned it from a QR code. Without it, no snapshot is taken. */
+    readonly trustAnchor?:  TrustAnchor;
+    /** When the attestations, or the keys that signed the checkpoint, must be valid: now by default. */
+    readonly at?:           number | Date | string;
+    /**
+     * Takes the snapshot without anchoring it, the trust in it being the caller's to establish: e.g. a genesis whose key
+     * statement the caller verifies against the trust anchor itself, a history of its own, or content checked alone.
+     */
+    readonly unanchored?:   boolean;
 }
 
 /** The status of the epoch of a history (11.4): its final checkpoint not taken yet, taken, or the next epoch started. */
@@ -107,17 +133,46 @@ export class History {
 
     /**
      * Starts a history from a snapshot, `{ timestamp?, commit, roamingNetwork, effectiveLastChanges?, runtimeStatus?,
-     * epoch?, checkpoint? }` (10.5, 11.3): the version leads to the ETags of its commit, the commit is one of the epoch the
-     * snapshot names, `{epoch, profiles, previous?, previousProfiles?}`, the first one when it names none, the profiles of
-     * the epoch before only from the third epoch on; the commit of a checkpoint is the commit of the snapshot, with its
-     * revision and ETags, and the checkpoint carries the signatures required. The runtime status beside the version is not
-     * part of it, and not taken.
+     * epoch?, checkpoint?, attestations? }` (8.5, 10.5, 11.3): the version leads to the ETags of its commit, the commit is
+     * one of the epoch the snapshot names, `{epoch, profiles, previous?, previousProfiles?}`, the first one when it names
+     * none, the profiles of the epoch before only from the third epoch on; the commit of a checkpoint is the commit of the
+     * snapshot, with its revision and ETags, and the checkpoint carries the signatures required. The runtime status beside
+     * the version is not part of it, and not taken.
+     *
+     * Anchored in the trust anchor of the roaming network (10.5), unless `unanchored`, as the peer of WWCP_POI starts
+     * (`StartFromSnapshotAsync`): a snapshot of a checkpoint by the checkpoint, signed in the role of the roaming network
+     * operator by signing keys of as many holders as the trust anchor and the key statement of its version require, each
+     * certified by a trusted identity key of its holder, valid when it signed and at `at`; a snapshot of the head by its
+     * `attestations`, which must attest the root of its head as for a proof of the root (8.4). Then the commit of the
+     * snapshot carries the signatures required.
      */
-    public static fromSnapshot(value: JSONValue, options: HistoryOptions = {}): History {
+    public static fromSnapshot(value: JSONValue, options: SnapshotOptions = {}): History {
+
+        if (options.unanchored === true && options.trustAnchor !== undefined)
+            throw new POIError('A snapshot is taken anchored in a trust anchor, or unanchored, not both!');
+
+        // Fail closed: the keys of the operator a version names are public, whoever forged the version names them as well.
+        if (options.unanchored !== true && options.trustAnchor === undefined)
+            throw new POIError('Without the trust anchor of the roaming network (trustAnchor) no history starts from a snapshot, unless it is taken unanchored explicitly (unanchored)!');
 
         const json = requireObject(value, 'A snapshot');
 
-        onlyProperties(json, [ '@context', 'timestamp', 'commit', 'roamingNetwork', 'effectiveLastChanges', 'runtimeStatus', 'epoch', 'checkpoint' ], 'A snapshot');
+        onlyProperties(json, [ '@context', 'timestamp', 'commit', 'roamingNetwork', 'effectiveLastChanges', 'runtimeStatus', 'epoch', 'checkpoint', 'attestations' ], 'A snapshot');
+
+        if (get(json, 'checkpoint') !== undefined && get(json, 'attestations') !== undefined)
+            throw new POIError('A snapshot of a checkpoint carries no attestations: the checkpoint anchors it!');
+
+        // Every one read as POI reads it: one it cannot read is refused, not left out.
+        const attestations = get(json, 'attestations') === undefined
+                                 ? []
+                                 : requireArray(get(json, 'attestations'), 'The attestations of a snapshot').map(attestation => {
+                                       try {
+                                           return Attestation.parse(attestation);
+                                       }
+                                       catch (e) {
+                                           throw new POIError(`Invalid attestation of the snapshot: ${e instanceof Error ? e.message : String(e)}`);
+                                       }
+                                   });
 
         let network:  RoamingNetwork;
         let commit:   Commit;
@@ -163,9 +218,11 @@ export class History {
 
         history.checkCommitEpoch(commit);
 
+        let checkpoint: Checkpoint | undefined;
+
         if (get(json, 'checkpoint') !== undefined) {
 
-            const checkpoint = Checkpoint.parse(get(json, 'checkpoint'));
+            checkpoint = Checkpoint.parse(get(json, 'checkpoint'));
 
             if (!checkpoint.isOf(commit))
                 throw new POIError('The checkpoint of the snapshot is not one of its commit!');
@@ -173,7 +230,7 @@ export class History {
             history.checkCheckpointEpoch(checkpoint);
 
             try {
-                options.verifyCheckpoint?.(checkpoint);
+                history.verifyCheckpointSignatures(checkpoint);
             }
             catch (e) {
                 throw new POIError(`The checkpoint of the snapshot can not be taken: ${e instanceof Error ? e.message : String(e)}`);
@@ -183,7 +240,89 @@ export class History {
 
         }
 
+        if (options.trustAnchor !== undefined) {
+            if (checkpoint !== undefined)
+                history.anchorCheckpoint(checkpoint, options.trustAnchor, options.at);
+            else
+                history.anchorHead(attestations, options.trustAnchor, options.at);
+        }
+
+        try {
+            history.verifyCommitSignatures(commit, undefined, network);
+        }
+        catch (e) {
+            throw new POIError(`The snapshot is not signed as required: ${e instanceof Error ? e.message : String(e)}`);
+        }
+
         return history;
+
+    }
+
+
+    /**
+     * Refuses a head not anchored in the trust anchor by the given attestations (10.5), as `VerifyHead` of WWCP_POI: with the
+     * tree of a tree hash algorithm of its roaming network some of them name, the proof of its root for them, verified
+     * against the trust anchor at `at` (`ChargingStationProof.verify`).
+     */
+    private anchorHead(attestations: readonly Attestation[], anchor: TrustAnchor, at: number | Date | string | undefined): void {
+
+        const head = this.head;
+        let reason = `No attestation of the head '${head.commit.id}' of the roaming network '${head.network.id}' is given!`;
+
+        for (const algorithm of head.network.treeHashAlgorithms.filter(algorithm => attestations.some(attestation => attestation.eTag.algorithm === algorithm))) {
+
+            try {
+                ChargingStationProof.ofRoot(head.network, head.commit, algorithm, attestations).verify(anchor, at);
+                return;
+            }
+            catch (e) {
+                reason = e instanceof Error ? e.message : String(e);
+            }
+
+        }
+
+        throw new POIError(`The snapshot is not anchored in the trust anchor of the roaming network '${anchor.id}': ${reason}`);
+
+    }
+
+    /**
+     * Refuses a checkpoint not anchored in the trust anchor (10.5), as the peer of WWCP_POI joins from one: the proof of the
+     * root of its version, with the tree of the first tree hash algorithm of the roaming network, verifies the checkpoint
+     * against the trust anchor at `at` (`ChargingStationProof.verifyCheckpoint`).
+     */
+    private anchorCheckpoint(checkpoint: Checkpoint, anchor: TrustAnchor, at: number | Date | string | undefined): void {
+
+        const root = this.root;
+
+        try {
+            ChargingStationProof.ofRoot(root.network, root.commit, root.network.treeHashAlgorithms[0] ?? 'sha256').verifyCheckpoint(checkpoint, anchor, at);
+        }
+        catch (e) {
+            throw new POIError(`The checkpoint '${checkpoint.id}' of the snapshot is not anchored in the trust anchor of the roaming network '${anchor.id}': ${e instanceof Error ? e.message : String(e)}`);
+        }
+
+    }
+
+
+    /** Refuses a signed commit without a verifier of commit signatures, as `CheckSignatures` of WWCP_POI; verifies it otherwise. */
+    private verifyCommitSignatures(commit: Commit, before: RoamingNetwork | undefined, after: RoamingNetwork): void {
+
+        if (this.options.verifyCommit !== undefined)
+            this.options.verifyCommit(commit, before, after);
+
+        else if (commit.signatures.length > 0)
+            throw new POIError(`The commit '${commit.id}' is signed, but there is no verifier of commit signatures!`);
+
+    }
+
+    /** Refuses a signed checkpoint without a verifier of checkpoint signatures, as WWCP_POI; verifies it otherwise. */
+    private verifyCheckpointSignatures(checkpoint: Checkpoint): void {
+
+        if (this.options.verifyCheckpoint !== undefined)
+            this.options.verifyCheckpoint(checkpoint);
+
+        else if (checkpoint.signatures.length > 0)
+            throw new POIError(`The checkpoint '${checkpoint.id}' is signed, but there is no verifier of checkpoint signatures!`);
 
     }
 
@@ -313,7 +452,7 @@ export class History {
 
         this.checkVersionEpoch(network);
 
-        this.options.verifyCommit?.(commit, head.network, network);
+        this.verifyCommitSignatures(commit, head.network, network);
 
         const version = { network, commit };
         this.versions.push(version);
@@ -387,7 +526,7 @@ export class History {
         if (latest !== undefined || this.root.commit.revision === 0)
             checkpoint.verifyCommits(commits);
 
-        this.options.verifyCheckpoint?.(checkpoint);
+        this.verifyCheckpointSignatures(checkpoint);
         this.checkpointList.push(checkpoint);
 
         return checkpoint;

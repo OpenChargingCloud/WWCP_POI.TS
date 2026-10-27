@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, asText, defined, readJSON } from './helpers.ts';
+import { AT, asText, defined, readJSON, UNCHECKED } from './helpers.ts';
 import { anchorPQ } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -18,6 +18,8 @@ import { clone, get, type JSONArray, type JSONObject } from '../src/json/value.t
 
 const live      = readJSON('driver/live.json') as JSONObject;
 const pushes    = (live['pushes'] as JSONArray).map(frame => parseFrame(frame));
+// The run is one of WWCP_POI 987fa26, before a snapshot of the head carried the attestations of its head (ff2c56f): it is
+// taken unanchored here, its head checked against the trust anchor of epoch 2 by OperatorTrust.
 const snapshot  = readJSON('published/QA-live-snapshot.json') as JSONObject;
 
 
@@ -50,7 +52,7 @@ describe('Example A12: the traffic report and the atlas', () => {
 
         const push    = defined(pushes.find(item => item.type === 'push' && item.action === 'commit'));
         const commit  = Commit.parse(push.payload);
-        const mirror  = History.fromSnapshot(snapshot);
+        const mirror  = History.fromSnapshot(snapshot, UNCHECKED);
         const trust   = OperatorTrust.of(anchorPQ, mirror.head.network, AT);
 
         const signedBy = trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
@@ -64,7 +66,7 @@ describe('Example A12: the traffic report and the atlas', () => {
         expect(commit.id).toBe(mirror.head.commit.id);
 
         // And taken by a history of epoch 2 at revision 2, its change set applied: the version the mirror serves.
-        const history = History.fromSnapshot(readJSON('published/QA-epoch-2-checkpoint-0-snapshot.json'));
+        const history = History.fromSnapshot(readJSON('published/QA-epoch-2-checkpoint-0-snapshot.json'), UNCHECKED);
         const version = history.append(commit);
         expect(version.network.eTags()).toEqual(RoamingNetwork.parse((snapshot['roamingNetwork'] as JSONObject)).eTags());
 
@@ -80,7 +82,7 @@ describe('Example A12: the traffic report and the atlas', () => {
 
         const withoutStatus = clone(snapshot);
         delete withoutStatus['runtimeStatus'];
-        expect(History.fromSnapshot(withoutStatus).head.commit.id).toBe(History.fromSnapshot(snapshot).head.commit.id);
+        expect(History.fromSnapshot(withoutStatus, UNCHECKED).head.commit.id).toBe(History.fromSnapshot(snapshot, UNCHECKED).head.commit.id);
 
         // A report that comes late, of five minutes ago: its status stays.
         const late = parseStatusUpdate({ entityId: 'DE*GEF*E1*1', entityType: 'EVSE', kind: 'status', timestamp: '2026-10-26T00:51:51.035Z', value: 'available' });

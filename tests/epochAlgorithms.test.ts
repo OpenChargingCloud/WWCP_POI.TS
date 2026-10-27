@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { asText, defined, readJSON } from './helpers.ts';
+import { asText, defined, readJSON, UNCHECKED } from './helpers.ts';
 
 import { History }               from '../src/history/history.ts';
 import { commitsRoot }           from '../src/history/checkpoint.ts';
@@ -41,7 +41,7 @@ const firstOf = (epoch: number, genesis: Commit, more: JSONObject, algorithms: r
 
 function epochs(): { epoch3: History, previous: JSONObject } {
 
-    const epoch2  = History.fromSnapshot(genesis2);
+    const epoch2  = History.fromSnapshot(genesis2, UNCHECKED);
     const final2  = epoch2.takeCheckpoint(firstOf(2, epoch2.root.commit, { final: true, next: { epoch: 3, profiles: profiles3 }, previous: defined(epoch2JSON['previous']) }, [ 'ML-DSA-65' ]));
 
     return { epoch3: epoch2.startNextEpoch(), previous: { epoch: 2, checkpointId: final2.id, eTags: defined(final2.json['eTags']) } };
@@ -76,11 +76,11 @@ describe('The first checkpoint of a later epoch', () => {
         const genesis = epoch3.root.commit;
         const first   = firstOf(3, genesis, { previous }, [ 'ML-DSA-87', 'ML-DSA-65' ]);
 
-        const joined  = History.fromSnapshot(snapshotOf(genesis, { previous, previousProfiles: defined(epoch2JSON['profiles']) }));
+        const joined  = History.fromSnapshot(snapshotOf(genesis, { previous, previousProfiles: defined(epoch2JSON['profiles']) }), UNCHECKED);
         expect(joined.previousEpochProfiles?.signatureAlgorithms).toEqual([ 'ML-DSA-65', 'ML-DSA-87' ]);
         expect(joined.takeCheckpoint(first).sequence).toBe(0);
 
-        const unknowing = History.fromSnapshot(snapshotOf(genesis, { previous }));
+        const unknowing = History.fromSnapshot(snapshotOf(genesis, { previous }), UNCHECKED);
         expect(unknowing.previousEpochProfiles).toBeUndefined();
         expect(() => unknowing.takeCheckpoint(first))
             .toThrow(`The signature algorithm 'ML-DSA-65' of a signature of the checkpoint '${asText(first['@id'])}' is not one of the epoch 3, ML-DSA-87, and the profiles of the epoch 2 are not known here!`);
@@ -89,8 +89,8 @@ describe('The first checkpoint of a later epoch', () => {
 
     it('of the epoch 2 follows the first epoch, whose profiles a snapshot does not name', () => {
 
-        expect(History.fromSnapshot(genesis2).previousEpochProfiles?.signatureAlgorithms).toEqual([]);
-        expect(() => History.fromSnapshot({ ...genesis2, epoch: { ...epoch2JSON, previousProfiles: defined(epoch2JSON['profiles']) } }))
+        expect(History.fromSnapshot(genesis2, UNCHECKED).previousEpochProfiles?.signatureAlgorithms).toEqual([]);
+        expect(() => History.fromSnapshot({ ...genesis2, epoch: { ...epoch2JSON, previousProfiles: defined(epoch2JSON['profiles']) } }, UNCHECKED))
             .toThrow('The epoch before the epoch 2 is the first one, of the default profiles: they are not given!');
 
     });

@@ -20,13 +20,14 @@ import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json
 import { bytesEqual, isLowerHex, toHex } from '../encoding/text.ts';
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { etagToText, type ETag }     from '../etags.ts';
-import { prunedTree }                from '../network/tree.ts';
+import { prunedTree, skeleton }      from '../network/tree.ts';
+import type { RoamingNetwork }       from '../network/roamingNetwork.ts';
 import { POIPublicKey, KeyUsages }   from '../keys.ts';
 import { KeyStatement }              from './keyStatement.ts';
 import { SigningKeyCertificate }     from './signingKeyCertificate.ts';
 import { Attestation }               from './attestation.ts';
 import type { TrustAnchor }          from './trustAnchor.ts';
-import type { CheckpointProof }      from '../history/checkpoint.ts';
+import type { Checkpoint, CheckpointProof } from '../history/checkpoint.ts';
 import { POIError, required as present } from '../errors.ts';
 
 
@@ -45,6 +46,20 @@ export interface VerifiedProof {
     readonly attestedBy:    readonly string[];
     /** The key statement verified against the trust anchor. */
     readonly keyStatement:  KeyStatement;
+}
+
+/** The signing keys of the roaming network operator of a proof, as a verifier trusting a trust anchor finds them. */
+interface CertifiedSigningKeys {
+    /** The key statement verified against the trust anchor. */
+    readonly keyStatement:  KeyStatement;
+    /** How many holders must sign: the larger quorum of the trust anchor and the key statement. */
+    readonly required:      number;
+    /**
+     * The signing key a signature names by its key and the time it was signed, certified by a trusted identity key of its
+     * holder, valid then and at the time verified, and allowed to sign for the party; with that holder as the verifier
+     * knows it, never as the signing key names itself. Undefined unless all of that holds.
+     */
+    readonly signingKeyOf:  (keyId: string, signedAt: number) => { key: POIPublicKey, holder: string } | undefined;
 }
 
 
@@ -93,6 +108,23 @@ export class ChargingStationProof {
 
     }
 
+    /**
+     * The proof of the root of a version alone (8.4), as `RootProof` of the C# implementation makes it: the roaming network
+     * in its effective content, with its own properties, its operator and its keys, every child array pruned, for the given
+     * attestations of its commit, e.g. those of a snapshot of the head (8.5, 10.5).
+     */
+    public static ofRoot(network: RoamingNetwork, commit: { readonly id: string, readonly revision: number }, hashAlgorithm: HashAlgorithm, attestations: readonly Attestation[] = []): ChargingStationProof {
+
+        const roamingNetwork  = skeleton(network.effectiveContent, 'roamingNetwork', hashAlgorithm);
+        const json: JSONObject = { '@context': PROOF_CONTEXT, hashAlgorithm, commitId: commit.id, revision: commit.revision, roamingNetwork };
+
+        if (attestations.length > 0)
+            json['attestations'] = attestations.map(attestation => attestation.json);
+
+        return new ChargingStationProof(hashAlgorithm, commit.id, commit.revision, roamingNetwork, attestations, json);
+
+    }
+
 
     /** The `effectiveTree` ETag the proof leads to, and what it gives completely (8.4). */
     public calculate(): { eTag: ETag, attested: JSONObject } {
@@ -125,62 +157,11 @@ export class ChargingStationProof {
 
         const { eTag, attested } = this.calculate();
 
-        const operator = get(this.roamingNetwork, 'operator');
+        const { keyStatement, required, signingKeyOf } = this.certifiedSigningKeys(anchor, time);
 
-        if (!isObject(operator))
-            throw new POIError('The proof gives no roaming network operator!');
-
-        const operatorId = requireString(operator, '@id', 'The identification of the roaming network operator');
-
-        if (get(operator, 'keyStatement') === undefined)
-            throw new POIError('The proof gives no key statement of the roaming network operator!');
-
-        const keyStatement          = KeyStatement.parse(get(operator, 'keyStatement'));
-        const operatorIdentityKeys  = POIPublicKey.parseAll(get(operator, 'identityKeys'), 'identity keys of the roaming network operator');
-        const certificates          = isArray(get(operator, 'signingKeyCertificates'))
-                                          ? (get(operator, 'signingKeyCertificates') as JSONValue[]).map(certificate => SigningKeyCertificate.parse(certificate))
-                                          : [];
-
-        if (keyStatement.roamingNetworkId !== networkId)
-            throw new POIError(`The key statement is one of the roaming network '${keyStatement.roamingNetworkId}'!`);
-
-        if (keyStatement.roamingNetworkOperatorId !== operatorId)
-            throw new POIError(`The key statement is one of the roaming network operator '${keyStatement.roamingNetworkOperatorId}', not of '${operatorId}'!`);
-
-        // A key statement trusted names identity keys to trust, e.g. those replacing pinned ones, with their holders, which
-        // it must name as the trust anchor does.
-        const { holderOf }  = keyStatement.verifyHolders(anchor.holders, operatorIdentityKeys, { minConsensus: anchor.minConsensus, at: time });
-        const identityKeys  = [ ...keyStatement.identityKeys, ...operatorIdentityKeys ];
-        const trustedIds    = new Set(holderOf.keys());
-        const required      = Math.max(anchor.minConsensus, keyStatement.minConsensus);
-
-        // The signing key of an attestation, certified by a trusted identity key of its holder, and that holder as the
-        // verifier knows it, never as the signing key names itself. Valid when it attested and at `at`: the signedAt of
-        // an attestation is the choice of its signer.
-        const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string } | undefined => {
-
-            for (const certificate of certificates) {
-
-                if (certificate.signingKey.id !== attestation.keyId              ||
-                    certificate.roamingNetworkOperatorId !== operatorId          ||
-                    !certificate.signingKey.isValidAt(attestation.signedAt)      ||
-                    !certificate.signingKey.isValidAt(time)                      ||
-                    !certificate.signingKey.maySign(KeyUsages.Party))
-                    continue;
-
-                try {
-                    certificate.verify(identityKeys, trustedIds);
-                    return { key: certificate.signingKey, holder: present(holderOf.get(certificate.keyId), 'The holder of a trusted identity key') };
-                }
-                catch {
-                    continue;
-                }
-
-            }
-
-            return undefined;
-
-        };
+        // Valid when it attested and at `at`: the signedAt of an attestation is the choice of its signer.
+        const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string } | undefined =>
+            signingKeyOf(attestation.keyId, attestation.signedAt);
 
         const counted:  Attestation[] = [];
         const holders   = new Set<string>();
@@ -234,6 +215,131 @@ export class ChargingStationProof {
                                (refused.length > 0 ? ` (${refused.join('; ')})` : ''));
 
         return { eTag, attested, attestations: counted, attestedBy: [ ...holders ].sort(), keyStatement };
+
+    }
+
+
+    /**
+     * Verifies a checkpoint against a trust anchor with this proof of the version of its commit (10.5), as
+     * `Verify(Checkpoint, TrustAnchor)` of the C# implementation, e.g. with the proof of the root of the snapshot of the
+     * checkpoint a history starts from: the proof leads to the `effectiveTree` ETag of its hash algorithm the checkpoint
+     * names, and the checkpoint is signed in the role of the roaming network operator by signing keys of as many holders as
+     * the trust anchor and the key statement require, each certified by a trusted identity key of its holder, valid when it
+     * signed and at `at`, and allowed to sign for the party, as attestations are verified. Signatures that do not count are
+     * ignored, not refused; the other signatures, e.g. of witnesses, are not checked here. Returns the holders that signed.
+     */
+    public verifyCheckpoint(checkpoint: Checkpoint, anchor: TrustAnchor, at?: number | Date | string): string[] {
+
+        const time = timeOf(at);
+
+        if (this.roamingNetwork['@id'] !== anchor.id || checkpoint.roamingNetworkId !== anchor.id)
+            throw new POIError(`The trust anchor is one of the roaming network '${anchor.id}'!`);
+
+        if (checkpoint.commitId !== this.commitId)
+            throw new POIError(`The checkpoint '${checkpoint.id}' is one of the commit '${checkpoint.commitId}', not of '${this.commitId}'!`);
+
+        const named = checkpoint.eTags.find(eTag => eTag.format === 'effectiveTree' && eTag.algorithm === this.hashAlgorithm);
+
+        if (named === undefined)
+            throw new POIError(`The checkpoint '${checkpoint.id}' names no effectiveTree ETag of ${this.hashAlgorithm}!`);
+
+        const { eTag } = this.calculate();
+
+        if (!bytesEqual(eTag.digest, named.digest))
+            throw new POIError(`The proof leads to ${etagToText(eTag)}, not to ${etagToText(named)}!`);
+
+        const { required, signingKeyOf } = this.certifiedSigningKeys(anchor, time);
+        const holders = new Set<string>();
+
+        for (const signature of checkpoint.signatures) {
+
+            const certified = signature.role === 'roamingNetworkOperator' ? signingKeyOf(signature.keyId, signature.signedAt) : undefined;
+
+            if (certified === undefined)
+                continue;
+
+            try {
+                checkpoint.verifySignature(signature, certified.key);
+                holders.add(certified.holder);
+            }
+            catch {
+                continue;
+            }
+
+        }
+
+        if (holders.size < required)
+            throw new POIError(`Valid signatures of trusted keys of ${holders.size} holder${holders.size === 1 ? '' : 's'} sign the checkpoint '${checkpoint.id}' as its roaming network operator, not of ${required}!`);
+
+        return [ ...holders ].sort();
+
+    }
+
+
+    /**
+     * The signing keys of the roaming network operator the proof gives, as a verifier trusting the trust anchor finds them
+     * (4.1, 8.5, 8.6), as `TryGetCertifiedSigningKeys` of the C# implementation: the key statement of the operator is signed
+     * by trusted identity keys of as many holders as the trust anchor and the statement require, names this roaming network
+     * and operator and their holders as the trust anchor does, and is valid at `time`; its identity keys are trusted then
+     * as well. A signing key counts where a trusted identity key of its holder certifies it for this operator.
+     */
+    private certifiedSigningKeys(anchor: TrustAnchor, time: number): CertifiedSigningKeys {
+
+        const networkId = this.roamingNetwork['@id'];
+        const operator  = get(this.roamingNetwork, 'operator');
+
+        if (!isObject(operator))
+            throw new POIError('The proof gives no roaming network operator!');
+
+        const operatorId = requireString(operator, '@id', 'The identification of the roaming network operator');
+
+        if (get(operator, 'keyStatement') === undefined)
+            throw new POIError('The proof gives no key statement of the roaming network operator!');
+
+        const keyStatement          = KeyStatement.parse(get(operator, 'keyStatement'));
+        const operatorIdentityKeys  = POIPublicKey.parseAll(get(operator, 'identityKeys'), 'identity keys of the roaming network operator');
+        const certificates          = isArray(get(operator, 'signingKeyCertificates'))
+                                          ? (get(operator, 'signingKeyCertificates') as JSONValue[]).map(certificate => SigningKeyCertificate.parse(certificate))
+                                          : [];
+
+        if (keyStatement.roamingNetworkId !== networkId)
+            throw new POIError(`The key statement is one of the roaming network '${keyStatement.roamingNetworkId}'!`);
+
+        if (keyStatement.roamingNetworkOperatorId !== operatorId)
+            throw new POIError(`The key statement is one of the roaming network operator '${keyStatement.roamingNetworkOperatorId}', not of '${operatorId}'!`);
+
+        // A key statement trusted names identity keys to trust, e.g. those replacing pinned ones, with their holders, which
+        // it must name as the trust anchor does.
+        const { holderOf }  = keyStatement.verifyHolders(anchor.holders, operatorIdentityKeys, { minConsensus: anchor.minConsensus, at: time });
+        const identityKeys  = [ ...keyStatement.identityKeys, ...operatorIdentityKeys ];
+        const trustedIds    = new Set(holderOf.keys());
+
+        const signingKeyOf = (keyId: string, signedAt: number): { key: POIPublicKey, holder: string } | undefined => {
+
+            for (const certificate of certificates) {
+
+                if (certificate.signingKey.id !== keyId                          ||
+                    certificate.roamingNetworkOperatorId !== operatorId          ||
+                    !certificate.signingKey.isValidAt(signedAt)                  ||
+                    !certificate.signingKey.isValidAt(time)                      ||
+                    !certificate.signingKey.maySign(KeyUsages.Party))
+                    continue;
+
+                try {
+                    certificate.verify(identityKeys, trustedIds);
+                    return { key: certificate.signingKey, holder: present(holderOf.get(certificate.keyId), 'The holder of a trusted identity key') };
+                }
+                catch {
+                    continue;
+                }
+
+            }
+
+            return undefined;
+
+        };
+
+        return { keyStatement, required: Math.max(anchor.minConsensus, keyStatement.minConsensus), signingKeyOf };
 
     }
 

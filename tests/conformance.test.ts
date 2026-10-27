@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     applies, canonical, deviates, encodings, histories, history, historyDocument, patched, refusals, runDocument, runText,
-    specification, trust, type DocumentStep, type RefusalVector, type ReplayStep,
+    specification, trust, type AnchoredSnapshotCase, type DocumentStep, type RefusalVector, type ReplayStep,
 } from './conformance.ts';
 
 import { parseJSON, parseJSONObject }       from '../src/json/parse.ts';
@@ -17,7 +17,7 @@ import { etagToText }                       from '../src/etags.ts';
 import { RoamingNetwork }                   from '../src/network/roamingNetwork.ts';
 import { Commit }                           from '../src/history/commit.ts';
 import { Checkpoint, CheckpointProof }      from '../src/history/checkpoint.ts';
-import { History }                          from '../src/history/history.ts';
+import { History, type SnapshotOptions }    from '../src/history/history.ts';
 import { PriceStatement }                   from '../src/proofs/priceStatement.ts';
 import { TrustAnchor }                      from '../src/proofs/trustAnchor.ts';
 import { ChargingStationProof }             from '../src/proofs/stationProof.ts';
@@ -228,6 +228,12 @@ describe('Golden vectors: what the C# examples published, frozen', () => {
 
 
 /**
+ * How a replay takes what it replays, as its `commitAndCheckpointSignatures: "unchecked"` says: its content checked, its
+ * snapshot unanchored and its signatures taken as they are. Who may sign is the verifier's business, not the replay's.
+ */
+const UNCHECKED: SnapshotOptions = { unanchored: true, verifyCommit: () => undefined, verifyCheckpoint: () => undefined };
+
+/**
  * Takes one step of a replay, its document given by `documentOf`, and returns the history after it: throws where the
  * history refuses it, or where the head is not the one expected.
  */
@@ -242,7 +248,7 @@ function replayStep(current: History | undefined, step: ReplayStep, documentOf: 
     switch (step.op) {
 
         case 'fromSnapshot':
-            return History.fromSnapshot(documentOf(step));
+            return History.fromSnapshot(documentOf(step), UNCHECKED);
 
         case 'append': {
             const commits: JSONValue = documentOf(step);
@@ -310,6 +316,44 @@ describe('Golden vectors: histories WWCPPOIConformanceTests signed, what they ta
                 expect(() => replayStep(current, last, documentOf)).toThrow();
             else
                 expect(() => replayStep(current, last, documentOf)).toThrow(vector.reason);
+
+        });
+
+});
+
+
+describe('Golden vectors: snapshots of another server, a history started from them only anchored in the trust anchor', () => {
+
+    for (const vector of histories.anchoredSnapshots.filter(applies))
+        it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
+
+            // What anchors the history is checked against the trust anchor; the other signatures are the verifier's business.
+            expect(vector.commitAndCheckpointSignatures).toBe('unchecked');
+            expect([ 'head', 'checkpoint' ]).toContain(vector.snapshot);
+
+            // As a server or client starts from another server (10.5): from a snapshot of the head with the attestations it
+            // carries, or of a checkpoint with its signatures, at the time given.
+            const start = (snapshot: AnchoredSnapshotCase): History =>
+                History.fromSnapshot(historyDocument(vector.history, snapshot.document),
+                                     { trustAnchor: TrustAnchor.fromJSON(parseJSON(snapshot.trustAnchor)), at: snapshot.at, verifyCommit: () => undefined, verifyCheckpoint: () => undefined });
+
+            if (vector.expected === 'accepted') {
+                start(vector);
+                return;
+            }
+
+            if (vector.control === undefined)
+                throw new Error(`The refusal ${vector.id} names no control`);
+
+            // The control: the snapshot, the trust anchor and the time, what the vector is about given otherwise, taken.
+            start(vector.control);
+
+            if (deviates(vector))
+                start(vector);
+            else if (vector.reason === undefined)
+                expect(() => start(vector)).toThrow();
+            else
+                expect(() => start(vector)).toThrow(vector.reason);
 
         });
 

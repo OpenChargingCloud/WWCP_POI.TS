@@ -3,7 +3,7 @@ import { AT, defined, readJSON, readText } from './helpers.ts';
 import { TrustAnchor }        from '../src/proofs/trustAnchor.ts';
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
 import { Checkpoint }         from '../src/history/checkpoint.ts';
-import type { HistoryOptions } from '../src/history/history.ts';
+import type { HistoryOptions, SnapshotOptions } from '../src/history/history.ts';
 import { OperatorTrust }      from '../src/verifier/trust.ts';
 import { parseTrustedWitnesses, verifyCheckpointSignatures, type TrustedWitness } from '../src/verifier/checkpoints.ts';
 import type { JSONArray, JSONObject } from '../src/json/value.ts';
@@ -39,6 +39,17 @@ export const byOperatorAndWitnesses: HistoryOptions = {
     verifyCommit:      defined(byOperator.verifyCommit),
     verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust, { witnesses, requiredWitnesses: 2 }); },
 };
+
+/** A snapshot of a checkpoint started from as the given options check it, anchored in the given trust anchor at AT (10.5). */
+export const anchoredIn = (trustAnchor: TrustAnchor, options: HistoryOptions): SnapshotOptions =>
+    ({ ...options, trustAnchor, at: AT });
+
+/**
+ * A genesis started from as the given options check it, not anchored (10.5): its key statement is verified against the
+ * trust anchor by the trust the options follow, as example A1 does, and every commit since by the operator's signatures.
+ */
+export const fromGenesis = (options: HistoryOptions): SnapshotOptions =>
+    ({ ...options, unanchored: true });
 
 /** The checkpoint of a sequence of epoch 1. */
 export const checkpoint = (sequence: number): Checkpoint =>

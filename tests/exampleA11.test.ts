@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, asText, defined, readJSON, readText } from './helpers.ts';
-import { anchor, anchorPQ, checkpoint, commits, following, witnesses, witnessesPQ } from './qa.ts';
+import { AT, asText, defined, readJSON, readText, UNCHECKED } from './helpers.ts';
+import { anchor, anchoredIn, anchorPQ, checkpoint, commits, following, witnesses, witnessesPQ } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
 import { Commit }             from '../src/history/commit.ts';
@@ -37,7 +37,7 @@ describe('Example A11: a verifier trusting only the old locks', () => {
         // a) The trust anchor it scanned once, the witnesses it trusts since, QA as of checkpoint 5, joined from its snapshot.
         const snapshot5  = readJSON('published/QA-checkpoint-5-snapshot.json') as JSONObject;
         const verifier   = following(anchor, RoamingNetwork.parse(snapshot5['roamingNetwork']), witnesses, 2);
-        const epoch1     = History.fromSnapshot(snapshot5, verifier);
+        const epoch1     = History.fromSnapshot(snapshot5, anchoredIn(anchor, verifier));
 
         // b) The commits since, each checked in the version before: the one stating the new keys signed by the old quorum,
         //    so the new keys are trusted as well; and the final checkpoint 6, signed by OCC and both witnesses.
@@ -107,7 +107,7 @@ describe('Example A11: a verifier trusting only the old locks', () => {
 
     it('refuses what epoch 2 refuses: old algorithms, and a change set signed with them', () => {
 
-        const genesis = History.fromSnapshot(readJSON('published/QA-epoch-2-genesis.json'));
+        const genesis = History.fromSnapshot(readJSON('published/QA-epoch-2-genesis.json'), UNCHECKED);
         const commit1 = clone(commits('published/QA-epoch-2-commits-since-genesis.json')[0] as JSONObject);
 
         // The signatures of a change set are not part of the identification of its commit: an ES512 one is refused by the epoch.
@@ -127,7 +127,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
         snapshot0['checkpoint'] = onlyOf(snapshot0['checkpoint'] as JSONObject, algorithm => POST_QUANTUM.includes(algorithm));
 
         const verifier  = following(anchorPQ, RoamingNetwork.parse(snapshot0['roamingNetwork']), witnessesPQ, 2);
-        const joined    = History.fromSnapshot(snapshot0, verifier);
+        const joined    = History.fromSnapshot(snapshot0, anchoredIn(anchorPQ, verifier));
         const first     = defined(joined.checkpoints[0]);
 
         expect(joined.epoch.number).toBe(2);
@@ -156,7 +156,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
     it('refuses a commit of epoch 1 and a genesis of another version, and the evidence of epoch 1 stays valid (c to e)', () => {
 
         const snapshot0 = readJSON('published/QA-epoch-2-checkpoint-0-snapshot.json') as JSONObject;
-        const joined    = History.fromSnapshot(snapshot0);
+        const joined    = History.fromSnapshot(snapshot0, UNCHECKED);
 
         // c) A commit of epoch 1, the last one, given as one of epoch 2.
         const ofEpoch1 = defined(commits('published/QA-commits-since-checkpoint-5.json').at(-1));
@@ -164,7 +164,7 @@ describe('Example A11: a verifier trusting only the new locks', () => {
 
         // d) A genesis of epoch 2 of another version, of another name: its ETags are not those of its content.
         const other = parseJSON(readText('published/QA-epoch-2-genesis.json').replace('"en": "Quality Assurance"', '"en": "Quality Assurance, otherwise"'));
-        expect(() => History.fromSnapshot(other)).toThrow(/^Invalid roaming network of the snapshot: The ETags of the roaming network 'QA' do not match its content/);
+        expect(() => History.fromSnapshot(other, UNCHECKED)).toThrow(/^Invalid roaming network of the snapshot: The ETags of the roaming network 'QA' do not match its content/);
 
         // e) The evidence of the driver of example A10, in epoch 1: its commit proof against checkpoint 4, as before.
         const evidence = readJSON('driver/evidence-DE_GEF_E1_1.json') as JSONObject;

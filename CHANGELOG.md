@@ -188,3 +188,20 @@ texts moved there from `invalidVersionText`, in the same words. The vectors `ver
 WWCPPOIConformanceTests found that this library took all of them (D9) and hold both implementations to it. Whether a
 certificate's model, versions, releases and legislation are those of the network stays with the references, which this
 library leaves to WWCP_POI; an unknown property, also of a certificate, this library does not refuse.
+
+A history starts from a snapshot of another server only anchored in the trust anchor of the roaming network, fail
+closed, as a peer of WWCP_POI starts since `ff2c56f` (SPECIFICATION.md 10.5, *Anchored*; `History.fromSnapshot` with
+`SnapshotOptions`): a snapshot of a checkpoint by the checkpoint, signed in the role of the roaming network operator by
+signing keys of as many holders as the trust anchor and the key statement of its version require, each certified by a
+trusted identity key of its holder, valid when it signed and at `at` (`ChargingStationProof.verifyCheckpoint`, as
+`Verify(Checkpoint, TrustAnchor)` of WWCP_POI); a snapshot of the head by the `attestations` it carries since then (8.5),
+which must attest the root of its head as for a proof of the root (`ChargingStationProof.ofRoot`, as `VerifyHead` of
+WWCP_POI). Without a trust anchor no snapshot is taken, unless the caller takes it `unanchored` explicitly, e.g. a genesis
+whose key statement it verifies against the trust anchor itself; an archive segment replays its base so, anchored by the
+checkpoint of its end. Before, a snapshot of the head carrying attestations was refused, and every snapshot taken
+unanchored. An attestation of a snapshot that cannot be read is refused, not left out.
+
+A signed commit or checkpoint, also the commit of a snapshot, is refused without a verifier of its signatures, as
+WWCP_POI does (`CheckSignatures`): before, its signatures were taken unchecked when `HistoryOptions.verifyCommit` or
+`verifyCheckpoint` was left out (O3 of WWCPPOIConformanceTests). `verifyCommit` checks the commit of a snapshot as well,
+its version before unknown there (`before` undefined).

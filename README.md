@@ -161,10 +161,14 @@ import { History, TrustAnchor, verifyVersion, verifyCheckpointSignatures } from 
 const version = verifyVersion(TrustAnchor.parse(qrCodeText), networkJSON, commitJSON);
 version.signedBy;     // [ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]
 
-// Examples A4 to A6: join from the snapshot of a checkpoint, take the commits since one by one, each checked as section
-// 5.2 says: its change set signed by its owners, fitting the head, leading to the ETags of the commit.
+// Examples A4 to A6: join from the snapshot of a checkpoint, anchored in the trust anchor (10.5): its checkpoint signed as
+// the roaming network operator by the holders the trust anchor requires; a snapshot of the head instead by the
+// attestations it carries. Then take the commits since one by one, each checked as section 5.2 says: its change set
+// signed by its owners, fitting the head, leading to the ETags of the commit. Signed commits and checkpoints are taken
+// only with a verifier of their signatures.
 let trust = version.trust;
 const history = History.fromSnapshot(checkpointSnapshotJSON, {
+    trustAnchor: TrustAnchor.parse(qrCodeText),
     verifyCommit: (commit, before, after) => {
         trust.verifyOperatorSignatures(commit.signatures, (s, key) => commit.verifySignature(s, key), 'the commit');
         trust = trust.followedBy(after);        // the keys its operator states anew, signed by those trusted
@@ -194,7 +198,7 @@ epoch2.root.commit.id;    // the published genesis of epoch 2, 128 hexadecimal d
 | Effective members (9.2) | EVSEs, charging stations, charging pools, charging tariffs, energy meters. Parking spaces and energy meters of grid connection points taking templates are refused, not calculated |
 | Proofs (8.4), attestations (8.5) | complete, with the manufacturers and models of the station and its meters, the transparency software releases and certificates of the meters; subject attestations do not count for a whole proof |
 | Change sets (4) | `Add`, `Remove`, `UpdateProperty`, `RemoveProperty` of parties (charging station operators, e-mobility providers, grid and parking operators, charging station and energy meter manufacturers, transparency software manufacturers, conformity assessment bodies), the roaming network and its operator, of charging pools, stations, EVSEs, tariffs, templates and groups of charging station operators, energy meter templates and groups, models of manufacturers, transparency software releases and certificates, with their owners' signatures, quorum and proof of possession, and the properties a change set may change. Element changes, preconditions, offers and the entities of providers, grid and parking operators are refused, not applied. The references the C# implementation checks after every change set (a manufacturer, model, release or certificate a station, meter or certificate names) are not checked again: the `afterETags` of the change set pin the version it leads to. The identifications unique within the network are, as in every version |
-| Histories (5, 10, 11) | linear histories from snapshots, commits, checkpoints, their lines and signatures, proofs of commits, archive segments; epochs: their profiles, the final checkpoint, the genesis of the next epoch, its first checkpoint. Merges are not taken yet |
+| Histories (5, 10, 11) | linear histories from snapshots, anchored in the trust anchor as a peer of WWCP_POI starts (10.5): a snapshot of a checkpoint by the checkpoint, signed as the roaming network operator, a snapshot of the head by its attestations, none without a trust anchor unless taken unanchored explicitly; commits, checkpoints, their lines and signatures, signed ones only with a verifier; proofs of commits, archive segments; epochs: their profiles, the final checkpoint, the genesis of the next epoch, its first checkpoint. Merges are not taken yet; no peer, no server |
 | Price statements (12) | statements, chains, checkpoint trees and proofs in every epoch |
 | Runtime status (12.5) | status updates, frames of the WebSocket, the runtime status of a snapshot. No WebSocket client: the app brings its own |
 

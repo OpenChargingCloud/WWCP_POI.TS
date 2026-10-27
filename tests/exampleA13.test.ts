@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, asText, defined, readJSON } from './helpers.ts';
+import { AT, asText, defined, readJSON, UNCHECKED } from './helpers.ts';
 import { anchorPQ, commits } from './qa.ts';
 
 import { ChangeSet }          from '../src/history/changeSet.ts';
@@ -113,7 +113,7 @@ describe('Example A13: who checks the meter', () => {
     it('refuses a release the roaming network operator would sign in place of its manufacturer', () => {
 
         // Epoch 2 up to revision 4: GraphDefined, the PTB and the BSI added.
-        const history = History.fromSnapshot(readJSON('published/QA-epoch-2-genesis.json'));
+        const history = History.fromSnapshot(readJSON('published/QA-epoch-2-genesis.json'), UNCHECKED);
         const all     = commits('proofs/QA-epoch-2-commits-to-head.json');
 
         for (const commit of all.slice(0, 4))

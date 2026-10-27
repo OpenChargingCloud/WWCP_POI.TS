@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AT, asText, defined, readJSON, readText } from './helpers.ts';
-import { anchor, byOperator, byOperatorAndWitnesses, checkpoint, commits, trust, witnesses } from './qa.ts';
+import { anchor, anchoredIn, byOperator, byOperatorAndWitnesses, checkpoint, commits, fromGenesis, trust, witnesses } from './qa.ts';
 
 import { RoamingNetwork }        from '../src/network/roamingNetwork.ts';
 import { Commit }                from '../src/history/commit.ts';
@@ -105,7 +105,7 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
     it('takes the models each manufacturer stated with its key for models, and refuses them otherwise', () => {
 
         const all      = commits('published/QA-commits-since-genesis.json');
-        const history  = History.fromSnapshot(readJSON('published/QA-genesis.json'), byOperator);
+        const history  = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(byOperator));
         history.append(defined(all[0]));
 
         const before   = history.head.network;
@@ -195,7 +195,7 @@ describe('Example A3: two pools, their templates, their energy meters and their 
     it('refuses a pool signed by another key than the infrastructure key of DE*GEF', () => {
 
         const all     = commits('published/QA-commits-since-genesis.json');
-        const history = History.fromSnapshot(readJSON('published/QA-genesis.json'), byOperator);
+        const history = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(byOperator));
         history.append(defined(all[0]));
         history.append(defined(all[1]));
         history.append(defined(all[2]));
@@ -225,7 +225,7 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
         expect(checkpoint0.revision).toBe(7);
         expect(checkpoint0.commits.size).toBe(8);
 
-        const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), byOperator);
+        const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(joined.head.commit.id).toBe(checkpoint0.commitId);
         expect(joined.checkpoints).toHaveLength(1);
 
@@ -259,7 +259,7 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
 
         // A version of the checkpoint changed: it does not lead to the ETags of the checkpoint.
         const changedSnapshot = parseJSON(readText('published/QA-checkpoint-0-snapshot.json').replace('"en": "Jena Paradies"', '"en": "Jena Paradies, moved"'));
-        expect(() => History.fromSnapshot(changedSnapshot, byOperator)).toThrow(/The JSON ETag|json ETag \(sha256\) differs/);
+        expect(() => History.fromSnapshot(changedSnapshot, anchoredIn(anchor, byOperator))).toThrow(/The JSON ETag|json ETag \(sha256\) differs/);
 
         // A proof of another position: it leads to another root.
         const changedProof = clone(readJSON('published/QA-proof-revision-4.json') as JSONObject);
@@ -300,7 +300,7 @@ describe('Example A5: a correction between two checkpoints', () => {
         verifyCheckpointLine(line);
         expect(line.map(item => item.revision)).toEqual([ 7, 9, 10 ]);
 
-        const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), byOperator);
+        const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(pools(history.head.network, 3, 4)).toEqual([]);
 
         for (const commit of [ ...commits('published/QA-commits-since-checkpoint-0.json'), ...commits('published/QA-commits-since-checkpoint-1.json') ])
@@ -321,10 +321,10 @@ describe('Example A5: a correction between two checkpoints', () => {
 
     it('joins from each checkpoint on its own, and proves commits in them', () => {
 
-        const fromOne = History.fromSnapshot(readJSON('published/QA-checkpoint-1-snapshot.json'), byOperator);
+        const fromOne = History.fromSnapshot(readJSON('published/QA-checkpoint-1-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(pools(fromOne.head.network, 3)[1]).toBe('DE*GEF*S6 44 kW: DE*GEF*E6*1 AC_ThreePhases 22 kW, DE*GEF*E6*2 AC_ThreePhases 22 kW');
 
-        const fromTwo = History.fromSnapshot(readJSON('published/QA-checkpoint-2-snapshot.json'), byOperator);
+        const fromTwo = History.fromSnapshot(readJSON('published/QA-checkpoint-2-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(pools(fromTwo.head.network, 3)[1]).toBe('DE*GEF*S6 22 kW: DE*GEF*E6*1 AC_ThreePhases 11 kW, DE*GEF*E6*2 AC_ThreePhases 11 kW');
 
         CheckpointProof.parse(readJSON('published/QA-proof-revision-8.json')).verify(checkpoint(1));
@@ -334,7 +334,7 @@ describe('Example A5: a correction between two checkpoints', () => {
             .toThrow("The proof is for the checkpoint 'da8cc139847a634be4429787f3f92771e5075056a06b4aa9679e3a449cc9ae5e', not for '9b71b575cc18c37a67008a543141b7d7de6f3db1b833ac37f760e508fa33e347'!");
 
         // Checkpoint 2 without checkpoint 1: it does not follow the latest one taken.
-        const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), byOperator);
+        const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         for (const commit of [ ...commits('published/QA-commits-since-checkpoint-0.json'), ...commits('published/QA-commits-since-checkpoint-1.json') ])
             history.append(commit);
         expect(() => history.takeCheckpoint(checkpoint(2)))
@@ -349,7 +349,7 @@ describe('Example A6: witnesses sign the checkpoints', () => {
 
     it('takes the history from its genesis, commit by commit, and the three checkpoints, as a witness does', () => {
 
-        const witness = History.fromSnapshot(readJSON('published/QA-genesis.json'), byOperator);
+        const witness = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(byOperator));
 
         for (const commit of commits('published/QA-commits-since-genesis.json'))
             witness.append(commit);
@@ -382,7 +382,7 @@ describe('Example A6: witnesses sign the checkpoints', () => {
         // Joined from checkpoint 2, signed by the roaming network operator and its witnesses.
         const snapshot = clone(readJSON('published/QA-checkpoint-2-snapshot.json') as JSONObject);
         snapshot['checkpoint'] = readJSON('published/QA-checkpoint-2.json');
-        expect(History.fromSnapshot(snapshot, byOperatorAndWitnesses).head.commit.revision).toBe(10);
+        expect(History.fromSnapshot(snapshot, anchoredIn(anchor, byOperatorAndWitnesses)).head.commit.revision).toBe(10);
 
         // The proof of revision 8 in checkpoint 1 is witnessed evidence.
         CheckpointProof.parse(readJSON('published/QA-proof-revision-8.json')).verify(checkpoint(1));
@@ -484,7 +484,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
 
     it('joins from checkpoint 4 with its price statements', () => {
 
-        const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-4-snapshot.json'), byOperator);
+        const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-4-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(joined.head.commit.revision).toBe(13);
         expect(joined.head.commit.id).toBe('eb0375001effadc3f005a1e3c656d2041e891ae186c95aad0e457b9dc1107fd6');
         verifyCheckpointPriceStatements(defined(joined.checkpoints[0]), parsePriceStatements(readJSON('published/QA-checkpoint-4-priceStatements.json')));
@@ -504,7 +504,7 @@ describe('Example A9: witnesses check the price statements', () => {
 
         // A witness going on with its copy of the history: the commits of A8, then the checkpoints 3 and 4 with their
         // price statements checked.
-        const witness = History.fromSnapshot(readJSON('published/QA-genesis.json'), byOperator);
+        const witness = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(byOperator));
         for (const commit of [ ...commits('published/QA-commits-since-genesis.json'), ...commits('published/QA-commits-since-checkpoint-2.json') ])
             witness.append(commit);
         for (const sequence of [ 0, 1, 2, 3, 4 ])

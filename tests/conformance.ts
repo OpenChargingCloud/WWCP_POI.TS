@@ -151,9 +151,32 @@ export interface HistoryReplayVector extends Vector {
     readonly reason?:        string;
 }
 
+/** What a history is started from: a snapshot among the documents of a history, a trust anchor as JSON text, a time. */
+export interface AnchoredSnapshotCase {
+    readonly document:     string;
+    readonly trustAnchor:  string;
+    readonly at:           string;
+}
+
+/**
+ * A snapshot of another server a history starts from only anchored in the trust anchor (10.5): of the head, with the
+ * attestations of its head, or of a checkpoint, with its signatures. One `refused` takes `control` in its place.
+ */
+export interface AnchoredSnapshotVector extends Vector, AnchoredSnapshotCase {
+    readonly basis:          string;
+    readonly history:        string;
+    readonly snapshot:       'head' | 'checkpoint';
+    readonly commitAndCheckpointSignatures: string;
+    readonly expected:       'accepted' | 'refused';
+    readonly control?:       AnchoredSnapshotCase;
+    /** What the refusal names, as both implementations word it. */
+    readonly reason?:        string;
+}
+
 export const histories = load('poi-histories.json') as {
-    readonly histories:  ReadonlyArray<{ readonly id: string, readonly description: string, readonly documents: Readonly<Record<string, string>> }>;
-    readonly replays:    readonly HistoryReplayVector[];
+    readonly histories:          ReadonlyArray<{ readonly id: string, readonly description: string, readonly documents: Readonly<Record<string, string>> }>;
+    readonly replays:            readonly HistoryReplayVector[];
+    readonly anchoredSnapshots:  readonly AnchoredSnapshotVector[];
 };
 
 /** A document of a history of poi-histories.json, read as POI reads JSON. */

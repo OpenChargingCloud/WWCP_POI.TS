@@ -113,11 +113,13 @@ export class ArchiveSegment {
 
     /**
      * Gives the versions of the segment again (10.6): from its base, commit by commit, each checked as section 5.2 says, its
-     * commits those its information names, from its root to its end.
+     * commits those its information names, from its root to its end. Its base is no snapshot to start from but an archived
+     * root, taken unanchored: the segment is anchored by the checkpoint of its end (`verifyAgainst`), whose signatures are
+     * the caller's to verify.
      */
     public replay(options: HistoryOptions = {}): History {
 
-        const history = History.fromSnapshot(this.base, options);
+        const history = History.fromSnapshot(this.base, { ...options, unanchored: true });
 
         if (history.root.commit.id !== this.info.rootId || history.root.commit.revision !== this.info.fromRevision)
             throw new POIError(`The base of the archive segment ${this.info.number} is not its root '${this.info.rootId}'!`);

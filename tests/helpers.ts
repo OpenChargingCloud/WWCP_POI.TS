@@ -5,6 +5,7 @@ import { parseJSON }     from '../src/json/parse.ts';
 import { canonicalJSON } from '../src/json/canonical.ts';
 import { isArray, isObject, type JSONValue } from '../src/json/value.ts';
 import { VECTORS_RUN }   from './at.ts';
+import type { SnapshotOptions } from '../src/history/history.ts';
 
 export { AT }            from './at.ts';
 
@@ -36,3 +37,10 @@ export function defined<T>(value: T | null | undefined, what = 'The value'): T {
 /** A JSON value as text, as String() gives it: a string as it is, a number as it reads; an object or an array as its canonical JSON. */
 export const asText = (value: JSONValue | undefined): string =>
     isObject(value) || isArray(value) ? canonicalJSON(value) : String(value);
+
+
+/**
+ * Takes snapshots, commits and checkpoints unanchored, with their signatures unchecked: for tests and replays of their
+ * content alone, whose signatures are made up or the verifier's business, never for what a verifier trusts.
+ */
+export const UNCHECKED: SnapshotOptions = { unanchored: true, verifyCommit: () => undefined, verifyCheckpoint: () => undefined };

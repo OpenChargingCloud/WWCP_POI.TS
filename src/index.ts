@@ -66,7 +66,7 @@ export { Commit, SignatureRoles, COMMIT_CONTEXT, type RoleSignature } from './hi
 export { ChangeSet, CHANGE_SET_CONTEXT, MERGE_CHANGE_SET_ID_PREFIX, changeSetIdentification, type Change, type ChangeKind, type ChangeSetSignature } from './history/changeSet.ts';
 export { applyChangeSet, checkOwnership }                    from './history/apply.ts';
 export { Checkpoint, CheckpointProof, commitsRoot, CHECKPOINT_CONTEXT } from './history/checkpoint.ts';
-export { History, type EpochStatus, type HistoryOptions, type Version } from './history/history.ts';
+export { History, type EpochStatus, type HistoryOptions, type SnapshotOptions, type Version } from './history/history.ts';
 export { EpochProfiles, FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, EPOCH_CONTEXT, EPOCH_LINK_CONTEXT, EPOCH_PROFILES_CONTEXT, STYX_CANONICAL_JSON, type Epoch, type EpochLink } from './history/epoch.ts';
 export { ArchiveSegment, parseArchiveSegmentInfo, verifySegmentLine, type ArchiveSegmentInfo } from './history/archive.ts';
 
