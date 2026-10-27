@@ -11,7 +11,7 @@ import { clone, isArray, isObject, type JSONValue } from '../src/json/value.ts';
 //
 //     node tools/generate-test-vectors.mjs --mirror libs/WWCP_POI.TS/tests/vectors
 //
-// The frozen run they name (runs/csharp-bc3b1bd there) is vendored next to them, as tests/vectors/csharp-bc3b1bd.
+// The frozen run they name (runs/<VECTORS_RUN> there, tests/at.ts) is vendored next to them, as tests/vectors/<VECTORS_RUN>.
 
 
 /** The name this library is known by within the vector files ("knownDeviations", "notApplicable"). */

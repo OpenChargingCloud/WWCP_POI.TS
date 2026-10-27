@@ -75,7 +75,7 @@ describe('Example A13: who checks the meter', () => {
             .toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: Chargy Transparency Software 1.5.0, germanCalibrationLaw, as PTB-2026-0042 and PTB-2026-0017 name it');
         expect(`by ${text(manufacturer, 'name')}, ${text(manufacturer, 'craRole')}, supported until ${text(release, 'supportUntil')}, ` +
                `vulnerabilities to ${text(manufacturer, 'vulnerabilityContact')}, bill of materials ${text(release, 'softwareBillOfMaterials')}`)
-            .toBe('by GraphDefined GmbH, manufacturer, supported until 2031-10-26T00:56:51.634Z, vulnerabilities to security@graphdefined.example, ' +
+            .toBe('by GraphDefined GmbH, manufacturer, supported until 2031-10-27T17:20:56.014Z, vulnerabilities to security@graphdefined.example, ' +
                   'bill of materials https://www.graphdefined.example/chargy/1.5.0/sbom.cdx.json');
 
         // The manufacturer and the body are given as skeletons: their own properties, without their other children.

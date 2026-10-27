@@ -43,8 +43,8 @@ describe('Replaying the history of QA commit by commit, through both epochs', ()
 
         epoch2.takeCheckpoint(Checkpoint.parse(readJSON('published/QA-epoch-2-checkpoint-0.json')));
 
-        // The head of epoch 2, as example A13 published it.
-        expect(epoch2.head.commit.revision).toBe(7);
+        // The head of epoch 2, as example A14 published it.
+        expect(epoch2.head.commit.revision).toBe(8);
         expect(epoch2.head.commit.id).toBe((readJSON('published/QA-commit.json') as JSONObject)['@id']);
         expect(epoch2.head.network.matchesCommitETags(RoamingNetwork.parse(readJSON('published/QA.json')).eTags())).toBe(true);
 

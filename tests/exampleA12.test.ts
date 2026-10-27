@@ -18,8 +18,8 @@ import { clone, get, type JSONArray, type JSONObject } from '../src/json/value.t
 
 const live      = readJSON('driver/live.json') as JSONObject;
 const pushes    = (live['pushes'] as JSONArray).map(frame => parseFrame(frame));
-// The run is one of WWCP_POI 987fa26, before a snapshot of the head carried the attestations of its head (ff2c56f): it is
-// taken unanchored here, its head checked against the trust anchor of epoch 2 by OperatorTrust.
+// The live snapshot of the mirror carries no attestations, absent as nobody attested its head there (SPECIFICATION.md 8.5):
+// as example A12 does, it is taken unanchored here, its head checked against the trust anchor of epoch 2 by OperatorTrust.
 const snapshot  = readJSON('published/QA-live-snapshot.json') as JSONObject;
 
 
@@ -78,14 +78,14 @@ describe('Example A12: the traffic report and the atlas', () => {
         const status = RuntimeStatus.fromSnapshot(snapshot);
         const now    = defined(status.get('EVSE', 'DE*GEF*E1*1', 'status'));
 
-        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-10-26T00:56:51.035Z');
+        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-10-27T17:20:55.077Z');
 
         const withoutStatus = clone(snapshot);
         delete withoutStatus['runtimeStatus'];
         expect(History.fromSnapshot(withoutStatus, UNCHECKED).head.commit.id).toBe(History.fromSnapshot(snapshot, UNCHECKED).head.commit.id);
 
         // A report that comes late, of five minutes ago: its status stays.
-        const late = parseStatusUpdate({ entityId: 'DE*GEF*E1*1', entityType: 'EVSE', kind: 'status', timestamp: '2026-10-26T00:51:51.035Z', value: 'available' });
+        const late = parseStatusUpdate({ entityId: 'DE*GEF*E1*1', entityType: 'EVSE', kind: 'status', timestamp: '2026-10-27T17:15:55.077Z', value: 'available' });
         expect(status.apply(late)).toBe('Outdated');
         expect(defined(status.get('EVSE', 'DE*GEF*E1*1')).value).toBe('charging');
 

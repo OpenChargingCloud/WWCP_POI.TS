@@ -1,9 +1,9 @@
 /*
- * Checks what the C# examples A1 to A13 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
+ * Checks what the C# examples A1 to A14 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
- *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-26T00:58:00.000Z
+ *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-27T17:23:00.000Z
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
  * same. Attestations end 15 minutes after they are signed: the station proof of example A13 is checked at the time of its
@@ -14,12 +14,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join }                     from 'node:path';
 
 import {
-    ArchiveSegment, Checkpoint, CheckpointProof, History, OperatorTrust, POIPublicKey, PriceStatement, PriceStatementProof,
+    ArchiveSegment, Checkpoint, CheckpointProof, DigitalCalibrationCertificate, DigitalCertificateOfConformity,
+    DigitalDeclarationOfConformity, History, OperatorTrust, POIPublicKey, PriceStatement, PriceStatementProof, QIDigitalItem,
     RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, get, isArray, isObject, parseArchiveSegmentInfo,
     parseEvidence, parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, toTimestamp,
     verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence,
     verifyPriceStatements, verifySegmentLine, verifyVersion,
-    type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type TrustedWitness,
+    type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type QIDigitalI18NText, type TrustedWitness,
 } from '../src/index.ts';
 
 
@@ -39,8 +40,8 @@ function show(value: JSONValue | undefined): string {
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-987fa26');
-const time       = at ?? (directory.includes('csharp-987fa26') ? '2026-10-26T00:58:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-33447ac');
+const time       = at ?? (directory.includes('csharp-33447ac') ? '2026-10-27T17:23:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');
@@ -456,6 +457,94 @@ if (has('published/QA-DE-GEF-E1-1-proof.json'))
             console.log(`The station ${show(station.chargingStation['@id'])} is a ${show(madeBy.model['@id'])} of ${show(madeBy.manufacturer['@id'])}, hardware ${show(station.chargingStation['hardwareRevision'] ?? '-')} of ${list(madeBy.model['hardwareRevisions'])}, firmware ${show(station.chargingStation['firmwareVersion'] ?? '-')} of ${list(madeBy.model['firmwareVersions'])}`);
         for (const warning of station.warnings)
             console.log(`warning: ${warning}`);
+
+    });
+
+
+if (has('published/EM-LAB-DCC-2026-0815.json'))
+    step('Example A14: the papers of a meter, digital', () => {
+
+        // QA as published: its key statement signed by the quorum the trust anchor of epoch 2 names, and the commit leading
+        // to it.
+        const anchorPQ  = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const qa        = verifyVersion(anchorPQ, json('published/QA.json'), json('published/QA-commit.json'), time);
+        console.log(`QA, revision ${qa.commit.revision} of epoch ${qa.commit.epoch}: checked against the trust anchor of epoch 2`);
+
+        const inWords = (value: QIDigitalI18NText | undefined): string => value?.[0]?.[1] ?? '';
+        const list    = (values: readonly string[]): string => values.join('/');
+
+        // The effective energy meter of the given EVSE, as QA names it at runtime.
+        const meterOf = (evseId: string): JSONObject => {
+            const operators = qa.network.effectiveContent['chargingStationOperators'] as JSONObject[];
+            const evses     = operators.flatMap(operator => (operator['chargingPools'] as JSONObject[] | undefined) ?? [])
+                                       .flatMap(pool => (pool['chargingStations'] as JSONObject[] | undefined) ?? [])
+                                       .flatMap(station => (station['EVSEs'] as JSONObject[] | undefined) ?? []);
+            return defined(evses.find(evse => evse['@id'] === evseId)?.['energyMeter'] as JSONObject | undefined, `energy meter of ${evseId}`);
+        };
+
+        // The certificates of conformity: of a conformity assessment body of QA with its number, notified for its
+        // legislation, valid now; the type examination for a model of its manufacturer, the approval of the quality system
+        // for a manufacturer of QA.
+        const typeExamination = DigitalCertificateOfConformity.parseText(text('published/PTB-DE-26-M-PTB-0108.json'));
+        typeExamination.verify(qa.network, time);
+        const model = defined(typeExamination.model, 'model of the type examination');
+        console.log(`${typeExamination.id}, by the ${typeExamination.conformityAssessmentBodyId}, notified body ${typeExamination.notifiedBodyNumber}: valid`);
+        console.log(`  module ${typeExamination.module}, under the ${typeExamination.legislation.name}, for the ${model.modelId} of ${model.manufacturerId}, hardware ${list(model.hardwareRevisions)}, firmware ${list(model.firmwareVersions)}`);
+
+        const qualitySystem = DigitalCertificateOfConformity.parseText(text('published/PTB-DE-26-QS-PTB-0042.json'));
+        qualitySystem.verify(qa.network, time);
+        const manufacturer = defined(qualitySystem.manufacturer, 'manufacturer of the quality system');
+        console.log(`${qualitySystem.id}, by the ${qualitySystem.conformityAssessmentBodyId}, notified body ${qualitySystem.notifiedBodyNumber}: valid`);
+        console.log(`  module ${qualitySystem.module}, under the ${qualitySystem.legislation.name}, for the quality system of ${manufacturer.manufacturerId}, scope ${manufacturer.scope.join(', ')}`);
+
+        // The declaration of conformity: of the manufacturer of its model, signed by its key for its models; each certificate
+        // it names, picked by its identification.
+        const declaration = DigitalDeclarationOfConformity.parseText(text('published/SAALE-DoC-SM-3-2026-01.json'));
+        declaration.verify(qa.network, time);
+        console.log(`${declaration.id}, by ${declaration.model.manufacturerId}, the manufacturer of the ${declaration.model.modelId}: valid`);
+        console.log(`  under the ${declaration.legislations.map(legislation => legislation.name).join(', ')}; signed in ${declaration.placeOfIssue} by ${declaration.signatory.name}`);
+
+        const certificates = new Map([ typeExamination, qualitySystem ].map(certificate => [ certificate.id, certificate ]));
+        for (const notifiedBody of declaration.notifiedBodies) {
+            const certificate = notifiedBody.certificateId === undefined ? undefined : certificates.get(notifiedBody.certificateId);
+            if (certificate !== undefined)
+                declaration.verifyCertificate(certificate);
+            console.log(`  ${notifiedBody.certificateId ?? '-'} of the notified body ${notifiedBody.notifiedBodyNumber}, the ${notifiedBody.conformityAssessmentBodyId}, module ${notifiedBody.module ?? '-'}: ${certificate === undefined ? 'no certificate at hand' : 'the certificate it names'}`);
+        }
+
+        // The calibration certificate: of a laboratory of QA, signed by its key for certificates; its item the meter as QA
+        // names it at runtime, and a meter both certificates of conformity cover.
+        const calibration = DigitalCalibrationCertificate.parseText(text('published/EM-LAB-DCC-2026-0815.json'));
+        calibration.verify(qa.network, time);
+        const item = calibration.item;
+        console.log(`${calibration.id}, by ${calibration.calibrationLaboratoryId}, ${calibration.calibrationLaboratoryCode ?? '-'}: valid`);
+        console.log(`  the ${item.text}, the ${item.modelId ?? '-'} of ${item.manufacturerId ?? '-'} of serial number ${item.serialNumber ?? '-'}, hardware ${item.hardwareRevision ?? '-'}, firmware ${item.firmwareVersion ?? '-'}`);
+
+        const atRuntime = QIDigitalItem.ofEnergyMeter(meterOf('DE*GEF*E2*1'));
+        if (JSON.stringify(atRuntime) !== JSON.stringify(item))
+            throw new Error(`the item of ${calibration.id} is not the meter of DE*GEF*E2*1 as QA names it`);
+
+        for (const measurement of calibration.measurementResults)
+            for (const result of measurement.results) {
+                const current  = defined(result.quantities.find(quantity => quantity.refType === 'basic_nominalValue'),     'nominal value');
+                const measured = defined(result.quantities.find(quantity => quantity.refType === 'basic_measurementError'), 'measurement error');
+                console.log(`  ${inWords(result.name).padEnd(4)}  ${`${current.value.toString()} A`.padEnd(6)}  ${measured.value.toString()} % ± ${measured.expandedUncertainty?.toString() ?? '-'} % (k = ${measured.coverageFactor?.toString() ?? '-'}), limits ± ${measured.toleranceUpper?.toString() ?? '-'} %: ${measured.conformity ?? '-'}`);
+            }
+
+        typeExamination.cover(item);
+        qualitySystem.cover(item);
+        console.log(`  passes: ${calibration.passes}; signed by ${calibration.mainSigner?.name ?? '-'}; ${typeExamination.id} and ${qualitySystem.id} cover it`);
+
+        // What is refused: the calibration certificate with another error at Imax, changed after it was signed; the
+        // certificates of conformity for the DC meter of DE*GEF*E1*1, a KDM-500 of KERNBERG.
+        const changed      = json('published/EM-LAB-DCC-2026-0815.json') as JSONObject;
+        const imax         = ((((changed['measurementResults'] as JSONObject[])[0]?.['results'] as JSONObject[] | undefined)?.[3]?.['quantities'] as JSONObject[] | undefined)?.[1]);
+        defined(imax, 'error at Imax')['value'] = parseJSON('-0.12');
+        refused('Another error at Imax', () => { DigitalCalibrationCertificate.parse(changed).verify(qa.network, time); });
+
+        const dcMeter = QIDigitalItem.ofEnergyMeter(meterOf('DE*GEF*E1*1'));
+        refused(`${typeExamination.id} for the meter of DE*GEF*E1*1`, () => { typeExamination.cover(dcMeter); });
+        refused(`${qualitySystem.id} for the meter of DE*GEF*E1*1`,   () => { qualitySystem.cover(dcMeter); });
 
     });
 

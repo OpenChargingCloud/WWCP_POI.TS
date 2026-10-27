@@ -2,7 +2,7 @@ import { createHash, createPrivateKey, sign } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { AT, asText, defined, readJSON } from './helpers.ts';
+import { AT, asText, defined, readJSON, readText } from './helpers.ts';
 import { specification } from './conformance.ts';
 
 import { RoamingNetwork }   from '../src/network/roamingNetwork.ts';
@@ -17,9 +17,10 @@ import { QIDigitalItem, QIDigitalManufacturer, QIDigitalModel, QIDigitalQuantity
 
 
 // The QI-Digital documents of WWCP_POI (QIDigitalTests.cs, example A14), a proof of concept: the papers of the meter of
-// DE*GEF*E2*1, an SM-3 of SAALE, checked against QA. The frozen run predates example A14, so the documents are signed here
-// with the Ed25519 keys of section 6, whose private seeds the specification gives, and QA is the one of the run with the
-// PTB, SAALE and a calibration laboratory EM-LAB holding those keys.
+// DE*GEF*E2*1, an SM-3 of SAALE, checked against QA. First as WWCP_POI signed them in example A14 of the frozen run, against
+// QA as it published it; then, to change them at will, signed here with the Ed25519 keys of section 6, whose private seeds
+// the specification gives, against QA of the run with the PTB, SAALE and the calibration laboratory EM-LAB holding those
+// keys instead of their own.
 
 const T0 = AT;
 
@@ -49,7 +50,7 @@ const signingKey = (signer: Key, usage: string, notAfter?: string): JSONObject =
 const byId = (left: JSONObject, right: JSONObject): number =>
     asText(left['@id']) < asText(right['@id']) ? -1 : 1;
 
-/** QA of the run: the PTB with a key for certificates and one for itself, SAALE with one for its models, and EM-LAB. */
+/** QA of the run: the PTB with a key for certificates and one for itself, SAALE with one for its models, EM-LAB with one for its certificates. */
 function network(ptbCertificatesNotAfter?: string): RoamingNetwork {
 
     const json  = clone(readJSON('published/QA.json') as JSONObject);
@@ -59,8 +60,8 @@ function network(ptbCertificatesNotAfter?: string): RoamingNetwork {
     const ptb    = defined(bodies.find(body => body['@id'] === 'PTB'));
     ptb['signingKeys'] = [ signingKey(PTB_CERTIFICATES, 'certificates', ptbCertificatesNotAfter), signingKey(PTB_PARTY, 'party') ].sort(byId);
 
-    bodies.push({ '@id': 'EM-LAB', name: { en: 'Jena Energy Meter Calibration Laboratory' }, signingKeys: [ signingKey(LAB_CERTIFICATES, 'certificates') ],
-                  created: T0, lastChange: T0 });
+    const lab    = defined(bodies.find(body => body['@id'] === 'EM-LAB'));
+    lab['signingKeys'] = [ signingKey(LAB_CERTIFICATES, 'certificates') ];
 
     const saale = defined((json['energyMeterManufacturers'] as JSONObject[]).find(manufacturer => manufacturer['@id'] === 'SAALE'));
     saale['signingKeys'] = [ signingKey(SAALE_MODELS, 'models') ];
@@ -182,11 +183,96 @@ const declaration      = (more?: JSONObject, signer = SAALE_MODELS):     Digital
 const calibration      = (more?: JSONObject, signer = LAB_CERTIFICATES): DigitalCalibrationCertificate  => parseDCC (signed(calibrationJSON(more),     signer, parseDCC));
 
 /** The effective energy meter of the given EVSE of QA, as it is at runtime. */
-const meterOf = (evseId: string): JSONObject => {
-    const pools    = (defined((qa.effectiveContent['chargingStationOperators'] as JSONObject[])[0])['chargingPools'] as JSONObject[]);
+const meterOf = (evseId: string, network: RoamingNetwork = qa): JSONObject => {
+    const pools    = (defined((network.effectiveContent['chargingStationOperators'] as JSONObject[])[0])['chargingPools'] as JSONObject[]);
     const evses    = pools.flatMap(pool => pool['chargingStations'] as JSONObject[]).flatMap(station => station['EVSEs'] as JSONObject[]);
     return defined(defined(evses.find(evse => evse['@id'] === evseId))['energyMeter'] as JSONObject | undefined);
 };
+
+
+describe('QI-Digital: the papers of a meter, as WWCP_POI signed them (example A14)', () => {
+
+    // QA as example A14 published it, with EM-LAB; the documents as their issuers hand them out.
+    const published        = RoamingNetwork.parse(readJSON('published/QA.json'));
+    const typeExamination  = (): DigitalCertificateOfConformity => DigitalCertificateOfConformity.parseText(readText('published/PTB-DE-26-M-PTB-0108.json'));
+    const qualitySystem    = (): DigitalCertificateOfConformity => DigitalCertificateOfConformity.parseText(readText('published/PTB-DE-26-QS-PTB-0042.json'));
+    const declaration      = (): DigitalDeclarationOfConformity => DigitalDeclarationOfConformity.parseText(readText('published/SAALE-DoC-SM-3-2026-01.json'));
+    const calibration      = (): DigitalCalibrationCertificate  => DigitalCalibrationCertificate.parseText(readText('published/EM-LAB-DCC-2026-0815.json'));
+
+    it('checks each document against QA: signed by a key of its issuer that may sign it, valid at AT', () => {
+
+        const dcoc = typeExamination();
+        const qs   = qualitySystem();
+        const ddoc = declaration();
+        const dcc  = calibration();
+
+        dcoc.verify(published, AT);
+        qs.verify(published, AT);
+        ddoc.verify(published, AT);
+        dcc.verify(published, AT);
+
+        // The PTB and EM-LAB sign with their ML-DSA keys for certificates, SAALE with its ECDSA key for its models.
+        expect([ dcoc, qs, ddoc, dcc ].map(document => document.signature?.algorithm)).toEqual([ 'ML-DSA-65', 'ML-DSA-65', 'ES256', 'ML-DSA-65' ]);
+        expect(dcoc.model?.firmwareVersions).toEqual([ '1.0.7' ]);
+        expect(qs.manufacturer?.scope).toEqual([ 'MI-003' ]);
+        expect(ddoc.notifiedBodies.map(body => `${body.certificateId ?? '-'} ${body.module ?? '-'}`)).toEqual([ 'DE-26-M-PTB-0108 B', 'DE-26-QS-PTB-0042 D' ]);
+        expect(dcc.passes).toBe(true);
+        expect(dcc.mainSigner?.name).toBe('Dr. Erika Mustermann');
+
+    });
+
+    it('checks the declaration against the certificates it names, and both cover the meter as QA names it at runtime', () => {
+
+        const dcc = calibration();
+
+        declaration().verifyCertificate(typeExamination());
+        declaration().verifyCertificate(qualitySystem());
+
+        expect(dcc.item).toEqual(QIDigitalItem.ofEnergyMeter(meterOf('DE*GEF*E2*1', published)));
+        expect(dcc.item.serialNumber).toBe('ACM-2026-002-1');
+
+        typeExamination().cover(dcc.item);
+        qualitySystem().cover(dcc.item);
+
+    });
+
+    it('writes each document again as WWCP_POI wrote it', () => {
+
+        const writtenAgain = (file: string, parse: (text: string) => QIDigitalDocument): void => {
+            expect(canonicalJSON(parse(readText(file)).toJSON())).toBe(canonicalJSON(readJSON(file)));
+        };
+
+        writtenAgain('published/PTB-DE-26-M-PTB-0108.json',  text => DigitalCertificateOfConformity.parseText(text));
+        writtenAgain('published/PTB-DE-26-QS-PTB-0042.json',  text => DigitalCertificateOfConformity.parseText(text));
+        writtenAgain('published/SAALE-DoC-SM-3-2026-01.json', text => DigitalDeclarationOfConformity.parseText(text));
+        writtenAgain('published/EM-LAB-DCC-2026-0815.json',   text => DigitalCalibrationCertificate.parseText(text));
+
+    });
+
+    it('refuses them changed, for another meter, or after the key of their issuer, in the words of WWCP_POI', () => {
+
+        // As example A14 refuses them (csharp-output.log).
+        const changed = readJSON('published/EM-LAB-DCC-2026-0815.json') as JSONObject;
+        defined((defined(((changed['measurementResults'] as JSONObject[])[0]?.['results'] as JSONObject[])[3])['quantities'] as JSONObject[])[1])['value'] = parseJSON('-0.12');
+
+        expect(() => { DigitalCalibrationCertificate.parse(changed).verify(published, AT); })
+            .toThrow("The signature of the digital calibration certificate 'DCC-2026-0815' is invalid: The signature is invalid!");
+
+        const dcMeter = QIDigitalItem.ofEnergyMeter(meterOf('DE*GEF*E1*1', published));
+        expect(() => { typeExamination().cover(dcMeter); }).toThrow("The energy meter 'DE*GEF*M1*1' is no 'SM-3' of 'SAALE'!");
+        expect(() => { qualitySystem().cover(dcMeter); }).toThrow("The energy meter 'DE*GEF*M1*1' is none of 'SAALE'!");
+
+        // The signing keys of EM-LAB are valid for a year from example A14.
+        const lab = defined((published.content['conformityAssessmentBodies'] as JSONObject[]).find(body => body['@id'] === 'EM-LAB'));
+        const key = defined((lab['signingKeys'] as JSONObject[]).find(signing => (signing['usages'] as string[]).includes('certificates')));
+        const end = Date.parse(asText(key['notAfter'])) + 1;
+
+        expect(() => { calibration().verify(published, end); })
+            .toThrow(`The signing key '${asText(key['@id'])}' of the calibration laboratory 'EM-LAB' is not valid at ${new Date(end).toISOString()}!`);
+
+    });
+
+});
 
 
 describe('QI-Digital: the papers of a meter (example A14)', () => {
@@ -334,13 +420,13 @@ describe('QI-Digital: refused documents', () => {
         const expired = network('2026-10-26T00:00:00.000Z');
 
         expect(() => { typeExamination().verify(expired); })
-            .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at 2026-10-26T00:58:00.000Z, when the digital certificate of conformity 'DE-26-M-PTB-0108' was signed!`);
+            .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at ${T0}, when the digital certificate of conformity 'DE-26-M-PTB-0108' was signed!`);
 
-        const later = network('2026-10-27T00:00:00.000Z');
+        const later = network('2026-10-28T00:00:00.000Z');
         typeExamination().verify(later, T0);
 
-        expect(() => { typeExamination().verify(later, '2026-10-28T00:00:00.000Z'); })
-            .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at 2026-10-28T00:00:00.000Z!`);
+        expect(() => { typeExamination().verify(later, '2026-10-29T00:00:00.000Z'); })
+            .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at 2026-10-29T00:00:00.000Z!`);
 
     });
 

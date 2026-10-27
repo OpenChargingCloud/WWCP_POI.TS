@@ -2,7 +2,7 @@
 
 ## 0.1.0 (unreleased)
 
-The first milestone: the examples A1 to A13 of WWCP_POI (commit `80e4ccc`) checked in TypeScript.
+The first milestone: the examples A1 to A14 of WWCP_POI (commit `33447ac`) checked in TypeScript.
 
 The findings of the review this port made of the C# implementation are cited as csharp-review N, N the number of the
 finding in
@@ -223,3 +223,11 @@ certificate and the item of a calibration certificate it covers. Where WWCP_POI 
 no text or of no language it knows, silently, so that it travels unsigned with a signed document, it is refused here.
 A URL is read as Hermod reads it as far as a document URL needs it: trimmed, https unless it names a scheme, of http or
 https with a host.
+
+The test vectors are those of a new run of the C# examples at `33447ac` (`tests/vectors/csharp-33447ac`), the first with
+example A14: the QI-Digital documents of the meter of DE*GEF*E2*1 as WWCP_POI signed them, with ML-DSA-65 by the PTB and
+EM-LAB and with ES256 by SAALE, are checked against QA as example A14 published it, refused changed in the words of
+WWCP_POI, and written again as WWCP_POI wrote them. EM-LAB is a member of QA since, so the head is revision 8 of epoch 2.
+`examples/validate-examples.ts` checks example A14 as its `Validate()` does, and starts from the snapshots of examples A4,
+A5 and A11 anchored in the trust anchor, from the genesis and the live snapshot of example A12 unanchored, as the
+examples do: since the anchored start it refused them.

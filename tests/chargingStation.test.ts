@@ -16,7 +16,7 @@ import { parseJSON }          from '../src/json/parse.ts';
 
 // The use case: an EV driver's app selects a charging station, downloads its proof and the price statements of its EVSEs,
 // and checks them against the trust anchor of the roaming network it pinned. Proofs made by the C# implementation
-// (tests/vectors/csharp-bc3b1bd/proofs/MakeProofs.cs.txt) of the head of QA as the examples left it, revision 7 of epoch 2,
+// (tests/vectors/<VECTORS_RUN>/proofs/MakeProofs.cs.txt) of the head of QA as the examples left it, revision 8 of epoch 2,
 // attested by the ML-DSA signing keys of the holders of OCC, checked against the trust anchor of epoch 2.
 
 describe('The proof of a charging station, as an app checks it', () => {
@@ -29,9 +29,9 @@ describe('The proof of a charging station, as an app checks it', () => {
 
         expect(station.roamingNetwork).toEqual({ id: 'QA', name: 'Quality Assurance', description: 'The roaming network of the examples' });
         expect(station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
-        expect(station.revision).toBe(7);
+        expect(station.revision).toBe(8);
         expect(station.commitId).toHaveLength(128);
-        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:fbf2c0b20c798abba212f2cb101e00d48c2d94ccd105fd6f845a2f20bf9351a5');
+        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:a71de47fa5a334f59865a17afa760e83ce2807da80a65fef87244414c410aa3d');
         expect(station.chargingStation['@id']).toBe('DE*GEF*S1');
         expect(station.chargingStation['maxPower']).toBe(300000);
         expect(station.evses.map(evse => evse['@id'])).toEqual([ 'DE*GEF*E1*1', 'DE*GEF*E1*2' ]);
@@ -95,7 +95,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(asText(defined((element['priceComponents'] as JSONObject[])[0])['price'])).toBe('0.59');
 
         // After its validUntil there is no current price.
-        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-26T02:00:00.000Z' }).size).toBe(0);
+        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-10-27T18:25:00.000Z' }).size).toBe(0);
 
     });
 
@@ -131,7 +131,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(() => verifyChargingStation(anchor, changed, { at: AT })).toThrow(/attest the root/);
 
         // The attestations are valid for 15 minutes.
-        expect(() => verifyChargingStation(anchor, proof, { at: '2026-10-26T01:15:00.000Z' })).toThrow(/of 0 holders/);
+        expect(() => verifyChargingStation(anchor, proof, { at: '2026-10-27T17:40:00.000Z' })).toThrow(/of 0 holders/);
 
         // One attestation is not enough for a quorum of two.
         const one = clone(proof);

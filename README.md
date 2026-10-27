@@ -23,8 +23,8 @@ ML-DSA-44/65/87.
 
 ## Status
 
-**Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A13 of
-[WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `dbf39b0` are checked
+**Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A14 of
+[WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `33447ac` are checked
 from what the C# examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations
 the C# implementation makes; also from a second run of the C# examples, with new keys. See [Tests](#tests).
 
@@ -244,7 +244,7 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   calculate of the documents of the run below, documents to refuse, and small histories WWCPPOIConformanceTests signs
   itself, replayed step by step (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
-- `tests/vectors/csharp-987fa26`, what one run of the C# examples of WWCP_POI at commit `987fa26` published (public data
+- `tests/vectors/csharp-33447ac`, what one run of the C# examples of WWCP_POI at commit `33447ac` published (public data
   only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same
   history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the head, and
   the ECDSA twin of a price statement.
@@ -259,6 +259,8 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
 - `tests/exampleA12.test.ts`: example A12, the runtime status and the commit pushed over the WebSocket.
 - `tests/exampleA13.test.ts`: example A13, transparency software manufacturers, conformity assessment bodies, and who
   checks the meter.
+- `tests/qidigital.test.ts`: example A14, the QI-Digital documents of a meter as WWCP_POI signed them, and others signed
+  with the keys of section 6 of the specification, to change them at will.
 - `tests/chargingStation.test.ts`, `tests/client.test.ts`: proofs of charging stations of epoch 2, as an app checks them.
 - `tests/replay.test.ts`: the whole history of `QA`, both epochs, commit by commit, with every checkpoint.
 - `tests/build/bundle.test.js`, `tests/browser/browser.test.ts`: the bundle and the browser, as above.
