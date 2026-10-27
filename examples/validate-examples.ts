@@ -193,7 +193,8 @@ step('Example A4: the first checkpoint, and joining from it', () => {
     const signatures  = verifyCheckpointSignatures(checkpoint0, trust);
     console.log(`Checkpoint 0 of epoch ${checkpoint0.epoch}: revision ${checkpoint0.revision}, ${checkpoint0.commits.size} commit(s) since the genesis, signed by ${signatures.signedBy.join(', ')}`);
 
-    const joined = History.fromSnapshot(json('published/QA-checkpoint-0-snapshot.json'), byOperator);
+    // Joined from the snapshot of checkpoint 0, anchored in the trust anchor by the signatures of the checkpoint.
+    const joined = History.fromSnapshot(json('published/QA-checkpoint-0-snapshot.json'), { ...byOperator, trustAnchor: anchor, at: time });
     console.log(`Joined at revision ${joined.head.commit.revision}, the checkpoint's: ${joined.head.commit.id === checkpoint0.commitId ? 'the same' : 'another'}`);
 
     for (const commit of commits('published/QA-commits-since-checkpoint-0.json')) {
@@ -224,7 +225,7 @@ step('Example A5: a correction between two checkpoints', () => {
 
     console.log(`One line: ${line.map(item => `${item.sequence} (revision ${item.revision})`).join(' <- ')}`);
 
-    const history = History.fromSnapshot(json('published/QA-checkpoint-0-snapshot.json'), byOperator);
+    const history = History.fromSnapshot(json('published/QA-checkpoint-0-snapshot.json'), { ...byOperator, trustAnchor: anchor, at: time });
     for (const commit of [ ...commits('published/QA-commits-since-checkpoint-0.json'), ...commits('published/QA-commits-since-checkpoint-1.json') ])
         history.append(commit);
     history.takeCheckpoint(line[1]);
@@ -240,7 +241,8 @@ step('Example A5: a correction between two checkpoints', () => {
 
 step('Example A6: witnesses sign the checkpoints', () => {
 
-    const witness = History.fromSnapshot(json('published/QA-genesis.json'), byOperator);
+    // From the genesis, its key statement checked against the trust anchor above (verifyVersion): taken unanchored.
+    const witness = History.fromSnapshot(json('published/QA-genesis.json'), { ...byOperator, unanchored: true });
 
     for (const commit of commits('published/QA-commits-since-genesis.json'))
         witness.append(commit);
@@ -351,7 +353,7 @@ if (has('published/QA-checkpoint-6.json'))
 
         const snapshot5  = json('published/QA-checkpoint-5-snapshot.json') as JSONObject;
         const old        = following(anchor, RoamingNetwork.parse(snapshot5['roamingNetwork']), witnesses);
-        const epoch1     = History.fromSnapshot(snapshot5, old);
+        const epoch1     = History.fromSnapshot(snapshot5, { ...old, trustAnchor: anchor, at: time });
 
         for (const commit of commits('published/QA-commits-since-checkpoint-5.json'))
             epoch1.append(commit);
@@ -383,7 +385,7 @@ if (has('published/QA-checkpoint-6.json'))
         const witnessesPQ  = parseTrustedWitnesses(json('trusted/witnesses-mldsa.json'));
         const snapshot0    = json('published/QA-epoch-2-checkpoint-0-snapshot.json') as JSONObject;
         const pq           = following(anchorPQ, RoamingNetwork.parse(snapshot0['roamingNetwork']), witnessesPQ);
-        const joined       = History.fromSnapshot(snapshot0, pq);
+        const joined       = History.fromSnapshot(snapshot0, { ...pq, trustAnchor: anchorPQ, at: time });
         const joinedAt     = defined(joined.checkpoints[0], 'checkpoint joined from');
         console.log(`New trust: joined epoch ${joined.epoch.number} from checkpoint ${joinedAt.sequence}, revision ${joined.head.commit.revision}, ${joined.head.commit.id.length} hexadecimal digits`);
 
@@ -403,15 +405,20 @@ if (has('driver/live.json'))
         for (const update of updates.map(push => parseStatusUpdate(push.payload)))
             console.log(`${update.entityId} ${update.kind}: ${typeof update.value === 'string' ? update.value : 'changed'} since ${toTimestamp(update.timestamp)}, unsigned`);
 
+        // The snapshot of the WebSocket carries no attestations: as example A12, it is taken unanchored, and the commit of its
+        // head checked against the trust anchor of epoch 2, in the version it leads to.
         const anchorPQ  = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
         const snapshot  = json('published/QA-live-snapshot.json') as JSONObject;
-        const mirror    = History.fromSnapshot(snapshot);
+        let signedBy: readonly string[] = [];
+        const mirror    = History.fromSnapshot(snapshot, {
+                              unanchored:    true,
+                              verifyCommit:  (signed, _before, after) => { signedBy = [ ...OperatorTrust.of(anchorPQ, after, time).verifyOperatorSignatures(signed.signatures, (signature, key) => { signed.verifySignature(signature, key); }, 'the commit') ]; },
+                          });
         const commit    = pushes.find(push => push.type === 'push' && push.action === 'commit');
 
         if (commit !== undefined) {
             const pushed   = mirror.head.commit.id === (commit.payload as JSONObject)['@id'] ? mirror.head.commit : undefined;
-            const signedBy = OperatorTrust.of(anchorPQ, mirror.head.network, time).verifyOperatorSignatures(mirror.head.commit.signatures, (signature, key) => { mirror.head.commit.verifySignature(signature, key); }, 'the commit');
-            console.log(`The commit pushed: revision ${mirror.head.commit.revision}, signed by ${[ ...signedBy ].join(', ')}, checked against the trust anchor of epoch 2; the head of the mirror: ${pushed !== undefined}`);
+            console.log(`The commit pushed: revision ${mirror.head.commit.revision}, signed by ${signedBy.join(', ')}, checked against the trust anchor of epoch 2; the head of the mirror: ${pushed !== undefined}`);
         }
 
         const status = RuntimeStatus.fromSnapshot(snapshot).get('EVSE', 'DE*GEF*E1*1');
