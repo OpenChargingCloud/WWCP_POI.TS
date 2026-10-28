@@ -24,6 +24,8 @@ import { verifySignature }           from '../crypto/signature.ts';
 import { leafHash, merkleRootOfLeafHashes, parseAuditPath, rootFromAuditPath } from '../merkle.ts';
 import { KeyUsages, type POIPublicKey } from '../keys.ts';
 import type { Checkpoint }           from '../history/checkpoint.ts';
+import { ignoringCase }              from '../network/identifications.ts';
+import { trimmed }                   from '../network/versionTexts.ts';
 import { POIError }                  from '../errors.ts';
 
 
@@ -32,6 +34,17 @@ export const PRICE_STATEMENT_PROOF_CONTEXT  = CONTEXT_PREFIX + 'roamingNetwork/p
 
 /** The entities a price statement is of (12.1). */
 export const PRICE_STATEMENT_ENTITY_TYPES = [ 'ChargingPool', 'ChargingStation', 'EVSE' ] as const;
+
+/** The highest sequence of a price statement (12.1): 2^53 − 1, the highest integer every JSON reader holds exactly; a chain there ends. */
+export const MAX_PRICE_STATEMENT_SEQUENCE = Number.MAX_SAFE_INTEGER;
+
+/**
+ * The key of the chain of price statements of an entity (12.1, `RoamingNetworkHistory.ChainOf`): its type and its
+ * identification as identifications compare, without `*`, whitespace around it, or case, so that two spellings of one
+ * EVSE, `DE*GEF*E1*1` and `DE*GEF*E11`, are one chain, and a split view between them is seen.
+ */
+export const priceStatementChainOf = (entityType: string, entityId: string): string =>
+    `${entityType}:${ignoringCase(trimmed(entityId).replaceAll('*', ''))}`;
 
 
 /**
@@ -85,7 +98,7 @@ export class PriceStatement {
         const signedAt    = requireTimestamp (json, 'signedAt',   'The signedAt of a price statement');
         const validFrom   = requireTimestamp (json, 'validFrom',  'The validFrom of a price statement');
         const validUntil  = optionalTimestamp(json, 'validUntil', 'The validUntil of a price statement');
-        const sequence    = requireInteger   (json, 'sequence', 0, Number.MAX_SAFE_INTEGER, 'The sequence of a price statement');
+        const sequence    = requireInteger   (json, 'sequence', 0, MAX_PRICE_STATEMENT_SEQUENCE, 'The sequence of a price statement');
         const previous    = optionalString   (json, 'previous',   'The previous of a price statement');
 
         if (validFrom < signedAt)
@@ -151,6 +164,11 @@ export class PriceStatement {
         return (this.priceStatus['prices'] as JSONObject[]);
     }
 
+    /** The key of the chain it is of: its entity, in any spelling (`priceStatementChainOf`). */
+    public get chain(): string {
+        return priceStatementChainOf(this.entityType, this.entityId);
+    }
+
 
     /**
      * Verifies the statement against the signing keys of the operator of its entity (12.1, 12.4): of this roaming network,
@@ -192,12 +210,11 @@ export class PriceStatement {
         return this.validFrom <= time && (this.validUntil === undefined || time <= this.validUntil);
     }
 
-    /** Whether it is the next statement of the given one: of the same entity, one sequence more, naming its digest. */
+    /** Whether it is the next statement of the given one: of the same entity, in any spelling, one sequence more, naming its digest. */
     public follows(previous: PriceStatement): boolean {
-        return this.entityType === previous.entityType &&
-               this.entityId   === previous.entityId   &&
-               this.sequence   === previous.sequence + 1 &&
-               this.previous   === previous.digestHex();
+        return this.chain    === previous.chain        &&
+               this.sequence === previous.sequence + 1 &&
+               this.previous === previous.digestHex();
     }
 
 }
@@ -215,6 +232,14 @@ export function verifyPriceStatementChain(statements: readonly PriceStatement[])
 }
 
 
+/** The statements in the order of the tree of a checkpoint (12.3, `RoamingNetworkPriceStatement.InOrder`). */
+const inOrder = (statements: readonly PriceStatement[]): PriceStatement[] =>
+    [ ...statements ].sort((left, right) =>
+        ordinal(left.entityType, right.entityType) ||
+        ordinal(left.entityId,   right.entityId)   ||
+        left.sequence - right.sequence             ||
+        ordinal(left.digestHex(), right.digestHex()));
+
 /**
  * The root of the tree of the price statements a checkpoint names (12.3): in the ordinal order of their entity types and
  * identifications, then of their sequences; a leaf the 32 bytes of the digest of a statement, hashed with the identification
@@ -222,11 +247,7 @@ export function verifyPriceStatementChain(statements: readonly PriceStatement[])
  */
 export function priceStatementsRoot(statements: readonly PriceStatement[], algorithm: HashAlgorithm = 'sha256'): { root: Uint8Array, size: number } {
 
-    const ordered = [ ...statements ].sort((left, right) =>
-        ordinal(left.entityType, right.entityType) ||
-        ordinal(left.entityId,   right.entityId)   ||
-        left.sequence - right.sequence             ||
-        ordinal(left.digestHex(), right.digestHex()));
+    const ordered = inOrder(statements);
 
     return {
         root: merkleRootOfLeafHashes(algorithm, ordered.map(statement => leafHash(algorithm, statement.digest()))),
@@ -235,20 +256,38 @@ export function priceStatementsRoot(statements: readonly PriceStatement[], algor
 
 }
 
-/** Checks that the given statements are those a checkpoint names, and each signed before it (12.3). */
+/**
+ * Checks that the given statements are those a checkpoint names (12.3), in their order: no two of one entity, in any
+ * spelling, and sequence that differ - a split view - and each signed before the checkpoint.
+ */
 export function verifyCheckpointPriceStatements(checkpoint: Checkpoint, statements: readonly PriceStatement[]): void {
 
     if (checkpoint.priceStatements === undefined)
         throw new POIError(`The checkpoint '${checkpoint.id}' names no price statements!`);
 
-    const { root, size } = priceStatementsRoot(statements, checkpoint.identificationHash);
+    const ordered = inOrder(statements);
+    const { root, size } = priceStatementsRoot(ordered, checkpoint.identificationHash);
 
     if (size !== checkpoint.priceStatements.size || !bytesEqual(root, checkpoint.priceStatements.root))
         throw new POIError(`The price statements are not those the checkpoint '${checkpoint.id}' names!`);
 
-    for (const statement of statements)
+    const ofChains = new Map<string, string>();
+
+    for (const statement of ordered) {
+
+        // Two of one entity and sequence, in any spelling, are a split view a checkpoint does not name.
+        const chain  = `${statement.chain}#${statement.sequence}`;
+        const other  = ofChains.get(chain);
+
+        if (other !== undefined && other !== statement.digestHex())
+            throw new POIError(`The checkpoint '${checkpoint.id}' names two price statements ${statement.sequence} of the ${statement.entityType} '${statement.entityId}', ${other} and ${statement.digestHex()}: a split view!`);
+
+        ofChains.set(chain, statement.digestHex());
+
         if (statement.signedAt > checkpoint.createdAt)
             throw new POIError(`The price statement ${statement.sequence} of '${statement.entityId}' was signed after the checkpoint '${checkpoint.id}'!`);
+
+    }
 
 }
 

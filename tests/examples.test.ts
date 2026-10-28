@@ -11,7 +11,7 @@ import { Checkpoint, CheckpointProof } from '../src/history/checkpoint.ts';
 import { History }               from '../src/history/history.ts';
 import { ArchiveSegment, parseArchiveSegmentInfo, verifySegmentLine } from '../src/history/archive.ts';
 import { POIPublicKey }          from '../src/keys.ts';
-import { PriceStatement, PriceStatementProof, parsePriceStatements, verifyCheckpointPriceStatements } from '../src/proofs/priceStatement.ts';
+import { MAX_PRICE_STATEMENT_SEQUENCE, PriceStatement, PriceStatementProof, parsePriceStatements, priceStatementChainOf, priceStatementsRoot, verifyCheckpointPriceStatements } from '../src/proofs/priceStatement.ts';
 import { verifyVersion }         from '../src/verifier/version.ts';
 import { verifyCheckpointLine, verifyCheckpointSignatures } from '../src/verifier/checkpoints.ts';
 import { canonicalJSON }         from '../src/json/canonical.ts';
@@ -479,6 +479,34 @@ describe('Example A8: price statements, named by checkpoints', () => {
         const infrastructureKey = defined(signingKeys.find(key => key.usages.includes('infrastructure')));
         expect(infrastructureKey.id).toBe('61506b54a5b74079ba3e9d590c3b444a4ad5e0080119a9531ea59323aaabac24');
         expect(infrastructureKey.maySign('priceStatements')).toBe(false);
+
+    });
+
+    it('takes an entity in any spelling as one chain, and refuses a checkpoint naming two statements of one sequence (WWCP_POI 4680d99)', () => {
+
+        const checkpoint4  = defined(checkpoint(4));
+        const statements   = parsePriceStatements(readJSON('published/QA-checkpoint-4-priceStatements.json'));
+        const first        = defined(statements.find(statement => statement.entityId === 'DE*GEF*E1*1' && statement.sequence === 0));
+        const current      = PriceStatement.parse((readJSON('published/QA-priceStatements-DE_GEF_E1_1.json') as JSONArray)[0]);
+
+        // DE*GEF*E1*1 and DE*GEF*E11 are one EVSE, without '*', whitespace around it, or case: one chain (12.1).
+        expect(priceStatementChainOf('EVSE', ' de*gef*e11 ')).toBe(priceStatementChainOf('EVSE', 'DE*GEF*E1*1'));
+        expect(priceStatementChainOf('ChargingStation', 'DE*GEF*E1*1')).not.toBe(priceStatementChainOf('EVSE', 'DE*GEF*E1*1'));
+        expect(PriceStatement.parse({ ...current.json, entityId: 'DE*GEF*E11' }).follows(first)).toBe(true);
+
+        // A sequence is at most 2^53 - 1, the highest integer every JSON reader holds exactly.
+        expect(PriceStatement.parse({ ...current.json, sequence: MAX_PRICE_STATEMENT_SEQUENCE }).sequence).toBe(9007199254740991);
+        expect(() => PriceStatement.parse({ ...current.json, sequence: MAX_PRICE_STATEMENT_SEQUENCE + 1 })).toThrow('The sequence of a price statement must be a whole number from 0 to 9007199254740991!');
+
+        // A checkpoint naming the first statement of DE*GEF*E1*1 and another one of its sequence, spelled otherwise: a split
+        // view. Given twice, one statement is one statement.
+        const other        = PriceStatement.parse({ ...first.json, entityId: 'DE*GEF*E11' });
+        const naming       = (named: PriceStatement[]): Checkpoint =>
+            Object.assign(Object.create(Object.getPrototypeOf(checkpoint4) as object) as Checkpoint, checkpoint4, { priceStatements: priceStatementsRoot(named, checkpoint4.identificationHash) });
+
+        expect(() => { verifyCheckpointPriceStatements(naming([ ...statements, other ]), [ ...statements, other ]); })
+            .toThrow(`The checkpoint '${checkpoint4.id}' names two price statements 0 of the EVSE 'DE*GEF*E11', ${first.digestHex()} and ${other.digestHex()}: a split view!`);
+        verifyCheckpointPriceStatements(naming([ ...statements, first ]), [ ...statements, first ]);
 
     });
 

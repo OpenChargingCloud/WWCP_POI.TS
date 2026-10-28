@@ -59,7 +59,7 @@ export { KeyStatement, KEY_STATEMENT_CONTEXT, type KeyStatementSignature } from 
 export { SigningKeyCertificate, SIGNING_KEY_CERTIFICATE_CONTEXT } from './proofs/signingKeyCertificate.ts';
 export { Attestation, ATTESTATION_CONTEXT }                  from './proofs/attestation.ts';
 export { ChargingStationProof, PROOF_CONTEXT, type VerifiedProof } from './proofs/stationProof.ts';
-export { PriceStatement, PriceStatementProof, parsePriceStatements, priceStatementsRoot, verifyCheckpointPriceStatements, verifyPriceStatementChain } from './proofs/priceStatement.ts';
+export { MAX_PRICE_STATEMENT_SEQUENCE, PriceStatement, PriceStatementProof, parsePriceStatements, priceStatementChainOf, priceStatementsRoot, verifyCheckpointPriceStatements, verifyPriceStatementChain } from './proofs/priceStatement.ts';
 
 // History
 export { Commit, SignatureRoles, COMMIT_CONTEXT, type RoleSignature } from './history/commit.ts';

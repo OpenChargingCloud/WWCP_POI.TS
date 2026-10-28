@@ -99,6 +99,23 @@ describe('The proof of a charging station, as an app checks it', () => {
 
     });
 
+    it('refuses a price statement naming its entity otherwise than the roaming network does (WWCP_POI 4680d99)', () => {
+
+        const station     = verifyChargingStation(anchor, readJSON('proofs/QA-proof-station-DE_GEF_S1.json'), { at: AT });
+        const statements  = readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json') as JSONObject[];
+        const spelled     = (entityId: string): JSONObject[] => statements.map(statement => ({ ...statement, entityId }));
+
+        // DE*GEF*E11 is DE*GEF*E1*1, but not as QA writes it: another spelling would be a chain of its own to everybody
+        // comparing texts. Refused before its signature is looked at.
+        expect(() => verifyPriceStatements(station, spelled('DE*GEF*E11'), { at: AT }))
+            .toThrow("The price statement names the EVSE 'DE*GEF*E1*1' as 'DE*GEF*E11': it has to name it as the roaming network does!");
+        expect(() => verifyPriceStatements(station, spelled('de*gef*e1*1'), { at: AT }))
+            .toThrow("The price statement names the EVSE 'DE*GEF*E1*1' as 'de*gef*e1*1': it has to name it as the roaming network does!");
+        expect(() => verifyPriceStatements(station, spelled('DE*GEF*E3*1'), { at: AT }))
+            .toThrow("The price statement of the EVSE 'DE*GEF*E3*1' is none of the station, its pool or its EVSEs!");
+
+    });
+
     it('takes a price statement no longer than its key, and an attestation for at most a day (csharp-review 7)', () => {
 
         const station     = verifyChargingStation(anchor, readJSON('proofs/QA-proof-station-DE_GEF_S1.json'), { at: AT });

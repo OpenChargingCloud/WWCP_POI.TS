@@ -20,7 +20,7 @@ import { asText, get, isArray, isObject, type JSONObject, type JSONValue } from 
 import type { ETag }                        from '../etags.ts';
 import { POIPublicKey }                     from '../keys.ts';
 import { ChargingStationProof }             from '../proofs/stationProof.ts';
-import { PriceStatement, verifyPriceStatementChain } from '../proofs/priceStatement.ts';
+import { PriceStatement, priceStatementChainOf, verifyPriceStatementChain } from '../proofs/priceStatement.ts';
 import type { TrustAnchor }                 from '../proofs/trustAnchor.ts';
 import { POIError }                         from '../errors.ts';
 
@@ -395,11 +395,12 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
 
     const time       = timeOf(options.at);
     const operatorId = asText(station.operator['@id']);
-    const entities   = new Map<string, { type: string, tariffs: Set<string> | undefined }>([
-        [ `ChargingPool:${asText(station.chargingPool['@id'])}`,     { type: 'ChargingPool',    tariffs: undefined } ],
-        [ `ChargingStation:${asText(station.chargingStation['@id'])}`, { type: 'ChargingStation', tariffs: undefined } ],
-        ...station.evses.map(evse => [ `EVSE:${asText(evse['@id'])}`, { type: 'EVSE', tariffs: new Set((station.tariffs.get(asText(evse['@id'])) ?? []).map(tariff => asText(tariff['@id']))) } ] as const),
-    ]);
+    // By the chains of their price statements: an entity in any spelling (12.1).
+    const entities   = new Map([
+        { type: 'ChargingPool',    id: asText(station.chargingPool['@id']),    tariffs: undefined },
+        { type: 'ChargingStation', id: asText(station.chargingStation['@id']), tariffs: undefined },
+        ...station.evses.map(evse => ({ type: 'EVSE', id: asText(evse['@id']), tariffs: new Set((station.tariffs.get(asText(evse['@id'])) ?? []).map(tariff => asText(tariff['@id']))) })),
+    ].map((entity): [ string, { type: string, id: string, tariffs: Set<string> | undefined } ] => [ priceStatementChainOf(entity.type, entity.id), entity ]));
 
     const byEntity   = new Map<string, PriceStatement[]>();
     const signedWith = new Map<string, POIPublicKey>();
@@ -408,10 +409,14 @@ export function verifyPriceStatements(station:     VerifiedChargingStation,
 
         const statement = PriceStatement.parse(item);
         const key       = `${statement.entityType}:${statement.entityId}`;
-        const entity    = entities.get(key);
+        const entity    = entities.get(statement.chain);
 
         if (entity === undefined)
             throw new POIError(`The price statement of the ${statement.entityType} '${statement.entityId}' is none of the station, its pool or its EVSEs!`);
+
+        // One spelling per entity, the roaming network's: another one would be a chain of its own to everybody comparing texts.
+        if (entity.id !== statement.entityId)
+            throw new POIError(`The price statement names the ${statement.entityType} '${entity.id}' as '${statement.entityId}': it has to name it as the roaming network does!`);
 
         signedWith.set(statement.digestHex(), statement.verify(station.roamingNetwork.id, operatorId, station.operatorSigningKeys));
 

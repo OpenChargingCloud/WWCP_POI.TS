@@ -33,7 +33,7 @@ const idOf = (entity: JSONObject): string =>
     typeof entity['@id'] === 'string' ? entity['@id'] : '';
 
 /** A text as `StringComparison.OrdinalIgnoreCase` compares it: every character by its simple upper case. */
-const ignoringCase = (text: string): string =>
+export const ignoringCase = (text: string): string =>
     Array.from(text, character => {
         const upper = character.toUpperCase();
         return upper.length === character.length ? upper : character;

@@ -64,6 +64,17 @@ statement, of the same digest (csharp-review 2); `PriceStatement.sameSignedConte
 are those WWCPPOIConformanceTests generates for it, with a new run of the C# examples at `dbf39b0`
 (`tests/vectors/csharp-dbf39b0`).
 
+The price statements of an entity are one chain in whichever spelling they name it, as WWCP_POI keys them since
+`4680d99` (SPECIFICATION.md 12.1 to 12.3, `RoamingNetworkHistory.ChainOf`): by its type and its identification without
+`*`, whitespace around it, or case (`priceStatementChainOf`, `PriceStatement.chain`), so that `DE*GEF*E1*1` and
+`DE*GEF*E11` are one EVSE and a split view between them is seen. `follows` compares chains; `verifyPriceStatements`
+refuses a statement naming an entity of the station otherwise than the roaming network does, before its signature is
+looked at; `verifyCheckpointPriceStatements` refuses a checkpoint naming two statements of one entity and sequence with
+different digests, in the order of its tree, both in the words of WWCP_POI. A sequence is at most 2^53 − 1
+(`MAX_PRICE_STATEMENT_SEQUENCE`), as it was read here already. Not ported, as they bound what a server takes: a statement
+more than 1,000,000 beyond the current one of its entity, and the statements a server keeps per operator for its next
+checkpoint.
+
 The holders of a quorum are counted as the trust anchor names them, as WWCP_POI does since `3e32f48` (SPECIFICATION.md
 4.1, 8.6; csharp-review 1): a trust anchor names the keys per holder, the `@id` of its key or the array of the
 `@id`s of its keys (`TrustAnchor.holders`; in the URL the holders separated by `,`, the keys of one holder by `;`).
