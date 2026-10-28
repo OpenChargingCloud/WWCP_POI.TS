@@ -231,3 +231,9 @@ WWCP_POI, and written again as WWCP_POI wrote them. EM-LAB is a member of QA sin
 `examples/validate-examples.ts` checks example A14 as its `Validate()` does, and starts from the snapshots of examples A4,
 A5 and A11 anchored in the trust anchor, from the genesis and the live snapshot of example A12 unanchored, as the
 examples do: since the anchored start it refused them.
+
+The golden vectors hold the QI-Digital documents of example A14 too (`tests/vectors/poi-qidigital.json`), run in
+`tests/conformance.test.ts` as WWCPPOIConformanceTests runs them against WWCP_POI: the four documents verified against
+QA, the declaration of conformity against the certificates it names, both certificates covering the meter of
+DE*GEF*E2*1, and 35 refusals, each with its control, of documents or of QA patched. A text of a calibration certificate
+of no language, or one that is no text, which WWCP_POI takes, is refused here: deviation D10 there.

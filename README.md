@@ -241,8 +241,9 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
 
 - `tests/vectors/poi-*.json`, the golden vectors: canonical JSON and CBOR, Base64 and Base45, the examples of section 6
   of the specification, station proofs of its example network signed with its keys against a trust anchor, what to
-  calculate of the documents of the run below, documents to refuse, and small histories WWCPPOIConformanceTests signs
-  itself, replayed step by step (the format: the
+  calculate of the documents of the run below, documents to refuse, the QI-Digital documents of example A14 of that run
+  taken and refused as WWCP_POI checks them, and small histories WWCPPOIConformanceTests signs itself, replayed step by
+  step (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
 - `tests/vectors/csharp-33447ac`, what one run of the C# examples of WWCP_POI at commit `33447ac` published (public data
   only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same

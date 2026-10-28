@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    applies, canonical, deviates, encodings, histories, history, historyDocument, patched, refusals, runDocument, runText,
-    specification, trust, type AnchoredSnapshotCase, type DocumentStep, type RefusalVector, type ReplayStep,
+    applies, canonical, deviates, encodings, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
+    refusals, runDocument, runText, specification, trust, type AnchoredSnapshotCase, type DocumentStep, type QIDigitalCase,
+    type QIDigitalVector, type RefusalVector, type ReplayStep,
 } from './conformance.ts';
 
 import { parseJSON, parseJSONObject }       from '../src/json/parse.ts';
 import { canonicalJSON, canonicalJSONBytes } from '../src/json/canonical.ts';
-import { isArray, type JSONValue }          from '../src/json/value.ts';
+import { isArray, isObject, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { deterministicCbor }                from '../src/encoding/cbor.ts';
 import { fromBase45, fromBase64, fromHex, toBase45, toHex } from '../src/encoding/text.ts';
 import { hash, type HashAlgorithm }         from '../src/crypto/hash.ts';
@@ -15,6 +16,7 @@ import { verifySignature }                  from '../src/crypto/signature.ts';
 import { POIPublicKey }                     from '../src/keys.ts';
 import { etagToText }                       from '../src/etags.ts';
 import { RoamingNetwork }                   from '../src/network/roamingNetwork.ts';
+import { effectiveChargingStationOperator } from '../src/network/effective.ts';
 import { Commit }                           from '../src/history/commit.ts';
 import { Checkpoint, CheckpointProof }      from '../src/history/checkpoint.ts';
 import { History, type SnapshotOptions }    from '../src/history/history.ts';
@@ -22,6 +24,10 @@ import { PriceStatement }                   from '../src/proofs/priceStatement.t
 import { TrustAnchor }                      from '../src/proofs/trustAnchor.ts';
 import { ChargingStationProof }             from '../src/proofs/stationProof.ts';
 import { verifyChargingStation }            from '../src/verifier/chargingStation.ts';
+import { DigitalCalibrationCertificate }    from '../src/qidigital/calibrationCertificate.ts';
+import { DigitalCertificateOfConformity }   from '../src/qidigital/certificateOfConformity.ts';
+import { DigitalDeclarationOfConformity }   from '../src/qidigital/declarationOfConformity.ts';
+import { QIDigitalItem }                    from '../src/qidigital/parts.ts';
 
 
 // The golden vectors of WWCPPOIConformanceTests (tests/conformance.ts says where they come from): what this library and
@@ -414,6 +420,105 @@ describe('Golden vectors: what must be refused', () => {
                 expect(() => { check(vector, document); }).toThrow();
             else
                 expect(() => { check(vector, document); }).toThrow(vector.reason);
+
+        });
+
+});
+
+
+describe('Golden vectors: the QI-Digital documents of example A14, checked as WWCP_POI checks them', () => {
+
+    /** What the case of a vector names besides its document: an error of the vector when it names none, no refusal. */
+    const need = <T>(value: T | undefined, what: string): T => {
+        if (value === undefined)
+            throw new Error(`The case names no ${what}!`);
+        return value;
+    };
+
+    // The roaming network and the certificate of conformity of a case are no documents under test: they must read.
+    const networkOf      = (given: QIDigitalCase): RoamingNetwork =>
+        RoamingNetwork.parse(patched(need(given.network, 'roaming network')));
+
+    const certificateOf  = (given: QIDigitalCase): DigitalCertificateOfConformity =>
+        DigitalCertificateOfConformity.parse(patched(need(given.certificate, 'certificate of conformity')));
+
+    /** The energy meter of the EVSE of the case, as its roaming network has it at runtime: of its effective charging station operator (8.1). */
+    function meterOf(given: QIDigitalCase): QIDigitalItem {
+
+        const operatorId  = need(given.chargingStationOperatorId, 'charging station operator');
+        const operator    = need(networkOf(given).chargingStationOperator(operatorId), `charging station operator '${operatorId}'`);
+        const objects     = (value: JSONValue | undefined): JSONObject[] => isArray(value) ? value.filter(isObject) : [];
+        const meter       = objects(effectiveChargingStationOperator(operator)['chargingPools']).
+                                flatMap(pool    => objects(pool['chargingStations'])).
+                                flatMap(station => objects(station['EVSEs'])).
+                                find(evse       => evse['@id'] === given.evseId)?.['energyMeter'];
+
+        if (!isObject(meter))
+            throw new Error(`The roaming network of the case has no energy meter of the EVSE '${given.evseId ?? ''}'!`);
+
+        return QIDigitalItem.ofEnergyMeter(meter);
+
+    }
+
+    /** The check of the vector, of the given case: read, then verified, checked against the certificate, or covering the meter. Throws when it is refused. */
+    function check(vector: QIDigitalVector, given: QIDigitalCase): void {
+
+        const document = qiDigitalDocument(given.document);
+
+        switch (vector.check) {
+
+            case 'verify': {
+                const network  = networkOf(given);
+                const at       = need(given.at, 'time');
+                switch (vector.kind) {
+                    case 'certificateOfConformity':  DigitalCertificateOfConformity.parse(document).verify(network, at);  return;
+                    case 'declarationOfConformity':  DigitalDeclarationOfConformity.parse(document).verify(network, at);  return;
+                    case 'calibrationCertificate':   DigitalCalibrationCertificate.parse(document).verify(network, at);   return;
+                }
+                throw new Error(`A QI-Digital document of the kind '${String(vector.kind)}' is unknown to these tests: the vector files are newer than the tests!`);
+            }
+
+            // No signature is looked at: the certificate's own verify says whether it is valid.
+            case 'certificate':
+                DigitalDeclarationOfConformity.parse(document).verifyCertificate(certificateOf(given));
+                return;
+
+            case 'cover':
+                DigitalCertificateOfConformity.parse(document).cover(meterOf(given));
+                return;
+
+        }
+
+        throw new Error(`The QI-Digital check '${String(vector.check)}' is unknown to these tests: the vector files are newer than the tests!`);
+
+    }
+
+    it('takes the documents of the frozen run of poi-history.json', () => {
+        expect(qiDigital.run).toBe(history.run);
+    });
+
+    for (const vector of qiDigital.vectors.filter(applies))
+        it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
+
+            if (vector.expected === 'accepted') {
+                check(vector, vector);
+                return;
+            }
+
+            if (vector.control === undefined)
+                throw new Error(`The refusal ${vector.id} names no control`);
+
+            // The control: the same check of the documents of the run, against QA as published, taken.
+            check(vector, vector.control);
+
+            // Refused for what the vector is about, where it names it; a known deviation pinned: once it is refused, the
+            // marker goes in WWCPPOIConformanceTests.
+            if (deviates(vector))
+                check(vector, vector);
+            else if (vector.reason === undefined)
+                expect(() => { check(vector, vector); }).toThrow();
+            else
+                expect(() => { check(vector, vector); }).toThrow(vector.reason);
 
         });
 
