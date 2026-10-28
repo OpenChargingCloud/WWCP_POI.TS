@@ -218,9 +218,11 @@ a charging station as `DE*GEF*S1`, `mainSigner` false, an empty list or text and
 Checked against a roaming network as WWCP_POI checks them: the issuer a party of it, its key one that may sign the
 document and valid when it signed and at `at`; the notified body with its number, notified for the legislation; the
 model, its manufacturer, revisions and versions; the charging station or energy meter of a calibration certificate as it
-is at runtime, with what its templates give it. And against each other: a declaration and each certificate it names, a
-certificate and the item of a calibration certificate it covers. Where WWCP_POI leaves out of a text in languages what is
-no text or of no language it knows, silently, so that it travels unsigned with a signed document, it is refused here.
+is at runtime, with what its templates give it, and with the serial number the roaming network gives it, not the one the
+certificate names (csharp-review 23). And against each other: a declaration and each certificate it names, a certificate
+and the item of a calibration certificate it covers. A text in languages of no language, one that is no text and a
+language given twice are refused, not left out, as WWCP_POI refuses them since `bbe8fb8`: left out, they would travel
+unsigned with a signed document.
 A URL is read as Hermod reads it as far as a document URL needs it: trimmed, https unless it names a scheme, of http or
 https with a host.
 
@@ -235,5 +237,7 @@ examples do: since the anchored start it refused them.
 The golden vectors hold the QI-Digital documents of example A14 too (`tests/vectors/poi-qidigital.json`), run in
 `tests/conformance.test.ts` as WWCPPOIConformanceTests runs them against WWCP_POI: the four documents verified against
 QA, the declaration of conformity against the certificates it names, both certificates covering the meter of
-DE*GEF*E2*1, and 35 refusals, each with its control, of documents or of QA patched. A text of a calibration certificate
-of no language, or one that is no text, which WWCP_POI takes, is refused here: deviation D10 there.
+DE*GEF*E2*1, a calibration certificate of the charging station DE*GEF*S2, signed by the generator with a key QA patched
+gives EM-LAB, and 38 refusals, each with its control, of documents or of QA patched. Both implementations refuse a text
+of no language, or one that is no text (D10 there, fixed in WWCP_POI `bbe8fb8`), and the calibration certificate of a
+station against one of another serial number, or of none (csharp-review 23).

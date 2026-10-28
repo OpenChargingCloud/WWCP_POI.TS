@@ -50,11 +50,20 @@ const signingKey = (signer: Key, usage: string, notAfter?: string): JSONObject =
 const byId = (left: JSONObject, right: JSONObject): number =>
     asText(left['@id']) < asText(right['@id']) ? -1 : 1;
 
-/** QA of the run: the PTB with a key for certificates and one for itself, SAALE with one for its models, EM-LAB with one for its certificates. */
-function network(ptbCertificatesNotAfter?: string): RoamingNetwork {
+/**
+ * QA of the run: the PTB with a key for certificates and one for itself, SAALE with one for its models, EM-LAB with one
+ * for its certificates; the charging station DE*GEF*S2 with the given serial number, which QA does not give it, or none.
+ */
+function network(ptbCertificatesNotAfter?: string, s2SerialNumber: string | null = 'GD-AC44-0002'): RoamingNetwork {
 
     const json  = clone(readJSON('published/QA.json') as JSONObject);
     delete json['eTags'];
+
+    if (s2SerialNumber !== null) {
+        const gef      = defined((json['chargingStationOperators'] as JSONObject[]).find(operator => operator['@id'] === 'DE*GEF'));
+        const stations = (gef['chargingPools'] as JSONObject[]).flatMap(pool => pool['chargingStations'] as JSONObject[]);
+        defined(stations.find(station => station['@id'] === 'DE*GEF*S2'))['serialNumber'] = s2SerialNumber;
+    }
 
     const bodies = json['conformityAssessmentBodies'] as JSONObject[];
     const ptb    = defined(bodies.find(body => body['@id'] === 'PTB'));
@@ -532,8 +541,18 @@ describe('QI-Digital: refused documents', () => {
         expect(station.item.text).toBe("charging station 'DE*GEF*S2'");
 
         expect(() => { typeExamination().cover(station.item); }).toThrow("The charging station 'DE*GEF*S2' is no energy meter!");
-        expect(() => { calibration({ item: { type: 'ChargingStation', id: 'DE*GEF*S2', manufacturerId: 'GraphDefined', modelId: 'GD-AC44' } }).verify(qa, T0); })
+        expect(() => { calibration({ item: { type: 'ChargingStation', id: 'DE*GEF*S2', manufacturerId: 'GraphDefined', modelId: 'GD-AC44', serialNumber: 'GD-AC44-0002' } }).verify(qa, T0); })
             .toThrow("The charging station 'DE*GEF*S2' is of the hardware revision '1.0', not ''!");
+
+        // Its serial number is the one QA gives it, not the one the certificate names: a station replaced by another one
+        // of the same identification, model and versions, or one without a serial number, is not the one calibrated
+        // (csharp-review 23).
+        const replaced = calibration({ item: { type: 'ChargingStation', id: 'DE*GEF*S2', manufacturerId: 'GraphDefined', modelId: 'GD-AC44', serialNumber: 'GD-AC44-0003',
+                                              hardwareRevision: '1.0', firmwareVersion: '1.8.2' } });
+        expect(() => { replaced.verify(qa, T0); })
+            .toThrow("The charging station 'DE*GEF*S2' has the serial number 'GD-AC44-0002', not 'GD-AC44-0003'!");
+        expect(() => { station.verify(network(undefined, null), T0); })
+            .toThrow("The charging station 'DE*GEF*S2' has the serial number '', not 'GD-AC44-0002'!");
 
     });
 

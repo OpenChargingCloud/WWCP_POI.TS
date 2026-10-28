@@ -539,14 +539,14 @@ export class QIDigitalItem {
 
     }
 
-    /** The given charging station as it is, e.g. at runtime with what its templates give it, with the given serial number. */
-    public static ofChargingStation(station: JSONObject, serialNumber?: string): QIDigitalItem {
+    /** The given charging station as it is, e.g. at runtime with what its templates give it, with its serial number. */
+    public static ofChargingStation(station: JSONObject): QIDigitalItem {
         const parsed = chargingStationIdOf(textOf(station, '@id') ?? '');
         return new QIDigitalItem('ChargingStation',
                                  parsed === undefined ? idOf(textOf(station, '@id') ?? '') ?? '' : chargingStationIdText(parsed),
                                  idText(station, 'manufacturerId'),
                                  idText(station, 'modelId'),
-                                 serialNumber,
+                                 textOf(station, 'serialNumber'),
                                  textOf(station, 'hardwareRevision'),
                                  textOf(station, 'firmwareVersion'));
     }
@@ -576,7 +576,7 @@ export class QIDigitalItem {
             const station  = id === undefined ? undefined : effectiveChargingStationOf(network, id);
             if (station === undefined)
                 throw new POIError(`The ${this.text} is none of the roaming network '${network.id}'!`);
-            actual = QIDigitalItem.ofChargingStation(station, this.serialNumber);
+            actual = QIDigitalItem.ofChargingStation(station);
         }
 
         else {

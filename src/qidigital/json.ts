@@ -407,10 +407,10 @@ const LANGUAGES = new Set(`unknown aa ab ae af ak am an ar as av ay az ba be bg 
                            tl tn to tr ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo za zh zu`.split(/\s+/u));
 
 /**
- * An optional text in languages (`POIJSON.TryParseI18N`): an object of languages and their texts, each language once, as
- * Styx names it, written as it writes it, in lower case. Empty, it is none, as WWCP_POI leaves it out. Where WWCP_POI
- * leaves out silently what is no text, or of no language it knows (`ImmutableI18NString.TryParse`), it is refused here:
- * unsigned, it would travel with a signed document.
+ * An optional text in languages (`QIDigitalJSON.TryParseI18N`): an object of languages and their texts, each language
+ * once, as Styx names it, written as it writes it, in lower case. Empty, it is none, as WWCP_POI leaves it out. What is no
+ * text, or of no language Styx knows, is refused, as WWCP_POI refuses it since `bbe8fb8`: left out, it would be no part
+ * of what is signed, and travel with a signed document unsigned.
  */
 export function optionalI18N(json: JSONObject, property: string, description: string): I18NText | undefined {
 
