@@ -55,6 +55,16 @@ const isDotNetBase64 = (text: string): boolean => {
     return significant.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/u.test(significant);
 };
 
+/** Whether the given bytes are deterministic CBOR, written again as they are. */
+const isDeterministicCbor = (bytes: Uint8Array): boolean => {
+    try {
+        return bytesEqual(encodeCbor(decodeDeterministicCbor(bytes)), bytes);
+    }
+    catch {
+        return false;
+    }
+};
+
 
 /**
  * A key of a party (SPECIFICATION.md section 4.1): a public COSE key, identified by its SHA-256 COSE Key Thumbprint
@@ -129,13 +139,15 @@ export class POIPublicKey {
 
         try {
             key = CoseKey.parse(keyBytes);
-            // Deterministic CBOR only: the bytes are part of what is hashed and signed.
-            if (!bytesEqual(encodeCbor(decodeDeterministicCbor(keyBytes)), keyBytes))
-                throw new POIError('not deterministic CBOR');
         }
         catch (e) {
             throw new POIError(`Invalid COSE key: ${e instanceof Error ? e.message : String(e)}`);
         }
+
+        // The key as the content holds it (SPECIFICATION.md 2 and 4.1): the deterministic CBOR of its COSE key, not another
+        // CBOR of the same key, which would be written again as another text than the one hashed.
+        if (!isDeterministicCbor(keyBytes))
+            throw new POIError(`Invalid COSE key: Invalid deterministic CBOR: the key of the public key '${id}' is not written as the deterministic CBOR of its COSE key!`);
 
         if (key.isPrivate)
             throw new POIError('A public key must not contain private parts!');

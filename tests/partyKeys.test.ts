@@ -180,6 +180,10 @@ describe('A key, in the words and order of POIPublicKey.TryParse of WWCP_POI3', 
 
         expect(refused(keyOf(json => { json['key'] = base64([ 0xA0 ]); }))).toBe('Invalid COSE key: A COSE key must have a key type!');
 
+        // Another CBOR of the same key, its label 1 in two bytes: written again, another text than the one hashed.
+        expect(refused(keyOf(json => { json['key'] = base64([ 0xA4, 0x18, 0x01, ...bytesOf(json['key'] as string).slice(2) ]); }, true)))
+            .toBe("Invalid COSE key: Invalid deterministic CBOR: the key of the public key 'cf625038413602ec823b9fe229c115369bcad98370c23bccb04d5d3bb4612573' is not written as the deterministic CBOR of its COSE key!");
+
         // EC2 with d: a private key, whatever its identification.
         const withPrivatePart = (json: JSONObject): void => {
             json['key'] = base64([ 0xA5, ...bytesOf(json['key'] as string).slice(1), 0x23, 0x58, 0x20, ...Array<number>(32).fill(7) ]);

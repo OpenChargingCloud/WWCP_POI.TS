@@ -25,6 +25,12 @@ identifications unique within the network last. Checked against WWCP_POI3 itself
 for two refusals of one body at once, a key and its number. In a change set WWCP_POI names the change ("Change 0: …"),
 this library refuses the version it leads to.
 
+The four vectors of WWCPPOIConformanceTests `d4a4928` vendored, `poi-refusals.json` of 93 vectors: a key of a party
+whose `notAfter` is written with an offset, as a date only or as null, and one whose key is another CBOR of the same
+COSE key. WWCP_POI refuses them too since `72df830` (D13 there, SPECIFICATION.md 2, Written forms), as this library did;
+the key not in deterministic CBOR now in its words: "Invalid COSE key: Invalid deterministic CBOR: the key of the public
+key '…' is not written as the deterministic CBOR of its COSE key!"
+
 
 ## 0.1.0 (2026-10-29)
 
