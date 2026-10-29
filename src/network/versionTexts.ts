@@ -60,15 +60,15 @@ const shown = (value: JSONValue): string =>
     typeof value === 'string' ? value : JSON.stringify(value);
 
 /**
- * The error, when the given entity names a hardware revision, firmware version or serial number `TryParseText` refuses
- * (`Invalid hardware revision ' 1.0'!`): of a charging station, an energy meter and their templates.
+ * The error, when the given entity names a hardware revision, firmware version or serial number `TryParseText` refuses,
+ * in its words (`Invalid hardware revision ' 1.0'!`): of a charging station, an energy meter and their templates.
  */
-function invalidText(what: string, entity: JSONObject, properties: Readonly<Record<string, string>>): string | undefined {
+function invalidText(entity: JSONObject, properties: Readonly<Record<string, string>>): string | undefined {
 
     for (const [property, description] of Object.entries(properties)) {
         const value = get(entity, property);
         if (value !== undefined && !isText(value))
-            return `The ${what} '${idOf(entity)}': Invalid ${description} '${shown(value)}'!`;
+            return `Invalid ${description} '${shown(value)}'!`;
     }
 
     return undefined;
@@ -82,15 +82,16 @@ export const MODEL_VERSIONS = { hardwareRevisions: 'hardware revision', firmware
 
 /**
  * The error, when the given holder names a hardware revision or firmware version twice, which `ModelVersions.Of` refuses
- * once both were read (`A hardware revision of the charging station model 'GD-DC300' must not be given twice!`): a model,
- * a certificate or an energy meter a certificate was issued with, `whose` in words.
+ * once both were read, as an argument of its `Versions` (`A hardware revision of the charging station model 'GD-DC300'
+ * must not be given twice! (Parameter 'Versions')`): a model, a certificate or an energy meter a certificate was issued
+ * with, `whose` in words.
  */
 export function versionTwice(holder: JSONObject, whose: string): string | undefined {
 
     for (const [property, description] of Object.entries(MODEL_VERSIONS)) {
         const versions = get(holder, property);
         if (isArray(versions) && new Set(versions).size !== versions.length)
-            return `A ${description} of ${whose} must not be given twice!`;
+            return `A ${description} of ${whose} must not be given twice! (Parameter 'Versions')`;
     }
 
     return undefined;
@@ -99,9 +100,10 @@ export function versionTwice(holder: JSONObject, whose: string): string | undefi
 
 /**
  * The error, when the given model names a hardware revision or firmware version `TryParseIds` refuses, or then one twice,
- * which `ModelVersions.Of` refuses: of a charging station or energy meter model.
+ * which `ModelVersions.Of` refuses as the constructor of the model, which its TryParse names: of a charging station
+ * model or an energy meter model, `kind` with its article.
  */
-function invalidModelVersion(what: string, model: JSONObject): string | undefined {
+function invalidModelVersion(what: string, kind: string, model: JSONObject): string | undefined {
 
     for (const [property, description] of Object.entries(MODEL_VERSIONS)) {
 
@@ -111,16 +113,18 @@ function invalidModelVersion(what: string, model: JSONObject): string | undefine
             continue;
 
         if (!isArray(versions))
-            return `The ${what} '${idOf(model)}': The ${description} must be a JSON array!`;
+            return `The ${description} must be a JSON array!`;
 
         const invalid = versions.find(version => !isText(version));
 
         if (invalid !== undefined)
-            return `The ${what} '${idOf(model)}': Invalid ${description} '${shown(invalid)}'!`;
+            return `Invalid ${description} '${shown(invalid)}'!`;
 
     }
 
-    return versionTwice(model, `the ${what} '${idOf(model)}'`);
+    const twice = versionTwice(model, `the ${what} '${idOf(model)}'`);
+
+    return twice === undefined ? undefined : `The given JSON representation of ${kind} is invalid: ${twice}`;
 
 }
 
@@ -142,11 +146,11 @@ export function invalidVersionText(content: JSONObject): string | undefined {
     const first = <T>(items: readonly T[], error: (item: T) => string | undefined): string | undefined =>
         items.map(error).find(found => found !== undefined);
 
-    return first(stations,                                                                         station  => invalidText('charging station',          station,  DEVICE_TEXTS))   ??
-           first(children(operators, 'chargingStationTemplates'),                                  template => invalidText('charging station template', template, TEMPLATE_TEXTS)) ??
-           first(energyMetersOf(operators, gridOperators),                                         meter    => invalidText('energy meter',              meter,    DEVICE_TEXTS))   ??
-           first(children([ ...operators, ...gridOperators ], 'energyMeterTemplates'),             template => invalidText('energy meter template',     template, TEMPLATE_TEXTS)) ??
-           first(children(objectsOf(get(content, 'chargingStationManufacturers')), 'chargingStationModels'), model => invalidModelVersion('charging station model', model)) ??
-           first(children(objectsOf(get(content, 'energyMeterManufacturers')),     'energyMeterModels'),     model => invalidModelVersion('energy meter model',     model));
+    return first(stations,                                                                         station  => invalidText(station,  DEVICE_TEXTS))   ??
+           first(children(operators, 'chargingStationTemplates'),                                  template => invalidText(template, TEMPLATE_TEXTS)) ??
+           first(energyMetersOf(operators, gridOperators),                                         meter    => invalidText(meter,    DEVICE_TEXTS))   ??
+           first(children([ ...operators, ...gridOperators ], 'energyMeterTemplates'),             template => invalidText(template, TEMPLATE_TEXTS)) ??
+           first(children(objectsOf(get(content, 'chargingStationManufacturers')), 'chargingStationModels'), model => invalidModelVersion('charging station model', 'a charging station model', model)) ??
+           first(children(objectsOf(get(content, 'energyMeterManufacturers')),     'energyMeterModels'),     model => invalidModelVersion('energy meter model',     'an energy meter model',     model));
 
 }

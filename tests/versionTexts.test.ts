@@ -16,8 +16,9 @@ import { RoamingNetwork, ROAMING_NETWORK_CONTEXT } from '../src/network/roamingN
 const CREATED  = '2026-01-01T00:00:00.000Z';
 const T0       = '2026-10-26T12:00:00.000Z';
 
+/** An entity, named as WWCP_POI writes a party of its own making otherwise. */
 const entity = (id: string, more: JSONObject = {}): JSONObject =>
-    ({ '@id': id, created: CREATED, lastChange: CREATED, ...more });
+    ({ '@id': id, name: { en: id }, created: CREATED, lastChange: CREATED, ...more });
 
 /** A roaming network of the given parties, without a roaming network operator, without ETags. */
 const network = (parties: JSONObject): JSONObject =>
@@ -43,7 +44,7 @@ const stationModel = (more: JSONObject): JSONObject =>
 const certificate = (more: JSONObject): JSONObject =>
     ({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB-2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300',
                                                                        hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.4.1' ],
-                                                                       verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], ...more } ] }) ] });
+                                                                       verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more } ] }) ] });
 
 
 describe('Hardware revisions, firmware versions and serial numbers', () => {
@@ -54,22 +55,22 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
             .not.toThrow();
 
         expect(() => read({ chargingStationOperators: [ gef({ serialNumber: ' S-1' }) ] }))
-            .toThrow("The charging station 'DE*GEF*S1': Invalid serial number ' S-1'!");
+            .toThrow("Invalid serial number ' S-1'!");
 
         expect(() => read({ chargingStationOperators: [ gef({ hardwareRevision: '' }) ] }))
-            .toThrow("The charging station 'DE*GEF*S1': Invalid hardware revision ''!");
+            .toThrow("Invalid hardware revision ''!");
 
         expect(() => read({ chargingStationOperators: [ gef({}, { firmwareVersion: '1.2\n' }) ] }))
-            .toThrow("The energy meter 'meter-1': Invalid firmware version '1.2\n'!");
+            .toThrow("Invalid firmware version '1.2\n'!");
 
         expect(() => read({ chargingStationOperators: [ gef({}, {}, { chargingStationTemplates: [ entity('dc', { firmwareVersion: '   ' }) ] }) ] }))
-            .toThrow("The charging station template 'dc': Invalid firmware version '   '!");
+            .toThrow("Invalid firmware version '   '!");
 
         expect(() => read({ gridOperators: [ entity('DE*NET', { energyMeterTemplates: [ entity('grid', { hardwareRevision: 3 }) ] }) ] }))
-            .toThrow("The energy meter template 'grid': Invalid hardware revision '3'!");
+            .toThrow("Invalid hardware revision '3'!");
 
         expect(() => read({ gridOperators: [ entity('DE*NET', { gridConnectionPoints: [ { '@id': 'connection-1', energyMeter: entity('grid-meter', { serialNumber: 'G-1 ' }) } ] }) ] }))
-            .toThrow("The energy meter 'grid-meter': Invalid serial number 'G-1 '!");
+            .toThrow("Invalid serial number 'G-1 '!");
 
     });
 
@@ -80,7 +81,7 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
 
         // U+0085 is whitespace to Char.IsWhiteSpace, U+FEFF is not, where String.prototype.trim takes it the other way round.
         expect(() => read({ chargingStationOperators: [ gef({ firmwareVersion: '2.4.1\u0085' }) ] }))
-            .toThrow("The charging station 'DE*GEF*S1': Invalid firmware version '2.4.1\u0085'!");
+            .toThrow("Invalid firmware version '2.4.1\u0085'!");
 
         expect(() => read({ chargingStationOperators: [ gef({ firmwareVersion: '﻿2.4.1' }) ] }))
             .not.toThrow();
@@ -96,17 +97,17 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
             .toThrow("A hardware revision of the charging station model 'GD-DC300' must not be given twice!");
 
         expect(() => read(stationModel({ firmwareVersions: [ '2.4.1', '2.4.2 ' ] })))
-            .toThrow("The charging station model 'GD-DC300': Invalid firmware version '2.4.2 '!");
+            .toThrow("Invalid firmware version '2.4.2 '!");
 
         expect(() => read(stationModel({ firmwareVersions: '2.4.1' })))
-            .toThrow("The charging station model 'GD-DC300': The firmware version must be a JSON array!");
+            .toThrow("The firmware version must be a JSON array!");
 
         expect(() => read({ energyMeterManufacturers: [ entity('EMH', { energyMeterModels: [ { '@id': 'eHZ', firmwareVersions: [ '1', '2', '1' ] } ] }) ] }))
             .toThrow("A firmware version of the energy meter model 'eHZ' must not be given twice!");
 
         // ModelVersions.Of takes the versions once both were read: an invalid firmware version before a hardware revision twice.
         expect(() => read(stationModel({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ ' 2.4.1' ] })))
-            .toThrow("The charging station model 'GD-DC300': Invalid firmware version ' 2.4.1'!");
+            .toThrow("Invalid firmware version ' 2.4.1'!");
 
     });
 
@@ -124,27 +125,27 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
             .toThrow("A firmware version of the certificate 'PTB-2026-0042' must not be given twice!");
 
         expect(() => read(certificate({ energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', hardwareRevisions: [ '1', '1' ] } ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: A hardware revision of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
+            .toThrow("energyMeters[0]: A hardware revision of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
 
         // In the order WWCP_POI reads them: the texts of the certificate, each energy meter, then the certificate's twice.
         expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ ' 2.4.1' ] })))
-            .toThrow("The certificate 'PTB-2026-0042': firmwareVersions[0]: Invalid text representation of a firmware version: ' 2.4.1'!");
+            .toThrow("firmwareVersions[0]: Invalid text representation of a firmware version: ' 2.4.1'!");
 
         expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ],
                                         energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', firmwareVersions: [ '1', '1' ] } ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: A firmware version of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
+            .toThrow("energyMeters[0]: A firmware version of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
 
         expect(() => read(certificate({ energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', hardwareRevisions: [ '1', '1' ], firmwareVersions: [ '1 ' ] } ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: firmwareVersions[0]: Invalid text representation of a firmware version: '1 '!");
+            .toThrow("energyMeters[0]: firmwareVersions[0]: Invalid text representation of a firmware version: '1 '!");
 
         expect(() => read(certificate({ hardwareRevisions: [ '1.0', ' 1.1' ] })))
-            .toThrow("The certificate 'PTB-2026-0042': hardwareRevisions[1]: Invalid text representation of a hardware revision: ' 1.1'!");
+            .toThrow("hardwareRevisions[1]: Invalid text representation of a hardware revision: ' 1.1'!");
 
         expect(() => read(certificate({ energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', firmwareVersions: [ '1', 2 ] } ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: firmwareVersions[1]: Expected an identifier string.");
+            .toThrow("energyMeters[0]: firmwareVersions[1]: Expected an identifier string.");
 
         expect(() => read(certificate({ firmwareVersions: '2.4.1' })))
-            .toThrow("The certificate 'PTB-2026-0042': firmwareVersions: expected an array.");
+            .toThrow("firmwareVersions: expected an array.");
 
     });
 
@@ -186,7 +187,7 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
             .toBe(T0);
 
         expect(() => applyChangeSet(before, updating('S-2 '), { checkOwnership: false }))
-            .toThrow("The charging station 'DE*GEF*S1': Invalid serial number 'S-2 '!");
+            .toThrow("Invalid serial number 'S-2 '!");
 
     });
 

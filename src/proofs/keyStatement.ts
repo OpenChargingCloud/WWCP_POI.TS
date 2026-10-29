@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-import { checkContext, onlyProperties, requireArray, requireInteger, requireObject, requireString, requireTimestamp, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
+import { mandatoryText, nonemptyText, onlyProperties, requireObject, timestampAt, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }    from '../json/canonical.ts';
-import { without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { verifySignature }       from '../crypto/signature.ts';
 import { POIPublicKey }          from '../keys.ts';
 import { POIError }              from '../errors.ts';
@@ -53,43 +53,72 @@ export class KeyStatement {
     ) {}
 
 
-    /** Reads a key statement, refusing properties it does not know: whatever is not signed is not taken. */
+    /**
+     * Reads a key statement as `RoamingNetworkKeyStatement.TryParse` of WWCP_POI3 reads it, in its words and order: its
+     * context, the roaming network and its operator, its identity keys, `signedAt` and `validUntil` as POI writes them,
+     * `minConsensus`, its signatures. Then what this library refuses besides, as whatever is not signed is not taken: a
+     * property it does not know, identity keys out of the order of their `@id`s, a `validUntil` before its `signedAt`.
+     */
     public static parse(value: JSONValue | undefined): KeyStatement {
 
         const json = requireObject(value, 'A key statement');
 
-        checkContext(json, KEY_STATEMENT_CONTEXT, 'a key statement');
-        onlyProperties(json, [ '@context', 'roamingNetworkId', 'roamingNetworkOperatorId', 'identityKeys', 'minConsensus', 'signedAt', 'validUntil', 'signatures' ], 'A key statement');
+        if (get(json, '@context') !== undefined && get(json, '@context') !== KEY_STATEMENT_CONTEXT)
+            throw new POIError(`The JSON-LD context of the key statement must be '${KEY_STATEMENT_CONTEXT}'!`);
 
-        const roamingNetworkId          = requireString(json, 'roamingNetworkId',         'The roaming network of a key statement');
-        const roamingNetworkOperatorId  = requireString(json, 'roamingNetworkOperatorId', 'The roaming network operator of a key statement');
-        const identityKeys              = POIPublicKey.parseAll(json['identityKeys'], 'identity keys of the key statement');
+        const roamingNetworkId          = mandatoryText(json, 'roamingNetworkId',         'The roaming network of a key statement');
+        const roamingNetworkOperatorId  = mandatoryText(json, 'roamingNetworkOperatorId', 'The roaming network operator of a key statement');
+
+        const identityKeysJSON = get(json, 'identityKeys');
+
+        if (identityKeysJSON !== undefined && !isArray(identityKeysJSON))
+            throw new POIError('The identityKeys of a key statement must be a JSON array!');
+
+        const identityKeys = (identityKeysJSON ?? []).map(item => {
+            try {
+                return POIPublicKey.parse(item);
+            }
+            catch {
+                throw new POIError('Invalid key in the identityKeys of a key statement!');
+            }
+        });
 
         if (identityKeys.length === 0)
             throw new POIError('A key statement requires its identityKeys!');
 
+        const signedAt    = timestampAt(json, 'signedAt');
+        const validUntil  = timestampAt(json, 'validUntil');
+
+        if (signedAt === undefined || validUntil === undefined)
+            throw new POIError('The signedAt and validUntil of a key statement must be written as yyyy-MM-ddTHH:mm:ss.fffZ!');
+
+        const minConsensus = get(json, 'minConsensus');
+
+        if (typeof minConsensus !== 'number' || !Number.isInteger(minConsensus) || minConsensus < 1 || minConsensus > 255)
+            throw new POIError('A key statement requires its minConsensus, a whole number from 1 to 255!');
+
+        const signaturesJSON = get(json, 'signatures');
+
+        if (!isArray(signaturesJSON) || signaturesJSON.length === 0)
+            throw new POIError('A key statement requires its signatures!');
+
+        const signatures = signaturesJSON.map(item => {
+            const algorithm  = isObject(item) ? nonemptyText(item, 'algorithm') : undefined;
+            const keyId      = isObject(item) ? nonemptyText(item, 'keyId')     : undefined;
+            const value      = isObject(item) ? nonemptyText(item, 'value')     : undefined;
+            if (!isObject(item) || algorithm === undefined || keyId === undefined || value === undefined)
+                throw new POIError('Every signature of a key statement requires an algorithm, a key identification and a value!');
+            onlyProperties(item, [ 'algorithm', 'keyId', 'value' ], 'A signature of a key statement');
+            return { algorithm, keyId, value };
+        });
+
+        onlyProperties(json, [ '@context', 'roamingNetworkId', 'roamingNetworkOperatorId', 'identityKeys', 'minConsensus', 'signedAt', 'validUntil', 'signatures' ], 'A key statement');
+
         if (identityKeys.some((key, index) => { const before = identityKeys[index - 1]; return before !== undefined && before.id >= key.id; }))
             throw new POIError('The identity keys of a key statement are written in the order of their @ids!');
 
-        const minConsensus  = requireInteger  (json, 'minConsensus', 1, 255, 'The minConsensus of a key statement');
-        const signedAt      = requireTimestamp(json, 'signedAt',            'The signedAt of a key statement');
-        const validUntil    = requireTimestamp(json, 'validUntil',          'The validUntil of a key statement');
-
         if (validUntil < signedAt)
             throw new POIError('A key statement is not valid until before it was signed!');
-
-        const signatures = requireArray(json['signatures'], 'The signatures of a key statement').map(item => {
-            const signature = requireObject(item, 'A signature of a key statement');
-            onlyProperties(signature, [ 'algorithm', 'keyId', 'value' ], 'A signature of a key statement');
-            return {
-                algorithm:  requireString(signature, 'algorithm'),
-                keyId:      requireString(signature, 'keyId'),
-                value:      requireString(signature, 'value'),
-            };
-        });
-
-        if (signatures.length === 0)
-            throw new POIError('A key statement requires its signatures!');
 
         return new KeyStatement(roamingNetworkId, roamingNetworkOperatorId, identityKeys, minConsensus, signedAt, validUntil, signatures, json);
 

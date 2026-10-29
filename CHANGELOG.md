@@ -56,7 +56,7 @@ ends at the end of its text.
 The content as WWCP_POI writes it (SPECIFICATION.md 2, Written forms): what WWCP_POI takes of a version and writes otherwise
 is refused, as written again it would be another text than the one hashed (Achim's decision of 2026-10-29, as D13
 decided it for keys and 9decdb5 for the legislations a body is notified for). Of every entity, `notWrittenAsHeld`, as a
-version is read, after its entities and before the identifications unique within the network: what the content orders
+version is read, after everything WWCP_POI refuses of it, so that its words come first: what the content orders
 (its ordered lists, `POIJSON.OrderedIds`, entities, keys, exchanges) out of its ordinal order, the texts of an ordered list
 untrimmed, a list WWCP_POI writes only with an element given empty (about ninety; not the versions, releases and energy
 meters of a certificate, the elements of a price, the exchanges of a merchant, the identity keys of a key statement), a
@@ -79,6 +79,37 @@ identifications unique within the network, and the key statement and the certifi
 (`KeyStatementError`, 'Operator'), its key statement of another network now before its certificates. After the last change
 of a change set they are named bare, in the order WWCP_POI checks them there (`RoamingNetwork.afterChangeSet`). The
 golden vectors held the inner words only. Checked against WWCP_POI3 at 8108522 on 10 versions of QA.
+
+The roaming network operator, its key statement and the certificates of its signing keys in the words and order of
+WWCP_POI3 (the TryParse of `RoamingNetworkOperator`, `RoamingNetworkKeyStatement` and
+`RoamingNetworkSigningKeyCertificate`), e.g. "A key statement requires its minConsensus, a whole number from 1 to 255!",
+"Invalid key in the identityKeys of a key statement!", "A signing key certificate requires the signingKey it certifies!";
+what this library refuses besides (properties it does not know, identity keys out of their order) after them. What the
+constructor of the operator refuses as an argument of it, "The given JSON representation of a roaming network operator is
+invalid: …": a certificate by the same identity key given twice, which this library took, a signing key certified in two
+forms, a key both a signing and an identity key, a quorum its keys do not have; the holder of a key as it names it ("the
+holder 'BetaOrg'"). The tree hash algorithms of a roaming network as `POITreeHashAlgorithms` names them, four refusals for
+the one of this library. An entity without its identification as Styx refuses it, "Missing JSON property '@id'!", which
+this library took but of the roaming network and its operator (`invalidIdentification`, first of all), and one of another
+JSON type in the words of the kinds WWCP_POI3 refuses it of ("Invalid 'charging pool identification'!"). Certificates and
+the versions of stations, meters, their templates and models without the prefix this library gave them ("The certificate
+'…': "), as WWCP_POI3 names them, with the parameter its constructor names ("(Parameter 'Versions')", 'HardwareRevisions',
+'FirmwareVersions', 'Legislation', 'NotBefore', 'EnergyMeters'), a version twice in a model as an argument of the model; a
+certificate without its identification, of a certified meter a model of another JSON type, in its words.
+
+Of the written form also, as WWCP_POI3 takes and writes it otherwise: an entity without its lastChange, which it writes as
+its created; a party without its name, which it makes up of its kind and identification ("Charging Station Manufacturer
+'GraphDefined'"); a text in languages without a language, but the name of a charging station operator, which it writes
+so; the releases of a certificate and the URLs of an open source license left out, which it writes also empty; the energy
+meters of a certificate given empty; an identification and the type of a charging connector given as a number.
+
+Probed against WWCP_POI3 at 8108522 with 617 versions of QA, of every kind of object a property it does not read, every
+property of it removed and given in another JSON type, the tree hash algorithms and the quorum of the operator, and 10
+of certificates and models: none it takes as given is refused here; of what it refuses, this library refuses all in its
+words but 20, of what it takes and writes otherwise all but the properties it does not read (25 kinds, which it leaves
+out). Not ported yet: properties of another JSON type or missing that WWCP_POI3 refuses (168, in the words of every kind)
+and the references it checks (23, of templates, tariffs, members, manufacturers, models, releases and certificates).
+`tests/operator.test.ts`, and in `writtenForm`, `identifications` and `certificates`.
 
 
 ## 0.1.0 (2026-10-29)

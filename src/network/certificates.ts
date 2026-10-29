@@ -194,16 +194,19 @@ function invalidEnergyMeter(meter: JSONValue): string | undefined {
     if (!isObject(meter))
         return 'Expected an object.';
 
-    for (const property of [ 'manufacturerId', 'modelId' ])
+    for (const property of [ 'manufacturerId', 'modelId' ]) {
+        if (meter[property] !== undefined && typeof meter[property] !== 'string')
+            return `${property}: expected a string.`;
         if (idAt(meter, property) === '')
             return `${property}: expected a nonempty string.`;
+    }
 
     const model = `certified energy meter model '${idAt(meter, 'modelId')}' of '${idAt(meter, 'manufacturerId')}'`;
 
     return invalidCertifiedVersion(meter) ??
            versionTwice(meter, `the ${model}`) ??
-           (textsOf(meter, 'hardwareRevisions').length === 0 ? `The ${model} must name at least one hardware revision!` : undefined) ??
-           (textsOf(meter, 'firmwareVersions'). length === 0 ? `The ${model} must name at least one firmware version!`  : undefined);
+           (textsOf(meter, 'hardwareRevisions').length === 0 ? `The ${model} must name at least one hardware revision! (Parameter 'HardwareRevisions')` : undefined) ??
+           (textsOf(meter, 'firmwareVersions'). length === 0 ? `The ${model} must name at least one firmware version! (Parameter 'FirmwareVersions')`  : undefined);
 
 }
 
@@ -213,6 +216,13 @@ function invalidEnergyMeter(meter: JSONValue): string | undefined {
  * validity and its legislation.
  */
 function invalidArgument(certificate: JSONObject): string | undefined {
+
+    // Its identification first, as StrictJSON reads it.
+    if (certificate['@id'] !== undefined && typeof certificate['@id'] !== 'string')
+        return '@id: expected a string.';
+
+    if (idAt(certificate, '@id') === '')
+        return '@id: expected a nonempty string.';
 
     const modelError = MODEL_PROPERTIES.map(property => notText(certificate, property)).find(error => error !== undefined);
 
@@ -272,38 +282,38 @@ function invalidConstruction(certificate: JSONObject, id: string): string | unde
         return twice;
 
     if (textsOf(certificate, 'hardwareRevisions').length === 0)
-        return `The certificate '${id}' must name at least one hardware revision of its model!`;
+        return `The certificate '${id}' must name at least one hardware revision of its model! (Parameter 'HardwareRevisions')`;
 
     if (textsOf(certificate, 'firmwareVersions').length === 0)
-        return `The certificate '${id}' must name at least one firmware version of its model!`;
+        return `The certificate '${id}' must name at least one firmware version of its model! (Parameter 'FirmwareVersions')`;
 
     const legislation = get(certificate, 'legislation');
 
     if (typeof legislation === 'string' && trimmed(legislation) === '')
-        return `The certificate '${id}': A legislation must not be empty.`;
+        return "A legislation must not be empty. (Parameter 'Legislation')";
 
     if (endsBeforeItBegins(certificate))
-        return `The certificate '${id}': notBefore must not exceed notAfter.`;
+        return "notBefore must not exceed notAfter. (Parameter 'NotBefore')";
 
     // Each release once, compared ordinally once trimmed (References), but verified and compatible compared as
     // TransparencySoftware_Id compares them, case-insensitively.
     const [ verified = [], compatible = [] ] = RELEASES.map(property => textsOf(certificate, property).map(trimmed));
 
     if (new Set(verified).size !== verified.length || new Set(compatible).size !== compatible.length)
-        return `The certificate '${id}': Empty or duplicate TransparencySoftware reference.`;
+        return 'Empty or duplicate TransparencySoftware reference.';
 
     if (verified.length === 0 && compatible.length === 0)
-        return `The certificate '${id}': A document must identify at least one software release.`;
+        return 'A document must identify at least one software release.';
 
     const verifiedKeys = new Set(verified.map(idKey));
 
     if (compatible.some(release => verifiedKeys.has(idKey(release))))
-        return `The certificate '${id}': A release cannot be both verified and merely compatible in the same document.`;
+        return 'A release cannot be both verified and merely compatible in the same document.';
 
     const energyMeters = objectsOf(get(certificate, 'energyMeters'));
 
     if (forMeter && energyMeters.length > 0)
-        return `The certificate '${id}' of an energy meter model names no energy meters!`;
+        return `The certificate '${id}' of an energy meter model names no energy meters! (Parameter 'EnergyMeters')`;
 
     // Each model once, compared as its identifications are: of those named twice, the one named first, as it is named
     // first (GroupBy, in the order of their first meter).
@@ -319,23 +329,17 @@ function invalidConstruction(certificate: JSONObject, id: string): string | unde
 
     return twiceNamed === undefined
                ? undefined
-               : `The energy meter model '${idAt(twiceNamed, 'modelId')}' of '${idAt(twiceNamed, 'manufacturerId')}' must not be given twice in the certificate '${id}'!`;
+               : `The energy meter model '${idAt(twiceNamed, 'modelId')}' of '${idAt(twiceNamed, 'manufacturerId')}' must not be given twice in the certificate '${id}'! (Parameter 'EnergyMeters')`;
 
 }
 
 /**
- * The error, when WWCP_POI refuses the given certificate, as `ConformityCertificate.TryParse` reads it: what it reads as
- * its arguments, by their path after the certificate, then what its constructor checks.
+ * The error, when WWCP_POI refuses the given certificate, as `ConformityCertificate.TryParse` reads it, in its words: what
+ * it reads as its arguments, by their path, then what its constructor checks, as an argument of its parameter where it
+ * names one.
  */
 export function invalidCertificate(certificate: JSONObject): string | undefined {
-
-    const id     = idAt(certificate, '@id');
-    const error  = invalidArgument(certificate);
-
-    return error !== undefined
-               ? `The certificate '${id}': ${error}`
-               : invalidConstruction(certificate, id);
-
+    return invalidArgument(certificate) ?? invalidConstruction(certificate, idAt(certificate, '@id'));
 }
 
 /** A notified body number: four digits, nothing after them, also no line feed (`^[0-9]{4}\z` since WWCP_POI f53d220). */

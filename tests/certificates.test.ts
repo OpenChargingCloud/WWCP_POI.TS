@@ -19,8 +19,9 @@ import { RoamingNetwork, ROAMING_NETWORK_CONTEXT } from '../src/network/roamingN
 const CREATED  = '2026-01-01T00:00:00.000Z';
 const T0       = '2026-10-27T12:00:00.000Z';
 
+/** An entity, named as WWCP_POI writes a party of its own making otherwise. */
 const entity = (id: string, more: JSONObject = {}): JSONObject =>
-    ({ '@id': id, created: CREATED, lastChange: CREATED, ...more });
+    ({ '@id': id, name: { en: id }, created: CREATED, lastChange: CREATED, ...more });
 
 /** The PTB with the given certificates, notified for the CRA and the MID, so that it may issue a certificate under both. */
 const read = (certificates: readonly JSONObject[]): RoamingNetwork =>
@@ -41,7 +42,7 @@ const ofStation = (more: JSONObject = {}): JSONObject =>
 /** A certificate for the energy meter model eHZ of EMH. */
 const ofMeter = (more: JSONObject = {}): JSONObject =>
     ({ '@id': 'PTB-2026-0017', energyMeterManufacturerId: 'EMH', energyMeterModel: 'eHZ', hardwareRevisions: [ '1' ],
-       firmwareVersions: [ '1.2' ], verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], ...more });
+       firmwareVersions: [ '1.2' ], verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more });
 
 /** The certificate of the given kind without the given properties. */
 const without = (certificate: JSONObject, ...properties: string[]): JSONObject =>
@@ -53,12 +54,44 @@ const refusing = (certificate: JSONObject): (() => RoamingNetwork) =>
 
 describe('Certificates', () => {
 
+    it('in the words of WWCP_POI3 at 8108522, what its constructor refuses as an argument of its parameter where it names one', () => {
+
+        const refusalOf = (certificate: JSONObject): string => {
+            try {
+                read([ certificate ]);
+            }
+            catch (e) {
+                return e instanceof Error ? e.message : String(e);
+            }
+            return 'taken';
+        };
+
+        expect(refusalOf(without(ofMeter(), 'hardwareRevisions'))).toBe("The certificate 'PTB-2026-0017' must name at least one hardware revision of its model! (Parameter 'HardwareRevisions')");
+        expect(refusalOf(ofMeter({ hardwareRevisions: [ '1', '1' ] }))).toBe("A hardware revision of the certificate 'PTB-2026-0017' must not be given twice! (Parameter 'Versions')");
+        expect(refusalOf(ofStation({ legislation: ' ' }))).toBe("A legislation must not be empty. (Parameter 'Legislation')");
+        expect(refusalOf(ofStation({ notAfter: '2025-12-31T23:59:59.999Z' }))).toBe("notBefore must not exceed notAfter. (Parameter 'NotBefore')");
+        expect(refusalOf(ofMeter({ energyMeters: [ meter() ] }))).toBe("The certificate 'PTB-2026-0017' of an energy meter model names no energy meters! (Parameter 'EnergyMeters')");
+        expect(refusalOf(ofStation({ energyMeters: [ meter(), meter() ] })))
+            .toBe("The energy meter model 'eHZ' of 'EMH' must not be given twice in the certificate 'PTB-2026-0042'! (Parameter 'EnergyMeters')");
+        expect(refusalOf(ofStation({ energyMeters: [ meter({ firmwareVersions: [] }) ] })))
+            .toBe("energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one firmware version! (Parameter 'FirmwareVersions')");
+
+        // What it reads, by its path alone; what it reads not as given, in its words.
+        expect(refusalOf(ofStation({ documentURL: 'certificates/PTB-2026-0042.pdf' }))).toBe('documentURL: expected an absolute URL.');
+        expect(refusalOf(ofStation({ energyMeters: [ meter({ modelId: 5 }) ] }))).toBe('energyMeters[0]: modelId: expected a string.');
+        expect(refusalOf(ofStation({ '@id': 5 }))).toBe('@id: expected a string.');
+
+    });
+
     it('of a charging station model and of an energy meter model, as WWCP_POI reads them', () => {
 
         expect(() => read([ ofMeter(), ofStation() ])).not.toThrow();
 
-        // Optional: the energy meters, the releases of one list, the documentURL, the validity, the legislation.
-        expect(() => read([ without(ofStation(), 'energyMeters', 'compatibleTransparencySoftwareIds', 'documentURL', 'notBefore', 'notAfter', 'legislation') ]))
+        // Optional: the energy meters, the documentURL, the validity, the legislation. Not the releases of a list, even of
+        // none, which WWCP_POI writes also empty.
+        expect(() => read([ without(ofStation(), 'compatibleTransparencySoftwareIds') ]))
+            .toThrow("'conformityAssessmentBodies[0].certificates[0]' is not written as the content holds it: WWCP_POI writes its 'compatibleTransparencySoftwareIds' also without an element!");
+        expect(() => read([ without(ofStation(), 'energyMeters', 'documentURL', 'notBefore', 'notAfter', 'legislation') ]))
             .not.toThrow();
 
         expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [], compatibleTransparencySoftwareIds: [ 'chargy-1.5.0' ] }) ]))
@@ -86,7 +119,7 @@ describe('Certificates', () => {
             .toThrow("The certificate 'PTB-2026-0017' must name the energy meter model it is for with its manufacturer!");
 
         expect(refusing(ofStation({ chargingStationModel: 300 })))
-            .toThrow("The certificate 'PTB-2026-0042': chargingStationModel: expected a string.");
+            .toThrow("chargingStationModel: expected a string.");
 
     });
 
@@ -99,23 +132,23 @@ describe('Certificates', () => {
             .toThrow("The certificate 'PTB-2026-0042' must name at least one firmware version of its model!");
 
         expect(refusing(ofStation({ energyMeters: [ meter({ hardwareRevisions: [] }) ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one hardware revision!");
+            .toThrow("energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one hardware revision!");
 
         expect(refusing(ofStation({ energyMeters: [ meter(), without(meter({ modelId: 'eHZ2' }), 'firmwareVersions') ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[1]: The certified energy meter model 'eHZ2' of 'EMH' must name at least one firmware version!");
+            .toThrow("energyMeters[1]: The certified energy meter model 'eHZ2' of 'EMH' must name at least one firmware version!");
 
     });
 
     it('naming its energy meters as objects of a manufacturer and a model, each model once, compared without case', () => {
 
         expect(refusing(ofStation({ energyMeters: meter() })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters: expected an array.");
+            .toThrow("energyMeters: expected an array.");
 
         expect(refusing(ofStation({ energyMeters: [ 'eHZ' ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: Expected an object.");
+            .toThrow("energyMeters[0]: Expected an object.");
 
         expect(refusing(ofStation({ energyMeters: [ meter({ manufacturerId: ' ' }) ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: manufacturerId: expected a nonempty string.");
+            .toThrow("energyMeters[0]: manufacturerId: expected a nonempty string.");
 
         expect(refusing(ofStation({ energyMeters: [ meter(), meter({ modelId: 'EHZ', firmwareVersions: [ '1.3' ] }) ] })))
             .toThrow("The energy meter model 'eHZ' of 'EMH' must not be given twice in the certificate 'PTB-2026-0042'!");
@@ -127,29 +160,31 @@ describe('Certificates', () => {
         expect(refusing(ofMeter({ energyMeters: [ meter() ] })))
             .toThrow("The certificate 'PTB-2026-0017' of an energy meter model names no energy meters!");
 
-        expect(() => read([ ofMeter({ energyMeters: [] }) ])).not.toThrow();
+        // None given as an empty list WWCP_POI takes, and writes without it: refused, as the content holds it without.
+        expect(() => read([ ofMeter({ energyMeters: [] }) ]))
+            .toThrow("'conformityAssessmentBodies[0].certificates[0].energyMeters' is not written as the content holds it: a list without elements is left out!");
 
     });
 
     it('with an absolute documentURL, a legislation not empty, and a validity not ending before it begins, to the tick', () => {
 
         expect(refusing(ofStation({ documentURL: 'certificates/PTB-2026-0042.pdf' })))
-            .toThrow("The certificate 'PTB-2026-0042': documentURL: expected an absolute URL.");
+            .toThrow("documentURL: expected an absolute URL.");
 
         expect(refusing(ofStation({ documentURL: 42 })))
-            .toThrow("The certificate 'PTB-2026-0042': documentURL: expected a string.");
+            .toThrow("documentURL: expected a string.");
 
         expect(refusing(ofStation({ legislation: ' ' })))
-            .toThrow("The certificate 'PTB-2026-0042': A legislation must not be empty.");
+            .toThrow("A legislation must not be empty.");
 
         expect(refusing(ofStation({ notAfter: '2025-12-31T23:59:59.999Z' })))
-            .toThrow("The certificate 'PTB-2026-0042': notBefore must not exceed notAfter.");
+            .toThrow("notBefore must not exceed notAfter.");
 
         expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.0000001Z', notAfter: '2026-01-01T00:00:00.000Z' })))
-            .toThrow("The certificate 'PTB-2026-0042': notBefore must not exceed notAfter.");
+            .toThrow("notBefore must not exceed notAfter.");
 
         expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.000Z', notAfter: '2026-01-01T01:59:59.999+02:00' })))
-            .toThrow("The certificate 'PTB-2026-0042': notBefore must not exceed notAfter.");
+            .toThrow("notBefore must not exceed notAfter.");
 
         // A day long, or not at all; and in another offset, as DateTimeOffset reads it, which WWCP_POI writes in UTC to the
         // millisecond: refused, as the content holds it so.
@@ -158,32 +193,32 @@ describe('Certificates', () => {
             .toThrow("'conformityAssessmentBodies[0].certificates[0].notBefore' is not written as the content holds it: a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ!");
 
         expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.000' })))
-            .toThrow("The certificate 'PTB-2026-0042': notBefore: invalid timestamp.");
+            .toThrow("notBefore: invalid timestamp.");
 
         expect(refusing(ofStation({ notAfter: '2026-02-30T00:00:00.000Z' })))
-            .toThrow("The certificate 'PTB-2026-0042': notAfter: invalid timestamp.");
+            .toThrow("notAfter: invalid timestamp.");
 
         // Nothing after its offset, also no line feed, as StrictJSON.Date reads it since WWCP_POI f53d220.
         expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.000Z\n' })))
-            .toThrow("The certificate 'PTB-2026-0042': notBefore: invalid timestamp.");
+            .toThrow("notBefore: invalid timestamp.");
         expect(refusing(ofStation({ notAfter: '2036-01-01T00:00:00+01:00\n' })))
-            .toThrow("The certificate 'PTB-2026-0042': notAfter: invalid timestamp.");
+            .toThrow("notAfter: invalid timestamp.");
 
     });
 
     it('naming at least one release, each once, compared ordinally once trimmed, none both verified and compatible, compared without case', () => {
 
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [] })))
-            .toThrow("The certificate 'PTB-2026-0017': A document must identify at least one software release.");
+            .toThrow("A document must identify at least one software release.");
 
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', ' chargy-1.5.0' ] })))
-            .toThrow("The certificate 'PTB-2026-0017': Empty or duplicate TransparencySoftware reference.");
+            .toThrow("Empty or duplicate TransparencySoftware reference.");
 
         expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'chargy-1.4.0', 'chargy-1.4.0' ] })))
-            .toThrow("The certificate 'PTB-2026-0017': Empty or duplicate TransparencySoftware reference.");
+            .toThrow("Empty or duplicate TransparencySoftware reference.");
 
         expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'CHARGY-1.5.0' ] })))
-            .toThrow("The certificate 'PTB-2026-0017': A release cannot be both verified and merely compatible in the same document.");
+            .toThrow("A release cannot be both verified and merely compatible in the same document.");
 
         // As WWCP_POI takes it (References): named twice in another case is not twice; in their ordinal order, as it writes them.
         expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'CHARGY-1.5.0', 'chargy-1.5.0' ] }) ])).not.toThrow();
@@ -191,10 +226,10 @@ describe('Certificates', () => {
             .toThrow("'conformityAssessmentBodies[0].certificates[0].verifiedTransparencySoftwareIds' is not written as the content holds it: its elements are in the order the content holds them in!");
 
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', ' ' ] })))
-            .toThrow("The certificate 'PTB-2026-0017': verifiedTransparencySoftwareIds[1]: Invalid text representation of a transparency software identification: ' '!");
+            .toThrow("verifiedTransparencySoftwareIds[1]: Invalid text representation of a transparency software identification: ' '!");
 
         expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 15 ] })))
-            .toThrow("The certificate 'PTB-2026-0017': compatibleTransparencySoftwareIds[0]: Expected an identifier string.");
+            .toThrow("compatibleTransparencySoftwareIds[0]: Expected an identifier string.");
 
     });
 
@@ -202,18 +237,18 @@ describe('Certificates', () => {
 
         // The arguments: the texts of its versions before its energy meters, its energy meters before its documentURL, …
         expect(refusing(ofStation({ firmwareVersions: [ '2.5.0 ' ], energyMeters: [ meter({ hardwareRevisions: [] }) ] })))
-            .toThrow("The certificate 'PTB-2026-0042': firmwareVersions[0]: Invalid text representation of a firmware version: '2.5.0 '!");
+            .toThrow("firmwareVersions[0]: Invalid text representation of a firmware version: '2.5.0 '!");
 
         expect(refusing(ofStation({ energyMeters: [ meter({ hardwareRevisions: [] }) ], documentURL: 'PTB-2026-0042.pdf' })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one hardware revision!");
+            .toThrow("energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one hardware revision!");
 
         // … a meter's versions twice before at least one of each.
         expect(refusing(ofStation({ energyMeters: [ meter({ hardwareRevisions: [], firmwareVersions: [ '1.2', '1.2' ] }) ] })))
-            .toThrow("The certificate 'PTB-2026-0042': energyMeters[0]: A firmware version of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
+            .toThrow("energyMeters[0]: A firmware version of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");
 
         // Its arguments before its constructor: a relative documentURL before naming no model.
         expect(refusing(without(ofMeter({ documentURL: 'PTB-2026-0017.pdf' }), 'energyMeterModel')))
-            .toThrow("The certificate 'PTB-2026-0017': documentURL: expected an absolute URL.");
+            .toThrow("documentURL: expected an absolute URL.");
 
         // The constructor: the model, its versions twice, at least one of each, the legislation, the validity, the releases,
         // the energy meters.
@@ -227,16 +262,16 @@ describe('Certificates', () => {
             .toThrow("The certificate 'PTB-2026-0042' must name at least one firmware version of its model!");
 
         expect(refusing(ofStation({ legislation: '', notAfter: CREATED.replace('2026', '2025') })))
-            .toThrow("The certificate 'PTB-2026-0042': A legislation must not be empty.");
+            .toThrow("A legislation must not be empty.");
 
         expect(refusing(ofStation({ notAfter: CREATED.replace('2026', '2025'), verifiedTransparencySoftwareIds: [] })))
-            .toThrow("The certificate 'PTB-2026-0042': notBefore must not exceed notAfter.");
+            .toThrow("notBefore must not exceed notAfter.");
 
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [], energyMeters: [ meter() ] })))
-            .toThrow("The certificate 'PTB-2026-0017': A document must identify at least one software release.");
+            .toThrow("A document must identify at least one software release.");
 
         expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'chargy-1.5.0' ], energyMeters: [ meter() ] })))
-            .toThrow("The certificate 'PTB-2026-0017': A release cannot be both verified and merely compatible in the same document.");
+            .toThrow("A release cannot be both verified and merely compatible in the same document.");
 
     });
 
@@ -276,7 +311,7 @@ describe('Certificates', () => {
             .toBe(T0);
 
         expect(() => applyChangeSet(before, updating(' '), { checkOwnership: false }))
-            .toThrow("The certificate 'PTB-2026-0042': A legislation must not be empty.");
+            .toThrow("A legislation must not be empty.");
 
     });
 

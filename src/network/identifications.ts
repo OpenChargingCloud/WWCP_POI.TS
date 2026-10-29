@@ -199,6 +199,89 @@ function duplicateNotifiedBodyNumber(bodies: readonly JSONObject[]): string | un
 
 }
 
+/** The lists of the parties of a roaming network, in the order WWCP_POI3 reads them (RoamingNetwork.TryParse). */
+const PARTIES_IN_ORDER = [ 'chargingStationManufacturers', 'eMobilityProviders', 'gridOperators', 'parkingOperators',
+                           'transparencySoftwareManufacturers', 'conformityAssessmentBodies', 'energyMeterManufacturers', 'chargingStationOperators' ];
+
+/**
+ * The entities WWCP_POI3 reads by their identification, by the list or property holding them, as Styx refuses one naming
+ * none (`ParseMandatory`: "Missing JSON property '@id'!"); and how it names the identification of those whose
+ * identification of another JSON type it refuses in its words ("Invalid 'charging pool identification'!"). It takes a
+ * number as the identification of the others, which it writes as a text (`notWrittenAsHeld`).
+ */
+const IDENTIFIED: Readonly<Record<string, string | undefined>> = {
+    chargingStationManufacturers:       undefined,
+    chargingStationModels:              undefined,
+    transparencySoftwareManufacturers:  undefined,
+    conformityAssessmentBodies:         undefined,
+    energyMeterManufacturers:           undefined,
+    energyMeterModels:                  undefined,
+    chargingStationOperators:           'charging station operator',
+    chargingTariffs:                    'charging tariff',
+    chargingPools:                      'charging pool',
+    chargingStations:                   'charging station',
+    EVSEs:                              'EVSE',
+    energyMeter:                        undefined,
+    EVSETemplates:                      'EVSE template',
+    chargingConnectors:                 undefined,
+    chargingStationTemplates:           'charging station template',
+    energyMeterTemplates:               undefined,
+    EVSEGroups:                         'EVSE group',
+    chargingStationGroups:              'charging station group',
+};
+
+/**
+ * The error, when an entity of the given content names no identification, or one of another JSON type WWCP_POI3 refuses,
+ * as it says it; undefined for none. Its parties in the order it reads them, each before what it holds.
+ */
+export function invalidIdentification(content: JSONObject): string | undefined {
+
+    const ofEntity = (entity: JSONObject, kind: string | undefined): string | undefined => {
+
+        const id = entity['@id'];
+
+        if (id === undefined)
+            return "Missing JSON property '@id'!";
+
+        if (typeof id !== 'string' && kind !== undefined)
+            return `Invalid '${kind} identification'!`;
+
+        return within(entity);
+
+    };
+
+    const within = (object: JSONObject): string | undefined => {
+
+        for (const [ property, value ] of Object.entries(object)) {
+
+            if (property === 'customData' || !(property in IDENTIFIED))
+                continue;
+
+            const kind = IDENTIFIED[property];
+
+            for (const entity of isArray(value) ? value.filter(isObject) : isObject(value) ? [ value ] : []) {
+                const error = ofEntity(entity, kind);
+                if (error !== undefined)
+                    return error;
+            }
+
+        }
+
+        return undefined;
+
+    };
+
+    for (const property of PARTIES_IN_ORDER)
+        for (const party of objectsOf(get(content, property))) {
+            const error = ofEntity(party, IDENTIFIED[property]);
+            if (error !== undefined)
+                return error;
+        }
+
+    return undefined;
+
+}
+
 /**
  * The error, when the given content names an identification twice that WWCP_POI keeps unique within the roaming network,
  * as WWCP_POI says it of a version, or after the last change of a change set; undefined for none. Of a version, it refuses

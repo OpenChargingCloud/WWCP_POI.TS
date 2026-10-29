@@ -147,6 +147,35 @@ export function optionalTimestamp(object: JSONObject, property: string, what?: s
     return text === undefined ? undefined : parseTimestamp(text, what ?? `The timestamp '${property}'`);
 }
 
+/** A timestamp as POI writes it, of the given property; undefined where it is none or written otherwise. */
+export function timestampAt(object: JSONObject, property: string): number | undefined {
+    const text = get(object, property);
+    if (typeof text !== 'string')
+        return undefined;
+    try {
+        return parseTimestamp(text);
+    }
+    catch {
+        return undefined;
+    }
+}
+
+/**
+ * A text the given object must name, refused as Styx refuses it where it names none (`ParseMandatory`): "Missing JSON
+ * property '@id'!".
+ */
+export function mandatoryText(object: JSONObject, property: string, what?: string): string {
+    if (get(object, property) === undefined)
+        throw new POIError(`Missing JSON property '${property}'!`);
+    return requireString(object, property, what);
+}
+
+/** The text of the given property, where it is one and not empty. */
+export function nonemptyText(object: JSONObject, property: string): string | undefined {
+    const text = get(object, property);
+    return typeof text === 'string' && text.length > 0 ? text : undefined;
+}
+
 /** Now, or the given point in time, as milliseconds since 1970. */
 export const timeOf = (at?: number | Date | string): number =>
     at === undefined          ? Date.now()

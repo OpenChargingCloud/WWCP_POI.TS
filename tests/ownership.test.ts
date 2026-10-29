@@ -76,7 +76,7 @@ function network(usage: string, ...others: Certified[]): RoamingNetwork {
         '@id':                       'rn1',
         operator:                    { '@id': 'DE*RNO', identityKeys: [ { '@id': IDENTITY.id, key: IDENTITY.cose } ], signingKeyCertificates: certificates,
                                        created: CREATED, lastChange: CREATED },
-        conformityAssessmentBodies:  [ { '@id': 'BSI', created: CREATED, lastChange: CREATED } ],
+        conformityAssessmentBodies:  [ { '@id': 'BSI', name: { en: 'BSI' }, created: CREATED, lastChange: CREATED } ],
         created:                     CREATED,
         lastChange:                  CREATED,
     });
@@ -168,7 +168,7 @@ describe('Every signature by a key of a party valid at the createdAt of its chan
         const SIGNS    = key('8cb46c0f');
 
         const added    = changeSetOf(before, [ { kind: 'Add', entityType: 'ChargingStationOperator', entityId: 'DE*GEF',
-                                                 newValue: { '@id': 'DE*GEF', signingKeys: [ { '@id': SIGNS.id, key: SIGNS.cose } ],
+                                                 newValue: { '@id': 'DE*GEF', name: { en: 'DE*GEF' }, signingKeys: [ { '@id': SIGNS.id, key: SIGNS.cose } ],
                                                              identityKeys: [ { '@id': NEW.id, key: NEW.cose, notBefore: '2026-11-01T00:00:00.000Z' } ] } } ],
                                      [ SIGNING, NEW ]);
 

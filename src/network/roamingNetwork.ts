@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-import { checkContext, requireInteger, requireObject, requireString, CONTEXT_PREFIX } from '../common.ts';
-import { get, isArray, isObject, sameValue, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { checkContext, mandatoryText, requireInteger, requireObject, CONTEXT_PREFIX } from '../common.ts';
+import { asText, get, isArray, isObject, sameValue, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type ETag } from '../etags.ts';
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
-import { duplicateIdentification, inRoamingNetwork } from './identifications.ts';
+import { duplicateIdentification, inRoamingNetwork, invalidIdentification } from './identifications.ts';
 import { invalidVersionText }        from './versionTexts.ts';
 import { invalidCertificates }       from './certificates.ts';
 import { invalidEVTaler }            from './evTaler.ts';
@@ -84,7 +84,7 @@ export class RoamingNetworkOperator {
     public static parse(value: JSONValue | undefined, roamingNetworkId: string): RoamingNetworkOperator {
 
         const json = requireObject(value, 'The roaming network operator');
-        const id   = requireString(json, '@id', 'The identification of the roaming network operator');
+        const id   = mandatoryText(json, '@id', 'The identification of the roaming network operator');
 
         checkContext(json, CONTEXT_PREFIX + 'roamingNetwork/operator/v1', `the roaming network operator '${id}'`);
 
@@ -92,8 +92,8 @@ export class RoamingNetworkOperator {
             throw new POIError('The signing keys of a roaming network operator are those of its signingKeyCertificates!');
 
         const identityKeys  = partyKeysOf(json, `the roaming network operator '${id}'`, 'a roaming network operator').identityKeys;
-        const minConsensus  = get(json, 'minConsensus') === undefined ? 1 : requireInteger(json, 'minConsensus', 1, 255, `The minConsensus of the roaming network operator '${id}'`);
-        const keyStatement  = get(json, 'keyStatement') === undefined ? undefined : KeyStatement.parse(get(json, 'keyStatement'));
+        const minConsensus  = get(json, 'minConsensus') === undefined ? 1 : requireInteger(json, 'minConsensus', 1, 255, 'The minConsensus of a roaming network operator');
+        const keyStatement  = get(json, 'keyStatement') === undefined ? undefined : KeyStatement.parse(requireObject(get(json, 'keyStatement'), 'The key statement'));
 
         const certificatesJSON = get(json, 'signingKeyCertificates');
         const certificates     = certificatesJSON === undefined
@@ -104,21 +104,31 @@ export class RoamingNetworkOperator {
                                            return certificatesJSON.map(certificate => SigningKeyCertificate.parse(certificate));
                                        })();
 
-        // A signing key certified twice is one key; in different forms, e.g. other usages, it is refused.
+        // What the constructor of the operator refuses, as its TryParse names it (RoamingNetworkOperator of WWCP_POI3): a
+        // certificate by the same identity key given twice; a signing key certified twice is one key, in different forms,
+        // e.g. other usages, it is two; a key both a signing and an identity key; a quorum its keys do not have.
+        const invalid = (error: string): POIError =>
+            new POIError(`The given JSON representation of a roaming network operator is invalid: ${error}`);
+
+        const certifications = certificates.map(certificate => `${certificate.signingKey.id}/${certificate.keyId}`);
+
+        if (new Set(certifications).size !== certifications.length)
+            throw invalid(`An certificate of a signing key of the roaming network operator '${id}' must not be given twice!`);
+
         const certified = new Map<string, POIPublicKey>();
 
         for (const certificate of certificates) {
             const before = certified.get(certificate.signingKey.id);
             if (before !== undefined && !sameValue(without(before.json, '@context'), without(certificate.signingKey.json, '@context')))
-                throw new POIError(`The signing key '${certificate.signingKey.id}' of the roaming network operator '${id}' is certified twice in different forms!`);
+                throw invalid(`An signing key of the roaming network operator '${id}' must not be given twice!`);
             certified.set(certificate.signingKey.id, certificate.signingKey);
         }
 
         const signingKeys = [ ...certified.values() ];
 
-        const both = signingKeys.find(key => identityKeys.some(identityKey => identityKey.id === key.id));
+        const both = [ ...signingKeys ].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0).find(key => identityKeys.some(identityKey => identityKey.id === key.id));
         if (both !== undefined)
-            throw new POIError(`The key '${both.id}' of the roaming network operator '${id}' is both a signing key and an identity key!`);
+            throw invalid(`The key '${both.id}' of the roaming network operator '${id}' must not be both a signing and an identity key!`);
 
         for (const [kind, keys] of [ [ 'signing', signingKeys ], [ 'identity', identityKeys ] ] as const) {
 
@@ -126,15 +136,15 @@ export class RoamingNetworkOperator {
 
             if (holders === 0) {
                 if (minConsensus > 1)
-                    throw new POIError(`The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders!`);
+                    throw invalid(`The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders!`);
                 continue;
             }
 
             if (minConsensus > holders)
-                throw new POIError(`The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders, not of ${holders}!`);
+                throw invalid(`The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders, not of ${holders}!`);
 
             if (2 * minConsensus <= holders)
-                throw new POIError(`The minConsensus ${minConsensus} of the roaming network operator '${id}' must be more than half of the ${holders} holders of its ${kind} keys!`);
+                throw invalid(`The minConsensus ${minConsensus} of the roaming network operator '${id}' must be more than half of the ${holders} holders of its ${kind} keys!`);
 
         }
 
@@ -236,7 +246,7 @@ export class RoamingNetwork {
     private static read(value: JSONValue | undefined, of: 'version' | 'change set'): RoamingNetwork {
 
         const json = requireObject(value, 'A roaming network');
-        const id   = requireString(json, '@id', 'The identification of a roaming network');
+        const id   = mandatoryText(json, '@id', 'The identification of a roaming network');
 
         checkContext(json, ROAMING_NETWORK_CONTEXT, `the roaming network '${id}'`);
 
@@ -249,11 +259,18 @@ export class RoamingNetwork {
         let treeHashAlgorithms: HashAlgorithm[] = [ 'sha256' ];
         const treeHashAlgorithmsJSON = get(json, 'treeHashAlgorithms');
 
+        // As POITreeHashAlgorithms of WWCP_POI3 reads them, in its words: an array of known algorithms, at least one, none twice.
         if (treeHashAlgorithmsJSON !== undefined) {
-            if (!isArray(treeHashAlgorithmsJSON) || treeHashAlgorithmsJSON.length === 0 ||
-                !treeHashAlgorithmsJSON.every(isHashAlgorithm) || new Set(treeHashAlgorithmsJSON).size !== treeHashAlgorithmsJSON.length)
-                throw new POIError(`The treeHashAlgorithms of the roaming network '${id}' are at least one of sha256, sha384 and sha512, none twice!`);
-            treeHashAlgorithms = treeHashAlgorithmsJSON;
+            if (!isArray(treeHashAlgorithmsJSON))
+                throw new POIError("The 'treeHashAlgorithms' must be a JSON array of hash algorithms!");
+            const unknown = treeHashAlgorithmsJSON.find(algorithm => !isHashAlgorithm(algorithm));
+            if (unknown !== undefined)
+                throw new POIError(`Unknown tree hash algorithm '${asText(unknown)}': sha256, sha384 or sha512!`);
+            if (treeHashAlgorithmsJSON.length === 0)
+                throw new POIError("The 'treeHashAlgorithms' must name at least one hash algorithm!");
+            if (new Set(treeHashAlgorithmsJSON).size !== treeHashAlgorithmsJSON.length)
+                throw new POIError("The 'treeHashAlgorithms' must not name a hash algorithm twice!");
+            treeHashAlgorithms = treeHashAlgorithmsJSON as HashAlgorithm[];
         }
 
         const operatorJSON = get(json, 'operator');
@@ -266,9 +283,11 @@ export class RoamingNetwork {
                                  }
                              })();
 
-        // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them.
-        const refusal      = invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content) ?? invalidPartyKeys(content) ??
-                             notWrittenAsHeld(content) ?? duplicateIdentification(content, of);
+        // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them; then what
+        // it takes and writes otherwise.
+        const refusal      = invalidIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content) ??
+                             invalidEVTaler(content) ?? invalidPartyKeys(content) ?? duplicateIdentification(content, of) ??
+                             notWrittenAsHeld(content);
 
         if (refusal !== undefined)
             throw new POIError(refusal);

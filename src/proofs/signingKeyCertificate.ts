@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-import { checkContext, onlyProperties, requireObject, requireString, requireTimestamp, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
+import { mandatoryText, nonemptyText, onlyProperties, requireObject, timestampAt, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }    from '../json/canonical.ts';
-import { without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { get, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { verifySignature }       from '../crypto/signature.ts';
 import { POIPublicKey }          from '../keys.ts';
 import { POIError }              from '../errors.ts';
@@ -25,8 +25,9 @@ import { POIError }              from '../errors.ts';
 
 export const SIGNING_KEY_CERTIFICATE_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/signingKeyCertificate/v2';
 
+/** The holder of a key, as WWCP_POI3 names it (`HolderText`). */
 const describeHolder = (key: POIPublicKey): string =>
-    key.holder !== undefined ? `'${key.holder}'` : 'no named holder';
+    key.holder !== undefined ? `the holder '${key.holder}'` : 'no named holder';
 
 
 /**
@@ -47,22 +48,44 @@ export class SigningKeyCertificate {
     ) {}
 
 
+    /**
+     * Reads a certificate as `RoamingNetworkSigningKeyCertificate.TryParse` of WWCP_POI3 reads it, in its words and order:
+     * its context, the roaming network operator, the signing key it certifies, `signedAt` as POI writes it, the algorithm,
+     * key identification and value of its signature; then a property it does not know, which is not signed.
+     */
     public static parse(value: JSONValue | undefined): SigningKeyCertificate {
 
         const json = requireObject(value, 'A certificate of a signing key');
 
-        checkContext(json, SIGNING_KEY_CERTIFICATE_CONTEXT, 'a certificate of a signing key');
+        if (get(json, '@context') !== undefined && get(json, '@context') !== SIGNING_KEY_CERTIFICATE_CONTEXT)
+            throw new POIError(`The JSON-LD context of a signing key certificate must be '${SIGNING_KEY_CERTIFICATE_CONTEXT}'!`);
+
+        const roamingNetworkOperatorId = mandatoryText(json, 'roamingNetworkOperatorId', 'The roaming network operator of a certificate');
+
+        let signingKey: POIPublicKey;
+
+        try {
+            signingKey = POIPublicKey.parse(isObject(json['signingKey']) ? json['signingKey'] : undefined);
+        }
+        catch {
+            throw new POIError('A signing key certificate requires the signingKey it certifies!');
+        }
+
+        const signedAt = timestampAt(json, 'signedAt');
+
+        if (signedAt === undefined)
+            throw new POIError('The signedAt of a signing key certificate must be written as yyyy-MM-ddTHH:mm:ss.fffZ!');
+
+        const algorithm  = nonemptyText(json, 'algorithm');
+        const keyId      = nonemptyText(json, 'keyId');
+        const signature  = nonemptyText(json, 'value');
+
+        if (algorithm === undefined || keyId === undefined || signature === undefined)
+            throw new POIError('A signing key certificate requires the algorithm, the key identification and the value of its signature!');
+
         onlyProperties(json, [ '@context', 'roamingNetworkOperatorId', 'signingKey', 'signedAt', 'algorithm', 'keyId', 'value' ], 'A certificate of a signing key');
 
-        return new SigningKeyCertificate(
-                   requireString   (json, 'roamingNetworkOperatorId', 'The roaming network operator of a certificate'),
-                   POIPublicKey.parse(json['signingKey'], 'The signing key of a certificate'),
-                   requireTimestamp(json, 'signedAt', 'The signedAt of a certificate'),
-                   requireString   (json, 'algorithm'),
-                   requireString   (json, 'keyId'),
-                   requireString   (json, 'value'),
-                   json
-               );
+        return new SigningKeyCertificate(roamingNetworkOperatorId, signingKey, signedAt, algorithm, keyId, signature, json);
 
     }
 

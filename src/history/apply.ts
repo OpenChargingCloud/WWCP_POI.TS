@@ -217,7 +217,7 @@ const INFRASTRUCTURE_TYPES = new Set([ ...Object.keys(OPERATOR_CHILD_ARRAYS), 'C
  */
 function asGiven(value: JSONValue, property: string | undefined, where: string): JSONValue {
 
-    const found = notWritten(value, property, property ?? '', true);
+    const found = notWritten(value, property, property ?? '', 'new value');
 
     if (found !== undefined)
         throw new POIError(`${where}: ${found.path === '' ? 'it' : `'${found.path}'`} is not given as the content holds it: ${found.reason}!`);

@@ -160,6 +160,51 @@ describe('The content, as WWCP_POI writes it (SPECIFICATION.md 2, Written forms)
 
     });
 
+    it('refuses an entity without its lastChange and a party without its name, which WWCP_POI3 writes of its own', () => {
+
+        expect(refusal(qa((_, __, pool) => { delete pool('DE*GEF*P2')['lastChange']; })))
+            .toBe(notWritten('chargingStationOperators[0].chargingPools[1]', 'an entity names its lastChange, which WWCP_POI otherwise writes as its created'));
+        expect(refusal(qa(network => { delete network['lastChange']; })))
+            .toBe('The roaming network is not written as the content holds it: an entity names its lastChange, which WWCP_POI otherwise writes as its created!');
+
+        // As "Charging Station Manufacturer 'GraphDefined'".
+        expect(refusal(qa(network => { delete defined((network['chargingStationManufacturers'] as JSONObject[])[0])['name']; })))
+            .toBe(notWritten('chargingStationManufacturers[0]', 'a party names its name, which WWCP_POI otherwise makes up of its kind and identification'));
+
+    });
+
+    it('refuses a text in languages without a language, but the name of a charging station operator, which WWCP_POI3 writes so', () => {
+
+        expect(refusal(qa((_, __, pool) => { pool('DE*GEF*P1')['name'] = {}; })))
+            .toBe(notWritten('chargingStationOperators[0].chargingPools[0].name', 'a text in languages without a language is left out'));
+        expect(refusal(qa(network => { body(network, 'BSI')['name'] = {}; })))
+            .toBe(notWritten('conformityAssessmentBodies[0].name', 'a text in languages without a language is left out'));
+
+        expect(refusal(qa((_, gef) => { gef['name'] = {}; }))).toBe('taken');
+
+    });
+
+    it('refuses a list WWCP_POI3 writes also empty left out: of an open source license its URLs', () => {
+
+        expect(refusal(qa(network => {
+                   const manufacturer = defined((network['transparencySoftwareManufacturers'] as JSONObject[])[0]);
+                   const release      = defined((manufacturer['transparencySoftware'] as JSONObject[])[0]);
+                   delete defined((release['openSourceLicenses'] as JSONObject[])[0])['URLs'];
+               })))
+            .toBe(notWritten('transparencySoftwareManufacturers[0].transparencySoftware[0].openSourceLicenses[0]', "WWCP_POI writes its 'URLs' also without an element"));
+
+    });
+
+    it('refuses an identification, and the type of a charging connector, given as a number, which WWCP_POI3 writes as a text', () => {
+
+        expect(refusal(qa(network => { body(network, 'BSI')['@id'] = 5; })))
+            .toBe(notWritten('conformityAssessmentBodies[0].@id', 'an identification is a text'));
+
+        expect(refusal(qa((_, gef) => { defined(((defined((gef['EVSETemplates'] as JSONObject[])[0]))['chargingConnectors'] as JSONObject[])[0])['type'] = 5; })))
+            .toBe(notWritten('chargingStationOperators[0].EVSETemplates[0].chargingConnectors[0].type', 'the type of a charging connector is a text'));
+
+    });
+
     it('holds custom data as given', () => {
 
         expect(refusal(qa((_, __, pool) => { pool('DE*GEF*P2')['customData'] = { b: [ 'z', 'a' ], a: { '@context': 'c', d: null, e: [] } }; })))

@@ -19,8 +19,9 @@ import { duplicateIdentification } from '../src/network/identifications.ts';
 const CREATED  = '2026-01-01T00:00:00.000Z';
 const T0       = '2026-10-25T12:00:00.000Z';
 
+/** An entity, named as WWCP_POI writes a party of its own making otherwise. */
 const entity = (id: string, more: JSONObject = {}): JSONObject =>
-    ({ '@id': id, created: CREATED, lastChange: CREATED, ...more });
+    ({ '@id': id, name: { en: id }, created: CREATED, lastChange: CREATED, ...more });
 
 /** A roaming network of the given parties, without a roaming network operator, without ETags. */
 const network = (parties: JSONObject): JSONObject =>
@@ -173,6 +174,22 @@ describe('Identifications unique within the roaming network', () => {
         expect(() => read({ parkingOperators:         [ entity('DE*PRK', { parkingSpaces: [ entity('space-1') ] }) ],
                             chargingStationOperators: [ entity('DE*GEF', { parkingSpaces: [ entity('SPACE-1') ] }) ] }))
             .toThrow("The parking space 'SPACE-1' must not be given twice in the roaming network!");
+
+    });
+
+    it('refuses an entity without its identification, and one of another JSON type, as WWCP_POI reads them', () => {
+
+        // As Styx refuses it (ParseMandatory), every kind of entity WWCP_POI reads by its identification.
+        expect(refusalOf(() => read({ chargingStationOperators: [ entity('DE*GEF', { chargingPools: [ { name: { en: 'Paradies' }, created: CREATED, lastChange: CREATED } ] }) ] })))
+            .toBe("Missing JSON property '@id'!");
+        expect(refusalOf(() => read({ conformityAssessmentBodies: [ { name: { en: 'PTB' }, created: CREATED, lastChange: CREATED } ] })))
+            .toBe("Missing JSON property '@id'!");
+
+        // Of another JSON type, in the words of the kinds WWCP_POI refuses it of.
+        expect(refusalOf(() => read({ chargingStationOperators: [ entity('DE*GEF', { chargingPools: [ entity('DE*GEF*P1', { '@id': 5 }) ] }) ] })))
+            .toBe("Invalid 'charging pool identification'!");
+        expect(refusalOf(() => read({ chargingStationOperators: [ entity('DE*GEF', { '@id': 5 }) ] })))
+            .toBe("Invalid 'charging station operator identification'!");
 
     });
 

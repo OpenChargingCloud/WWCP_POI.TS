@@ -124,7 +124,7 @@ describe('The roaming network operator says what a body is notified for (S32)', 
     };
     certificate['value'] = signedBy(RNO_IDENTITY.seed, SigningKeyCertificate.parse(certificate).signingBytes());
 
-    const ptb = (): JSONObject => ({ '@id': 'PTB', notifiedBodyNumber: '0102', notifiedFor: [ 'MID' ],
+    const ptb = (): JSONObject => ({ '@id': 'PTB', name: { en: 'PTB' }, notifiedBodyNumber: '0102', notifiedFor: [ 'MID' ],
                                      signingKeys: [ { '@id': PTB.id, key: PTB.cose } ], identityKeys: [ { '@id': PTB_IDENTITY.id, key: PTB_IDENTITY.cose } ],
                                      created: CREATED, lastChange: CREATED });
 
@@ -197,7 +197,7 @@ describe('The roaming network operator says what a body is notified for (S32)', 
 
     it('gives a number to one body only', () => {
 
-        const bsi = { '@id': 'BSI', notifiedBodyNumber: '0102', notifiedFor: [ 'CRA' ], created: CREATED, lastChange: CREATED };
+        const bsi = { '@id': 'BSI', name: { en: 'BSI' }, notifiedBodyNumber: '0102', notifiedFor: [ 'CRA' ], created: CREATED, lastChange: CREATED };
 
         expect(() => RoamingNetwork.parse(networkOf(bsi, ptb())))
             .toThrow("The notified body number '0102' of the conformity assessment body 'PTB' is the one of the conformity assessment body 'BSI' already!");

@@ -42,10 +42,11 @@ const release = (id: string, version: string): JSONObject =>
 const network = (): RoamingNetwork => RoamingNetwork.parse({
     '@context':                         ROAMING_NETWORK_CONTEXT,
     '@id':                              'rn1',
-    transparencySoftwareManufacturers:  [ { '@id': 'OpenChargingCloud', transparencySoftware: [ release('chargy-1.0', '1.0'), release('chargy-1.1', '1.1') ],
+    transparencySoftwareManufacturers:  [ { '@id': 'OpenChargingCloud', name: { en: 'Open Charging Cloud' }, transparencySoftware: [ release('chargy-1.0', '1.0'), release('chargy-1.1', '1.1') ],
                                             created: CREATED, lastChange: CREATED } ],
     chargingStationOperators:           [ {
         '@id':                     'DE*GEF',
+        name:                      { en: 'GraphDefined' },
         chargingPools:             [ { '@id': 'DE*GEF*P1', chargingStations: [ {
                                        '@id':                       'DE*GEF*S1',
                                        serialNumber:                'WB22-000815',
