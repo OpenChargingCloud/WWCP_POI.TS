@@ -274,6 +274,25 @@ npx tsx examples/validate-examples.ts D:\Coding\OpenChargingCloud\WWCP_POI\examp
 ```
 
 
+## Publishing
+
+```
+npm version 0.10.0 --no-git-tag-version
+git commit -a
+git tag -s v0.10.0 -m "v0.10.0"
+git push origin master v0.10.0
+git push git1 master v0.10.0
+git push git2 master v0.10.0
+
+npm run verify
+npm pack --dry-run
+npm pack
+npm login
+npm whoami
+npm publish
+```
+
+
 ## License
 
 [GNU Affero General Public License v3.0](LICENSE), as WWCP_POI.
