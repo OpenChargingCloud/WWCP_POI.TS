@@ -292,3 +292,9 @@ words. Still other words: a key of CBOR WWCP_POI3 can not read (the words of `@v
 `@vanaheimr/metrological-cbor`, not of their C# originals), a timestamp both refuse ("Invalid value for 'not before'!"
 there). Refused here, taken and written otherwise by WWCP_POI3: a key not in deterministic CBOR, a timestamp not written
 as POI writes it, a `notBefore` or `notAfter` of null.
+
+`poi-histories.json` of WWCPPOIConformanceTests `0734641` vendored: 8 replays of EV Taler in a history the generator
+signs, who may sign the merchant of DE*GEF (a signing key for `payments`; the roaming network operator only in place
+of a party without signing keys) and a charging pool naming EVTaler with and without it. A change needing signatures is
+named as WWCP_POI names it, with the property it changes, e.g. "Change 0: UpdateProperty of the
+ChargingStationOperator 'DE*GEF' ('evTaler') needs a signature by …".

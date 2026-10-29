@@ -1112,8 +1112,9 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
 }
 
 
+/** A change as WWCP_POI names it where it needs signatures: its kind, its entity and the property it changes, if any. */
 function describeChange(change: Change, index: number): string {
-    return `Change ${index}: ${change.kind} of the ${change.entityType} '${change.entityId}'`;
+    return `Change ${index}: ${change.kind} of the ${change.entityType} '${change.entityId}'${change.propertyName === undefined ? '' : ` ('${change.propertyName}')`}`;
 }
 
 

@@ -277,7 +277,9 @@ describe('A signing key that may sign payments (WWCP_POI ec3dace)', () => {
 
         expect(POIPublicKey.parse({ '@id': PAYMENTS.id, key: PAYMENTS.cose, usages: [ 'payments' ] }).maySign(KeyUsages.Payments)).toBe(true);
 
-        expect(() => { checkOwnership(before, signed(newMerchant, PARTY)); }).toThrow(/that may sign 'payments'!/u);
+        // Named as WWCP_POI3 names it, with the property it changes.
+        expect(() => { checkOwnership(before, signed(newMerchant, PARTY)); })
+            .toThrow("Change 0: UpdateProperty of the ChargingStationOperator 'DE*GEF' ('evTaler') needs a signature by a signing key of the ChargingStationOperator 'DE*GEF' that may sign 'payments'!");
         expect(() => { checkOwnership(before, signed(newMerchant, PAYMENTS)); }).not.toThrow();
 
         expect(() => { checkOwnership(before, signed(newName, PAYMENTS)); }).toThrow(/that may sign 'party'!/u);
