@@ -71,6 +71,15 @@ WWCP_POI3 at 8108522 with 201 versions of QA: of the 20 it takes and writes othe
 refuses all now; every one it takes as given is taken, every one it refuses refused, and every version of the frozen run
 is written as the content holds it. `tests/writtenForm.test.ts`.
 
+What the constructor of the roaming network refuses, of a version, in the words of WWCP_POI: as an argument of its
+parameter, which its TryParse names, e.g. "The given JSON representation of a roaming network is invalid: The notified
+body number '0102' of the conformity assessment body 'PTB' is the one of the conformity assessment body 'BSI' already!
+(Parameter 'ConformityAssessmentBodies')", in its order (the groups of providers and the offers before the releases): the
+identifications unique within the network, and the key statement and the certificates of the roaming network operator
+(`KeyStatementError`, 'Operator'), its key statement of another network now before its certificates. After the last change
+of a change set they are named bare, in the order WWCP_POI checks them there (`RoamingNetwork.afterChangeSet`). The
+golden vectors held the inner words only. Checked against WWCP_POI3 at 8108522 on 10 versions of QA.
+
 
 ## 0.1.0 (2026-10-29)
 

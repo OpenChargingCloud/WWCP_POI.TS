@@ -7,6 +7,7 @@ import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification } from '../src/h
 import { cborETag, etagToJSON, jsonETag } from '../src/etags.ts';
 import { clone, type JSONArray, type JSONObject } from '../src/json/value.ts';
 import { RoamingNetwork, ROAMING_NETWORK_CONTEXT } from '../src/network/roamingNetwork.ts';
+import { duplicateIdentification } from '../src/network/identifications.ts';
 
 
 // Identifications WWCP_POI keeps unique within the roaming network, not only within their party: grid connection points,
@@ -27,6 +28,17 @@ const network = (parties: JSONObject): JSONObject =>
 
 const read = (parties: JSONObject): RoamingNetwork =>
     RoamingNetwork.parse(network(parties));
+
+/** The refusal of the given reading, word for word. */
+const refusalOf = (reading: () => unknown): string => {
+    try {
+        reading();
+    }
+    catch (e) {
+        return e instanceof Error ? e.message : String(e);
+    }
+    return 'taken';
+};
 
 
 describe('Identifications unique within the roaming network', () => {
@@ -58,8 +70,30 @@ describe('Identifications unique within the roaming network', () => {
 
         json['@id'] = changeSetIdentification(json);
 
-        expect(() => applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false }))
-            .toThrow("The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network!");
+        // After the last change of a change set, bare, as WWCP_POI3 names it there.
+        expect(refusalOf(() => applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false })))
+            .toBe("The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network!");
+
+    });
+
+    it('of a version, names them as the constructor of the roaming network does: arguments of its parameters, in its order', () => {
+
+        const groups = {
+            chargingStationOperators:  [ entity('DE*GDF', { EVSEGroups: [ entity('DE*GDF*EGMOTORWAY') ] }) ],
+            eMobilityProviders:        [ entity('DE-GDF', { EVSEGroups: [ entity('DE*GDF*EGMOTORWAY') ] }) ],
+        };
+
+        expect(refusalOf(() => read(groups)))
+            .toBe("The given JSON representation of a roaming network is invalid: The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network! (Parameter 'EMobilityProviders')");
+
+        // The groups of providers before the releases, of a version; after them, after the last change of a change set.
+        const releases = { ...groups, transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ { '@id': 'chargy-1.0' } ] }),
+                                                                           entity('ZAP',  { transparencySoftware: [ { '@id': 'Chargy-1.0' } ] }) ] };
+
+        expect(refusalOf(() => read(releases)))
+            .toBe("The given JSON representation of a roaming network is invalid: The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network! (Parameter 'EMobilityProviders')");
+        expect(duplicateIdentification(network(releases), 'change set'))
+            .toBe("The transparency software release 'Chargy-1.0' of the manufacturer 'ZAP' is one of the manufacturer 'ACME' already!");
 
     });
 

@@ -32,6 +32,13 @@ const objectsOf = (value: JSONValue | undefined): JSONObject[] =>
 const idOf = (entity: JSONObject): string =>
     typeof entity['@id'] === 'string' ? entity['@id'] : '';
 
+/**
+ * What the constructor of the roaming network refuses, as its TryParse names it: an argument of the given parameter, e.g.
+ * of its `ConformityAssessmentBodies`.
+ */
+export const inRoamingNetwork = (error: string, parameter: string): string =>
+    `The given JSON representation of a roaming network is invalid: ${error} (Parameter '${parameter}')`;
+
 /** A text as `StringComparison.OrdinalIgnoreCase` compares it: every character by its simple upper case. */
 export const ignoringCase = (text: string): string =>
     Array.from(text, character => {
@@ -194,9 +201,12 @@ function duplicateNotifiedBodyNumber(bodies: readonly JSONObject[]): string | un
 
 /**
  * The error, when the given content names an identification twice that WWCP_POI keeps unique within the roaming network,
- * as WWCP_POI says it; undefined for none.
+ * as WWCP_POI says it of a version, or after the last change of a change set; undefined for none. Of a version, it refuses
+ * them as the constructor of the roaming network does, in its order, each as an argument of its parameter, which its
+ * TryParse names: "The given JSON representation of a roaming network is invalid: … (Parameter 'GridOperators')". After the
+ * last change of a change set, it names them bare, in the order it checks them there (RoamingNetwork.ChangeSets.cs).
  */
-export function duplicateIdentification(content: JSONObject): string | undefined {
+export function duplicateIdentification(content: JSONObject, of: 'version' | 'change set'): string | undefined {
 
     const operators              = objectsOf(get(content, 'chargingStationOperators'));
     const providers              = objectsOf(get(content, 'eMobilityProviders'));
@@ -208,20 +218,35 @@ export function duplicateIdentification(content: JSONObject): string | undefined
     const meterOwners            = [ ...operators, ...gridOperators ];
     const groupOwners            = [ ...operators, ...providers ];
 
-    return ofAnother(gridOperators, 'gridConnectionPoints', (point, gridOperator, other) =>
-               `The grid connection point '${point}' of the grid operator '${gridOperator}' must be unique within the roaming network, but the grid operator '${other}' has it too!`) ??
-           givenTwice('energy meter', energyMetersOf(operators, gridOperators), ignoringCase) ??
-           duplicateParking(parkingOperators, operators) ??
-           ofAnother(softwareManufacturers, 'transparencySoftware', (release, manufacturer, other) =>
-               `The transparency software release '${release}' of the manufacturer '${manufacturer}' is one of the manufacturer '${other}' already!`) ??
-           ofAnother(bodies, 'certificates', (certificate, body, other) =>
-               `The certificate '${certificate}' of the conformity assessment body '${body}' is one of the conformity assessment body '${other}' already!`) ??
-           duplicateNotifiedBodyNumber(bodies) ??
-           givenTwice('energy meter group',      childrenOf(meterOwners, 'energyMeterGroups'),      ignoringCase) ??
-           givenTwice('EVSE group',              childrenOf(groupOwners, 'EVSEGroups'),             groupId('EG')) ??
-           givenTwice('charging station group',  childrenOf(groupOwners, 'chargingStationGroups'),  groupId('SG')) ??
-           givenTwice('charging pool group',     childrenOf(groupOwners, 'chargingPoolGroups'),     groupId('PG')) ??
-           givenTwice('charging tariff offer',   childrenOf(groupOwners, 'chargingTariffOffers'),   ignoringCase) ??
-           givenTwice('energy meter template',   childrenOf(meterOwners, 'energyMeterTemplates'),   ignoringCase);
+    const gridConnectionPoint  = (): string | undefined => ofAnother(gridOperators, 'gridConnectionPoints', (point, gridOperator, other) =>
+                                      `The grid connection point '${point}' of the grid operator '${gridOperator}' must be unique within the roaming network, but the grid operator '${other}' has it too!`);
+    const energyMeter          = (): string | undefined => givenTwice('energy meter', energyMetersOf(operators, gridOperators), ignoringCase);
+    const parking              = (): string | undefined => duplicateParking(parkingOperators, operators);
+    const release              = (): string | undefined => ofAnother(softwareManufacturers, 'transparencySoftware', (id, manufacturer, other) =>
+                                      `The transparency software release '${id}' of the manufacturer '${manufacturer}' is one of the manufacturer '${other}' already!`);
+    const certificate          = (): string | undefined => ofAnother(bodies, 'certificates', (id, body, other) =>
+                                      `The certificate '${id}' of the conformity assessment body '${body}' is one of the conformity assessment body '${other}' already!`);
+    const number               = (): string | undefined => duplicateNotifiedBodyNumber(bodies);
+    const energyMeterGroup     = (): string | undefined => givenTwice('energy meter group',      childrenOf(meterOwners, 'energyMeterGroups'),      ignoringCase);
+    const providerGroup        = (): string | undefined => givenTwice('EVSE group',              childrenOf(groupOwners, 'EVSEGroups'),             groupId('EG')) ??
+                                                           givenTwice('charging station group',  childrenOf(groupOwners, 'chargingStationGroups'),  groupId('SG')) ??
+                                                           givenTwice('charging pool group',     childrenOf(groupOwners, 'chargingPoolGroups'),     groupId('PG'));
+    const tariffOffer          = (): string | undefined => givenTwice('charging tariff offer',   childrenOf(groupOwners, 'chargingTariffOffers'),   ignoringCase);
+    const energyMeterTemplate  = (): string | undefined => givenTwice('energy meter template',   childrenOf(meterOwners, 'energyMeterTemplates'),   ignoringCase);
+
+    if (of === 'change set')
+        return gridConnectionPoint() ?? energyMeter() ?? parking() ?? release() ?? certificate() ?? number() ?? energyMeterGroup() ??
+               providerGroup() ?? tariffOffer() ?? energyMeterTemplate();
+
+    const ofParameter = (parameter: string, error: string | undefined): string | undefined =>
+        error === undefined ? undefined : inRoamingNetwork(error, parameter);
+
+    return ofParameter('GridOperators',                      gridConnectionPoint()) ??
+           ofParameter('ChargingStationOperators',           energyMeter()) ??
+           ofParameter('ParkingOperators',                   parking()) ??
+           ofParameter('EMobilityProviders',                 providerGroup() ?? tariffOffer()) ??
+           ofParameter('TransparencySoftwareManufacturers',  release()) ??
+           ofParameter('ConformityAssessmentBodies',         certificate() ?? number()) ??
+           ofParameter('ChargingStationOperators',           energyMeterGroup() ?? energyMeterTemplate());
 
 }

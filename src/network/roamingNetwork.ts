@@ -20,7 +20,7 @@ import { get, isArray, isObject, sameValue, set, without, type JSONObject, type 
 import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type ETag } from '../etags.ts';
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
-import { duplicateIdentification }   from './identifications.ts';
+import { duplicateIdentification, inRoamingNetwork } from './identifications.ts';
 import { invalidVersionText }        from './versionTexts.ts';
 import { invalidCertificates }       from './certificates.ts';
 import { invalidEVTaler }            from './evTaler.ts';
@@ -34,6 +34,14 @@ import { POIError }                  from '../errors.ts';
 
 
 export const ROAMING_NETWORK_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/v1';
+
+
+/**
+ * What the roaming network refuses of its operator as it is made of it, not as the operator is read (`KeyStatementError`
+ * of WWCP_POI3): the key statement and the certificates of its signing keys. Of a version, WWCP_POI3 names it as an
+ * argument of the `Operator` of its constructor; after the last change of a change set, bare.
+ */
+class KeyStatementError extends POIError {}
 
 
 /** The holders of keys: keys naming no holder have one holder together (4.1). */
@@ -130,34 +138,36 @@ export class RoamingNetworkOperator {
 
         }
 
+        // What the roaming network refuses of its operator as it is made of it (KeyStatementError of WWCP_POI3), in its order:
+        // a key statement of another roaming network, then the certificates, then the rest of the key statement.
+        if (keyStatement !== undefined && keyStatement.roamingNetworkId !== roamingNetworkId)
+            throw new KeyStatementError(`The key statement of the roaming network operator '${id}' is one of the roaming network '${keyStatement.roamingNetworkId}', not of '${roamingNetworkId}'!`);
+
         for (const certificate of certificates) {
 
             if (certificate.roamingNetworkOperatorId !== id)
-                throw new POIError(`The certificate of the signing key '${certificate.signingKey.id}' of the roaming network operator '${id}' is one of '${certificate.roamingNetworkOperatorId}'!`);
+                throw new KeyStatementError(`The certificate of the signing key '${certificate.signingKey.id}' of the roaming network operator '${id}' is one of '${certificate.roamingNetworkOperatorId}'!`);
 
             try {
                 certificate.verify(identityKeys);
             }
             catch (e) {
-                throw new POIError(`The roaming network operator '${id}': ${e instanceof Error ? e.message : String(e)}`);
+                throw new KeyStatementError(`The roaming network operator '${id}': ${e instanceof Error ? e.message : String(e)}`);
             }
 
         }
 
         if (keyStatement !== undefined) {
 
-            if (keyStatement.roamingNetworkId !== roamingNetworkId)
-                throw new POIError(`The key statement of the roaming network operator '${id}' is one of the roaming network '${keyStatement.roamingNetworkId}', not of '${roamingNetworkId}'!`);
-
             if (keyStatement.roamingNetworkOperatorId !== id)
-                throw new POIError(`The key statement of the roaming network operator '${id}' is one of '${keyStatement.roamingNetworkOperatorId}'!`);
+                throw new KeyStatementError(`The key statement of the roaming network operator '${id}' is one of '${keyStatement.roamingNetworkOperatorId}'!`);
 
             const unknown = keyStatement.identityKeys.find(key => !identityKeys.some(identityKey => sameValue(without(identityKey.json, '@context'), without(key.json, '@context'))));
             if (unknown !== undefined)
-                throw new POIError(`The key statement of the roaming network operator '${id}' names the identity key '${unknown.id}', which is not one of its identity keys!`);
+                throw new KeyStatementError(`The key statement of the roaming network operator '${id}' names the identity key '${unknown.id}', which is not one of its identity keys!`);
 
             if (keyStatement.minConsensus !== minConsensus)
-                throw new POIError(`The key statement of the roaming network operator '${id}' states the minConsensus ${keyStatement.minConsensus}, not its ${minConsensus}!`);
+                throw new KeyStatementError(`The key statement of the roaming network operator '${id}' states the minConsensus ${keyStatement.minConsensus}, not its ${minConsensus}!`);
 
             // Signed by as many holders of its identity keys as its quorum needs, as the operator names their holders.
             try {
@@ -167,7 +177,7 @@ export class RoamingNetworkOperator {
                 keyStatement.verifyHolders([ ...holders.values() ], identityKeys, { minConsensus });
             }
             catch (e) {
-                throw new POIError(minConsensus > 1
+                throw new KeyStatementError(minConsensus > 1
                                        ? `The key statement of the roaming network operator '${id}' is not signed by identity keys of ${minConsensus} of its holders: ${e instanceof Error ? e.message : String(e)}`
                                        : `The key statement of the roaming network operator '${id}' is not signed by one of its identity keys: ${e instanceof Error ? e.message : String(e)}`);
             }
@@ -210,6 +220,20 @@ export class RoamingNetwork {
      * has (`matchesCommitETags`).
      */
     public static parse(value: JSONValue | undefined): RoamingNetwork {
+        return RoamingNetwork.read(value, 'version');
+    }
+
+    /**
+     * Reads the version the given change set leads to, its content after the last change, and refuses it as `parse`
+     * does, but in the words WWCP_POI3 names what it refuses of the network there (RoamingNetwork.ChangeSets.cs): its
+     * operator and the identifications it keeps unique within the roaming network bare, not as arguments of its
+     * constructor.
+     */
+    public static afterChangeSet(content: JSONObject): RoamingNetwork {
+        return RoamingNetwork.read(content, 'change set');
+    }
+
+    private static read(value: JSONValue | undefined, of: 'version' | 'change set'): RoamingNetwork {
 
         const json = requireObject(value, 'A roaming network');
         const id   = requireString(json, '@id', 'The identification of a roaming network');
@@ -233,11 +257,18 @@ export class RoamingNetwork {
         }
 
         const operatorJSON = get(json, 'operator');
-        const operator     = operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, id);
+        const operator     = operatorJSON === undefined ? undefined : ((): RoamingNetworkOperator => {
+                                 try {
+                                     return RoamingNetworkOperator.parse(operatorJSON, id);
+                                 }
+                                 catch (e) {
+                                     throw e instanceof KeyStatementError && of === 'version' ? new POIError(inRoamingNetwork(e.message, 'Operator')) : e;
+                                 }
+                             })();
 
         // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them.
         const refusal      = invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content) ?? invalidPartyKeys(content) ??
-                             notWrittenAsHeld(content) ?? duplicateIdentification(content);
+                             notWrittenAsHeld(content) ?? duplicateIdentification(content, of);
 
         if (refusal !== undefined)
             throw new POIError(refusal);

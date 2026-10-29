@@ -118,6 +118,11 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
             .toBe("The given JSON representation of a roaming network operator is invalid: An identity key of the roaming network operator 'OCC' must not be given twice!");
         expect(refusal(qa(n => { key(operator(n), 'identityKeys')['usages'] = [ 'party' ]; })))
             .toBe("The given JSON representation of a roaming network operator is invalid: The identity key '2444d1550fb2aeebcbdb538a81264f4a721a5d8ab35a8a6af58d33564d96dcf6' of the roaming network operator 'OCC' names no usages: they are of signing keys!");
+        // What the roaming network refuses of its operator as it is made of it, as an argument of its constructor.
+        expect(refusal(qa(n => { (operator(n)['keyStatement'] as JSONObject)['roamingNetworkId'] = 'QB'; })))
+            .toBe("The given JSON representation of a roaming network is invalid: The key statement of the roaming network operator 'OCC' is one of the roaming network 'QB', not of 'QA'! (Parameter 'Operator')");
+        expect(refusal(qa(n => { (operator(n)['keyStatement'] as JSONObject)['roamingNetworkOperatorId'] = 'OCD'; })))
+            .toBe("The given JSON representation of a roaming network is invalid: The key statement of the roaming network operator 'OCC' is one of 'OCD'! (Parameter 'Operator')");
         expect(refusal(qa(n => { key(operator(n), 'identityKeys')['usages'] = [ 'zzz' ]; })))
             .toMatch(/^Invalid identity key '\{"@id":"2444d155.*\}': The usage 'zzz' of the public key '2444d1550fb2aeebcbdb538a81264f4a721a5d8ab35a8a6af58d33564d96dcf6' is unknown/u);
 

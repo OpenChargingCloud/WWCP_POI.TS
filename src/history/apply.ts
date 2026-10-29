@@ -1323,7 +1323,7 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     // A change set sets the lastChange of the roaming network always (4).
     content['lastChange'] = createdAt;
 
-    const after = RoamingNetwork.parse(content);
+    const after = RoamingNetwork.afterChangeSet(content);
 
     matchETags(changeSet.afterETags, after, 'The result does not match the change set');
 
