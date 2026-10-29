@@ -269,3 +269,15 @@ drivers see, "EV Taler (Example Exchange, EUR)" (`paymentOptionName`). The JSON,
 a merchant are those WWCP_POI writes: `tests/evTaler.test.ts` holds the ETags WWCP_POI3 calculates of QA with the merchant
 of its EVTalerTests. Not yet: golden vectors of WWCPPOIConformanceTests, and a station proof with a merchant as WWCP_POI
 signs it (example A15 came after the frozen run). Nothing here takes or makes a payment.
+
+The keys of the parties of a roaming network are read where it is read, as WWCP_POI reads them wherever it reads a
+party (`POIPartyKeys.TryParse` and `Check`), in its words (D12 of WWCPPOIConformanceTests): before, a party's keys were
+only read where they were used, so a version naming an unknown usage of a party's key was taken. Every key as
+`POIPublicKey.parse` reads it, none twice, none both a signing and an identity key, no identity key naming usages; the
+parties in the order WWCP_POI reads them, the charging station operators last; the identity keys of the roaming network
+operator in the same words (`src/network/partyKeys.ts`). Checked against WWCP_POI3 at `ec3dace` itself, on 47 versions
+of QA with keys valid and not, of every kind of party: 40 are read as WWCP_POI3 reads them, in the same words; 5 both
+refuse, in other words of `POIPublicKey.parse` within the same wrapper (a key without identification or key, not
+Base64, expiring before it becomes valid, of another JSON-LD context); 2 name a `notAfter` WWCP_POI takes and writes
+otherwise (a date only, an offset), refused here as every timestamp not written as POI writes it. `poi-refusals.json` of
+WWCPPOIConformanceTests vendored, 89 vectors: the 13 of EV Taler and `version-key-usage-unknown`, D12 closed.

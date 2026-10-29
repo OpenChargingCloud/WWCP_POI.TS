@@ -24,8 +24,9 @@ import { duplicateIdentification }   from './identifications.ts';
 import { invalidVersionText }        from './versionTexts.ts';
 import { invalidCertificates }       from './certificates.ts';
 import { invalidEVTaler }            from './evTaler.ts';
+import { invalidPartyKeys, partyKeysOf } from './partyKeys.ts';
 import { effectiveTreeETag }         from './tree.ts';
-import { POIPublicKey }              from '../keys.ts';
+import type { POIPublicKey }         from '../keys.ts';
 import { KeyStatement }              from '../proofs/keyStatement.ts';
 import { SigningKeyCertificate }     from '../proofs/signingKeyCertificate.ts';
 import { POIError }                  from '../errors.ts';
@@ -81,7 +82,7 @@ export class RoamingNetworkOperator {
         if (get(json, 'signingKeys') !== undefined)
             throw new POIError('The signing keys of a roaming network operator are those of its signingKeyCertificates!');
 
-        const identityKeys  = POIPublicKey.parseAll(get(json, 'identityKeys'), `identity keys of the roaming network operator '${id}'`);
+        const identityKeys  = partyKeysOf(json, `the roaming network operator '${id}'`, 'a roaming network operator').identityKeys;
         const minConsensus  = get(json, 'minConsensus') === undefined ? 1 : requireInteger(json, 'minConsensus', 1, 255, `The minConsensus of the roaming network operator '${id}'`);
         const keyStatement  = get(json, 'keyStatement') === undefined ? undefined : KeyStatement.parse(get(json, 'keyStatement'));
 
@@ -202,6 +203,7 @@ export class RoamingNetwork {
      * identification twice that WWCP_POI keeps unique within the roaming network (`duplicateIdentification`), nor a hardware
      * revision, firmware version or serial number WWCP_POI refuses (`invalidVersionText`), nor a certificate WWCP_POI
      * refuses to read (`invalidCertificates`), nor an EV Taler merchant or payment options it refuses (`invalidEVTaler`),
+     * nor keys of a party it refuses (`invalidPartyKeys`),
      * also the version a change set leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it
      * has (`matchesCommitETags`).
      */
@@ -231,7 +233,8 @@ export class RoamingNetwork {
         const operatorJSON = get(json, 'operator');
         const operator     = operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, id);
 
-        const refusal      = duplicateIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content);
+        const refusal      = duplicateIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content) ??
+                             invalidPartyKeys(content);
 
         if (refusal !== undefined)
             throw new POIError(refusal);
