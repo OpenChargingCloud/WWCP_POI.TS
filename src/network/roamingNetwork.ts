@@ -233,8 +233,9 @@ export class RoamingNetwork {
         const operatorJSON = get(json, 'operator');
         const operator     = operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, id);
 
-        const refusal      = duplicateIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content) ??
-                             invalidPartyKeys(content);
+        // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them.
+        const refusal      = invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content) ?? invalidPartyKeys(content) ??
+                             duplicateIdentification(content);
 
         if (refusal !== undefined)
             throw new POIError(refusal);

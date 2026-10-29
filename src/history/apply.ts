@@ -22,6 +22,8 @@ import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { evTalerWithoutMerchant }         from '../network/evTaler.ts';
+import { ignoringCase }                   from '../network/identifications.ts';
+import { trimmed }                        from '../network/versionTexts.ts';
 import type { Change, ChangeSet }         from './changeSet.ts';
 import { POIError, required }             from '../errors.ts';
 
@@ -103,6 +105,8 @@ interface PartyChildType {
     readonly changeable:  readonly string[];
     /** Its party in words, when its identification is unique within its party only: then every change names its party. */
     readonly inParent?:   string;
+    /** Whether it keeps the version it was added with: a new version is a new release (S31). */
+    readonly keepsVersion?: boolean;
 }
 
 const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
@@ -135,8 +139,11 @@ const PARTY_CHILD_TYPES: Readonly<Record<string, PartyChildType>> = {
         property:    'transparencySoftware',
         what:        'transparency software release',
         usage:       KeyUsages.Software,
-        changeable:  [ 'name', 'version', 'openSourceLicenses', 'logo', 'howToUse', 'moreInformation', 'sourceCodeRepository',
+        // Not its version: a new version is a new release, so that a certificate naming a release names the version that
+        // was assessed.
+        changeable:  [ 'name', 'openSourceLicenses', 'logo', 'howToUse', 'moreInformation', 'sourceCodeRepository',
                        'supportUntil', 'declarationOfConformity', 'softwareBillOfMaterials' ],
+        keepsVersion: true,
     },
 
     ConformityCertificate: {
@@ -760,7 +767,9 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             const child     = existing().child;
 
             if (!type.changeable.includes(property))
-                throw new POIError(`Change ${index}: the property '${property}' of a ${type.what} can not be changed!`);
+                throw new POIError(type.keepsVersion === true && property === 'version'
+                                       ? `Change ${index}: the version of the ${what} can not be changed: a new version is a new release!`
+                                       : `Change ${index}: the property '${property}' of a ${type.what} can not be changed!`);
 
             if (change.kind === 'RemoveProperty') {
                 if (get(child, property) === undefined)
@@ -1012,6 +1021,11 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
     if (PARTIES.has(change.entityType)) {
 
         if (change.kind === 'Add' || change.kind === 'Remove')
+            return { kind: 'rno', keys: 'signing' };
+
+        // The number of a conformity assessment body as a notified body and the legislations it is notified for are the
+        // roaming network operator's, which vets it, also once the body has keys: no body declares itself notified (S32).
+        if (change.entityType === 'ConformityAssessmentBody' && (change.propertyName === 'notifiedBodyNumber' || change.propertyName === 'notifiedFor'))
             return { kind: 'rno', keys: 'signing' };
 
         // As its keys name it: a change may name it in every spelling its identification considers equal.
@@ -1392,6 +1406,11 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
     checkStatedBy(before, content, changeSet);
 
+    const changedVersion = changedReleaseVersion(before.content, content);
+
+    if (changedVersion !== undefined)
+        throw new POIError(changedVersion);
+
     // A change set sets the lastChange of the roaming network always (4).
     content['lastChange'] = createdAt;
 
@@ -1402,6 +1421,34 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     checkKeyHolders(before, after);
 
     return after;
+
+}
+
+
+/**
+ * The error, when a release of the version before has another version after the change set, also removed and added again
+ * (4.1, `ChangedTransparencySoftwareVersion`): a new version is a new release, so that a certificate naming a release names
+ * the version that was assessed. Releases and versions compare as WWCP_POI compares them, without case, versions trimmed.
+ */
+function changedReleaseVersion(before: JSONObject, after: JSONObject): string | undefined {
+
+    const releasesOf = (content: JSONObject): JSONObject[] =>
+        objectsOf(get(content, 'transparencySoftwareManufacturers')).flatMap(manufacturer => objectsOf(get(manufacturer, 'transparencySoftware')));
+
+    const versionOf  = (release: JSONObject): string => trimmed(asText(get(release, 'version') ?? ''));
+    const versions   = new Map(releasesOf(before).map(release => [ ignoringCase(asText(release['@id'])), versionOf(release) ]));
+
+    for (const release of releasesOf(after)) {
+
+        const was = versions.get(ignoringCase(asText(release['@id'])));
+        const is  = versionOf(release);
+
+        if (was !== undefined && ignoringCase(was) !== ignoringCase(is))
+            return `The version of the transparency software release '${asText(release['@id'])}' can not be changed from '${was}' to '${is}': a new version is a new release!`;
+
+    }
+
+    return undefined;
 
 }
 

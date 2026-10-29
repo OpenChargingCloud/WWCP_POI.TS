@@ -121,8 +121,13 @@ describe('Identifications unique within the roaming network', () => {
                                                                  entity('ZAP',  { transparencySoftware: [ { '@id': 'Chargy-1.0' } ] }) ] }))
             .toThrow("The transparency software release 'Chargy-1.0' of the manufacturer 'ZAP' is one of the manufacturer 'ACME' already!");
 
-        expect(() => read({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'cert-1' } ] }),
-                                                          entity('VDE', { certificates: [ { '@id': 'CERT-1' } ] }) ] }))
+        // Certificates WWCP_POI reads, which it reads before it makes the network of them.
+        const certificate = (id: string): JSONObject =>
+            ({ '@id': id, chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300', hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.5.0' ],
+               verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ] });
+
+        expect(() => read({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ certificate('cert-1') ] }),
+                                                          entity('VDE', { certificates: [ certificate('CERT-1') ] }) ] }))
             .toThrow("The certificate 'CERT-1' of the conformity assessment body 'VDE' is one of the conformity assessment body 'PTB' already!");
 
         expect(() => read({ chargingStationOperators: [ entity('DE*GEF', { chargingTariffOffers: [ entity('offer-1') ] }) ],

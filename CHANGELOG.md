@@ -1,6 +1,32 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## Unreleased
+
+S31 and S32 of WWCP_POI `d6b0127`. A release keeps its version: a new version is a new release, so that a
+certificate naming a release names the version that was assessed. A change set updating or removing the `version` of a
+transparency software release is refused, and so is one removing a release and adding it again with another version,
+after its last change (`ChangedTransparencySoftwareVersion`; versions compared trimmed and without case, as
+`TransparencySoftwareVersion` compares them). The `notifiedBodyNumber` and `notifiedFor` of a conformity assessment
+body are the roaming network operator's, which vets the body, also once the body has keys: a body issuing a
+certificate under a legislation the same change set adds to its `notifiedFor` signs it together with the operator. A
+number names one body, in every version and after every change set (`DuplicateNotifiedBodyNumber`).
+`tests/releasesAndBodies.test.ts`, after `A_release_keeps_its_version` and
+`The_roaming_network_operator_says_what_a_body_is_notified_for`.
+
+A conformity assessment body is refused as its constructor in WWCP_POI refuses it, in its words and order: a
+`notifiedBodyNumber` not of four digits (as `^[0-9]{4}$` of .NET matches it, also before a last line feed), a legislation
+of `notifiedFor` empty or given twice (with case), a certificate issued under a legislation it is not notified for
+(exactly as written, its certificates in the ordinal order of their identifications), each wrapped as WWCP_POI wraps it,
+e.g. "The given JSON representation of a conformity assessment body is invalid: The certificate 'PTB-2026-0042' is issued
+under the legislation 'CRA', which the conformity assessment body 'PTB' is not notified for! (Parameter 'Certificates')";
+before them a `notifiedBodyNumber` that is no text and a `notifiedFor` that is no array of texts. A version is refused
+for what WWCP_POI refuses of an entity as it reads it before what it refuses of the network made of them, the
+identifications unique within the network last. Checked against WWCP_POI3 itself, on 33 versions of QA: the same, but
+for two refusals of one body at once, a key and its number. In a change set WWCP_POI names the change ("Change 0: …"),
+this library refuses the version it leads to.
+
+
+## 0.1.0 (2026-10-29)
 
 The first milestone: the examples A1 to A14 of WWCP_POI (commit `33447ac`) checked in TypeScript.
 

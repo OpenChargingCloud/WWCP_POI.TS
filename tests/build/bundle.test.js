@@ -19,9 +19,12 @@ const filesBelow = directory =>
     readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
         entry.isDirectory() ? filesBelow(join(directory, entry.name)) : [ join(directory, entry.name) ]);
 
-/** The module specifiers a JavaScript or declaration file imports or exports from. */
+/**
+ * The module specifiers a JavaScript or declaration file imports or exports from: of import and export statements, and of
+ * dynamic imports; not a text that reads alike, e.g. "can not be changed from '1.5.0'".
+ */
 const specifiersOf = text =>
-    [ ...text.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])([^'"]+)\1/g) ].map(match => match[2]);
+    [ ...text.matchAll(/(?:(?:^|[;}])\s*(?:import|export)\b[^;'"]*?\bfrom\s*|(?:^|[;}])\s*import\s*|\bimport\s*\(\s*)(['"])([^'"]+)\1/gm) ].map(match => match[2]);
 
 
 describe('the bundle', () => {

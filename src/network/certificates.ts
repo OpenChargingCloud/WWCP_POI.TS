@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import { ordinal }    from '../json/canonical.ts';
 import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { isText, objectsOf, trimmed, versionTwice, MODEL_VERSIONS } from './versionTexts.ts';
 
@@ -27,7 +28,9 @@ import { isText, objectsOf, trimmed, versionTwice, MODEL_VERSIONS } from './vers
 // notAfter; its releases each once, at least one, none both verified and compatible; energy meters of a charging station
 // model only, each model once. Whether its model, its versions, its releases and its legislation are those of the network
 // WWCP_POI checks with the references, which this library leaves to WWCP_POI; an unknown property it refuses of a
-// certificate as of every entity (StrictJSON.OnlyProperties), which this library does not.
+// certificate as of every entity (StrictJSON.OnlyProperties), which this library does not. The conformity assessment
+// bodies issuing them as ConformityAssessmentBody reads and constructs them: a notified body number of four digits, the
+// legislations they are notified for neither empty nor twice, a certificate only under one of them.
 
 
 const MODEL_PROPERTIES  = [ 'chargingStationManufacturerId', 'chargingStationModel', 'energyMeterManufacturerId', 'energyMeterModel' ];
@@ -335,15 +338,84 @@ export function invalidCertificate(certificate: JSONObject): string | undefined 
 
 }
 
+/** A notified body number as `^[0-9]{4}$` of .NET matches it: four digits, `$` also before a last line feed. */
+const NOTIFIED_BODY_NUMBER = /^[0-9]{4}\n?$/u;
+
 /**
- * The error, when the given content names a certificate WWCP_POI refuses to read, as WWCP_POI says it; undefined for none.
- * The conformity assessment bodies name them.
+ * The error, when WWCP_POI refuses the given conformity assessment body as `ConformityAssessmentBody.TryParse` reads its
+ * notifiedBodyNumber and notifiedFor, a text and an array of texts; undefined for none.
+ */
+function invalidNotifiedTexts(body: JSONObject): string | undefined {
+
+    const number      = get(body, 'notifiedBodyNumber');
+    const notifiedFor = get(body, 'notifiedFor');
+
+    if (number !== undefined && typeof number !== 'string')
+        return 'The notified body number must be a text!';
+
+    if (notifiedFor !== undefined && (!isArray(notifiedFor) || notifiedFor.some(legislation => typeof legislation !== 'string')))
+        return 'The legislations notified for must be a JSON array of texts!';
+
+    return undefined;
+
+}
+
+/**
+ * The error, when WWCP_POI refuses the given conformity assessment body as its constructor checks it, in its words and
+ * order: a notifiedBodyNumber not of four digits, a legislation it is notified for empty or given twice (with case), a
+ * certificate issued under a legislation it is not notified for (exactly as written), its certificates in the ordinal order
+ * of their identifications. Legislations notified for in another order WWCP_POI writes in their ordinal order; they are
+ * taken here as given.
+ */
+function invalidBody(body: JSONObject): string | undefined {
+
+    const id       = typeof body['@id'] === 'string' ? body['@id'] : '';
+    const invalid  = (message: string, parameter: string): string =>
+        `The given JSON representation of a conformity assessment body is invalid: ${message} (Parameter '${parameter}')`;
+
+    const number   = get(body, 'notifiedBodyNumber');
+
+    if (typeof number === 'string' && !NOTIFIED_BODY_NUMBER.test(number))
+        return invalid(`The notified body number '${number}' of the conformity assessment body '${id}' must be four digits!`, 'NotifiedBodyNumber');
+
+    const notifiedFor = textsOf(body, 'notifiedFor');
+
+    if (notifiedFor.some(legislation => trimmed(legislation) === ''))
+        return invalid(`A legislation the conformity assessment body '${id}' is notified for must not be empty!`, 'NotifiedFor');
+
+    if (new Set(notifiedFor).size !== notifiedFor.length)
+        return invalid(`A legislation the conformity assessment body '${id}' is notified for must not be given twice!`, 'NotifiedFor');
+
+    // A certificate issued under a legislation is one of a notified body for it.
+    const notNotified = objectsOf(get(body, 'certificates'))
+                            .sort((left, right) => ordinal(idAt(left, '@id'), idAt(right, '@id')))
+                            .find(certificate => typeof certificate['legislation'] === 'string' && !notifiedFor.includes(certificate['legislation']));
+
+    if (notNotified !== undefined)
+        return invalid(`The certificate '${idAt(notNotified, '@id')}' is issued under the legislation '${notNotified['legislation'] as string}', which the conformity assessment body '${id}' is not notified for!`, 'Certificates');
+
+    return undefined;
+
+}
+
+/**
+ * The error, when the given content names a certificate WWCP_POI refuses to read, or a conformity assessment body naming
+ * them it refuses, as WWCP_POI says it; undefined for none. Body by body, as WWCP_POI reads them: what it reads of the
+ * body, its certificates, then what its constructor checks.
  */
 export function invalidCertificates(content: JSONObject): string | undefined {
 
-    return objectsOf(get(content, 'conformityAssessmentBodies')).
-               flatMap(body => objectsOf(get(body, 'certificates'))).
-               map(invalidCertificate).
-               find(error => error !== undefined);
+    for (const body of objectsOf(get(content, 'conformityAssessmentBodies'))) {
+
+        const error = invalidNotifiedTexts(body) ??
+                      objectsOf(get(body, 'certificates')).map(invalidCertificate).find(certificateError => certificateError !== undefined) ??
+                      invalidBody(body);
+
+        if (error !== undefined)
+            return error;
+
+    }
+
+    return undefined;
 
 }
