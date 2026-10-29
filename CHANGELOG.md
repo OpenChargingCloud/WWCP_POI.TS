@@ -73,7 +73,10 @@ looked at; `verifyCheckpointPriceStatements` refuses a checkpoint naming two sta
 different digests, in the order of its tree, both in the words of WWCP_POI. A sequence is at most 2^53 − 1
 (`MAX_PRICE_STATEMENT_SEQUENCE`), as it was read here already. Not ported, as they bound what a server takes: a statement
 more than 1,000,000 beyond the current one of its entity, and the statements a server keeps per operator for its next
-checkpoint.
+checkpoint. The golden vectors hold both refusals (`tests/vectors/poi-refusals.json`, 75 vectors): the
+statement of example A10 naming its EVSE as `DE*GEF*E11`, checked with the proof of its station
+(`entityPriceStatement`), and checkpoint 4 naming a fourth statement of one sequence, in the other spelling and of
+another price (`checkpointPriceStatements`, its control the checkpoint and its statements as published).
 
 The holders of a quorum are counted as the trust anchor names them, as WWCP_POI does since `3e32f48` (SPECIFICATION.md
 4.1, 8.6; csharp-review 1): a trust anchor names the keys per holder, the `@id` of its key or the array of the

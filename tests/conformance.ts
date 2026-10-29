@@ -119,7 +119,8 @@ export const history = load('poi-history.json') as {
 
 export interface PatchOperation { readonly op: 'add' | 'replace' | 'remove', readonly path: string, readonly value?: unknown }
 
-export type RefusalKind = 'commit' | 'checkpoint' | 'version' | 'checkpointProof' | 'stationProof' | 'priceStatement' | 'trustAnchor';
+export type RefusalKind = 'commit' | 'checkpoint' | 'version' | 'checkpointProof' | 'stationProof' | 'priceStatement' | 'entityPriceStatement' |
+                          'checkpointPriceStatements' | 'trustAnchor';
 
 export interface RefusalVector extends Vector {
     readonly kind:          RefusalKind;
@@ -129,6 +130,11 @@ export interface RefusalVector extends Vector {
     readonly trustAnchor?:  string;
     readonly at?:           string;
     readonly keysFrom?:     DocumentRef;
+    /** Of an entityPriceStatement: the proof of the station of the entity (a client), the snapshot of its version (a server). */
+    readonly stationProof?: DocumentRef;
+    readonly snapshot?:     DocumentRef;
+    /** Of a checkpointPriceStatements: the statements the checkpoint names, patched as the checkpoint is. */
+    readonly priceStatements?: DocumentRef & { readonly patch: readonly PatchOperation[] };
     readonly text?:         string;
     /** What the refusal names, as both implementations word it. */
     readonly reason?:       string;

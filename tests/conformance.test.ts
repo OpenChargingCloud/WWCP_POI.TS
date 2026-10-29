@@ -20,10 +20,10 @@ import { effectiveChargingStationOperator } from '../src/network/effective.ts';
 import { Commit }                           from '../src/history/commit.ts';
 import { Checkpoint, CheckpointProof }      from '../src/history/checkpoint.ts';
 import { History, type SnapshotOptions }    from '../src/history/history.ts';
-import { PriceStatement }                   from '../src/proofs/priceStatement.ts';
+import { PriceStatement, parsePriceStatements, verifyCheckpointPriceStatements } from '../src/proofs/priceStatement.ts';
 import { TrustAnchor }                      from '../src/proofs/trustAnchor.ts';
 import { ChargingStationProof }             from '../src/proofs/stationProof.ts';
-import { verifyChargingStation }            from '../src/verifier/chargingStation.ts';
+import { verifyChargingStation, verifyPriceStatements } from '../src/verifier/chargingStation.ts';
 import { DigitalCalibrationCertificate }    from '../src/qidigital/calibrationCertificate.ts';
 import { DigitalCertificateOfConformity }   from '../src/qidigital/certificateOfConformity.ts';
 import { DigitalDeclarationOfConformity }   from '../src/qidigital/declarationOfConformity.ts';
@@ -368,8 +368,11 @@ describe('Golden vectors: snapshots of another server, a history started from th
 
 describe('Golden vectors: what must be refused', () => {
 
-    /** What a vector of its kind checks of the given document: throws when it is refused. */
-    function check(vector: RefusalVector, document: JSONValue | undefined): void {
+    /**
+     * What a vector of its kind checks of the given document: throws when it is refused. Of the control, every document as
+     * published, also the price statements a checkpoint names.
+     */
+    function check(vector: RefusalVector, document: JSONValue | undefined, control = false): void {
 
         const need = <T>(value: T | undefined, what: string): T => {
             if (value === undefined)
@@ -400,6 +403,22 @@ describe('Golden vectors: what must be refused', () => {
                 return;
             }
 
+            // A price statement against the roaming network as it names its entity: taken by an app with the proof of the
+            // station of the entity, verified against the trust anchor at the time of the vector.
+            case 'entityPriceStatement': {
+                const at       = need(vector.at, 'time');
+                const station  = verifyChargingStation(TrustAnchor.parse(runText(need(vector.trustAnchor, 'trust anchor'))), runDocument(need(vector.stationProof, 'station proof')), { at });
+                verifyPriceStatements(station, [ need(document, 'price statement') ], { at });
+                return;
+            }
+
+            // The price statements a checkpoint names, checked against it.
+            case 'checkpointPriceStatements': {
+                const statements = need(vector.priceStatements, 'price statements');
+                verifyCheckpointPriceStatements(Checkpoint.parse(document), parsePriceStatements(control ? runDocument(statements) : patched(statements)));
+                return;
+            }
+
         }
 
     }
@@ -411,7 +430,7 @@ describe('Golden vectors: what must be refused', () => {
 
             // The control: the document as published passes the same check, so the refusal is the patch's doing.
             if (vector.document !== undefined && vector.document.patch.length > 0)
-                check(vector, runDocument(vector.document));
+                check(vector, runDocument(vector.document), true);
 
             // Refused for what the vector is about, where it names it.
             if (deviates(vector))
