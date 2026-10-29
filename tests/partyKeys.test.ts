@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { defined, readJSON } from './helpers.ts';
 
 import { clone, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
+import { POIPublicKey, PUBLIC_KEY_CONTEXT } from '../src/keys.ts';
 import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 
 
@@ -112,6 +113,96 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
             .toBe("The given JSON representation of a roaming network operator is invalid: The identity key '2444d1550fb2aeebcbdb538a81264f4a721a5d8ab35a8a6af58d33564d96dcf6' of the roaming network operator 'OCC' names no usages: they are of signing keys!");
         expect(refusal(qa(n => { key(operator(n), 'identityKeys')['usages'] = [ 'zzz' ]; })))
             .toMatch(/^Invalid identity key '\{"@id":"2444d155.*\}': The usage 'zzz' of the public key '2444d1550fb2aeebcbdb538a81264f4a721a5d8ab35a8a6af58d33564d96dcf6' is unknown/u);
+
+    });
+
+});
+
+
+describe('A key, in the words and order of POIPublicKey.TryParse of WWCP_POI3', () => {
+
+    const GEF_KEY  = '1cf5b42ec174e163cd2ca721d0f5357e162d61caf5f869f776f64b2919b33811';
+
+    /** The first signing key of DE*GEF (ML-DSA), or of the manufacturer GraphDefined (EC2), changed by `change`. */
+    const keyOf = (change: (key: JSONObject) => void, manufacturer = false): JSONObject => {
+        const network = without(readJSON('published/QA.json') as JSONObject, 'eTags');
+        const given   = clone(key(manufacturer ? party(network, 'chargingStationManufacturers', 'GraphDefined') : gef(network), 'signingKeys'));
+        change(given);
+        return given;
+    };
+
+    const refused = (json: JSONObject): string => {
+        try {
+            POIPublicKey.parse(json);
+        }
+        catch (e) {
+            return e instanceof Error ? e.message : String(e);
+        }
+        return 'taken';
+    };
+
+    const bytesOf = (text: string): number[] => [ ...Buffer.from(text, 'base64') ];
+    const base64  = (bytes: number[]): string => Buffer.from(bytes).toString('base64');
+
+    it('reads its identification and its key, then its context', () => {
+
+        expect(refused(keyOf(json => { json['@id'] = 5; }))).toBe('The public key identification must be a text!');
+        expect(refused(keyOf(json => { json['@id'] = null; }))).toBe('The public key identification must be a text!');
+        expect(refused(keyOf(json => { json['key'] = 5; json['@context'] = 'https://example.org/key'; }))).toBe('The public key must be a text!');
+        expect(refused(keyOf(json => { delete json['@id']; }))).toBe('A public key needs its identification and its key!');
+        expect(refused(keyOf(json => { delete json['key']; }))).toBe('A public key needs its identification and its key!');
+
+        expect(refused(keyOf(json => { json['@context'] = 'https://example.org/key'; })))
+            .toBe(`The JSON-LD context of the public key '${GEF_KEY}' must be '${PUBLIC_KEY_CONTEXT}'!`);
+        expect(refused(keyOf(json => { json['@context'] = 'https://example.org/key'; delete json['@id']; })))
+            .toBe(`The JSON-LD context of the public key '' must be '${PUBLIC_KEY_CONTEXT}'!`);
+        expect(refused(keyOf(json => { json['@context'] = PUBLIC_KEY_CONTEXT; }))).toBe('taken');
+
+    });
+
+    it('reads its key as .NET reads Base64, and refuses it unless canonical', () => {
+
+        const BAD = 'Invalid public key: The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.';
+
+        for (const text of [ '!!!!', 'AAA', 'AAAAA', 'A===', 'AA==AAAA' ])
+            expect(refused(keyOf(json => { json['key'] = text; }))).toBe(BAD);
+        expect(refused(keyOf(json => { json['key'] = (json['key'] as string).replace(/\+/gu, '-').replace(/\//gu, '_'); }))).toBe(BAD);
+
+        // .NET reads these, but writes them otherwise.
+        expect(refused(keyOf(json => { json['key'] = 'AB=='; }))).toBe('A public key must be given as canonical Base64!');
+        expect(refused(keyOf(json => { json['key'] = `${json['key'] as string}\n`; }))).toBe('A public key must be given as canonical Base64!');
+        expect(refused(keyOf(json => { const text = json['key'] as string; json['key'] = `${text.slice(0, 8)} ${text.slice(8)}`; })))
+            .toBe('A public key must be given as canonical Base64!');
+
+    });
+
+    it('refuses a COSE key it can not read, or one with private parts', () => {
+
+        expect(refused(keyOf(json => { json['key'] = base64([ 0xA0 ]); }))).toBe('Invalid COSE key: A COSE key must have a key type!');
+
+        // EC2 with d: a private key, whatever its identification.
+        const withPrivatePart = (json: JSONObject): void => {
+            json['key'] = base64([ 0xA5, ...bytesOf(json['key'] as string).slice(1), 0x23, 0x58, 0x20, ...Array<number>(32).fill(7) ]);
+        };
+        expect(refused(keyOf(withPrivatePart, true))).toBe('A public key must not contain private parts!');
+        expect(refused(keyOf(json => { withPrivatePart(json); json['@id'] = '0'.repeat(64); }, true))).toBe('A public key must not contain private parts!');
+
+    });
+
+    it('refuses a key expiring before it becomes valid after its holder and usages, before its thumbprint', () => {
+
+        const EXPIRING = 'Invalid public key: A public key must not expire before it becomes valid!';
+        const early    = (json: JSONObject): void => { json['notBefore'] = '2028-01-01T00:00:00.000Z'; };
+
+        expect(refused(keyOf(early))).toBe(EXPIRING);
+        expect(refused(keyOf(json => { early(json); json['@id'] = '0'.repeat(64); }))).toBe(EXPIRING);
+        expect(refused(keyOf(json => { early(json); json['usages'] = [ 'zzz' ]; }))).toMatch(/^The usage 'zzz' of the public key /u);
+        expect(refused(keyOf(json => { early(json); json['holder'] = ' x'; })))
+            .toBe(`The holder of the public key '${GEF_KEY}' must be a nonempty text without leading or trailing white space!`);
+        expect(refused(keyOf(json => { json['notBefore'] = json['notAfter'] ?? null; }))).toBe('taken');
+
+        expect(refused(keyOf(json => { json['holder'] = 5; }))).toBe('The holder of a public key must be a text!');
+        expect(refused(keyOf(json => { json['holder'] = null; }))).toBe('The holder of a public key must be a text!');
 
     });
 

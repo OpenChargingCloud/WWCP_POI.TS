@@ -281,3 +281,14 @@ refuse, in other words of `POIPublicKey.parse` within the same wrapper (a key wi
 Base64, expiring before it becomes valid, of another JSON-LD context); 2 name a `notAfter` WWCP_POI takes and writes
 otherwise (a date only, an offset), refused here as every timestamp not written as POI writes it. `poi-refusals.json` of
 WWCPPOIConformanceTests vendored, 89 vectors: the 13 of EV Taler and `version-key-usage-unknown`, D12 closed.
+
+A key is read in the words and order of `POIPublicKey.TryParse` of WWCP_POI (`POIPublicKey.parse`): its identification
+and key as texts, then its JSON-LD context, then both given ("A public key needs its identification and its key!"); a
+key .NET can not read as Base64 in the words of .NET, one it reads but writes otherwise as not canonical; "Invalid COSE
+key: …", "A public key must not contain private parts!", "The holder of a public key must be a text!"; a key expiring
+before it becomes valid where the constructor of WWCP_POI refuses it, after its holder and usages, before its
+thumbprint. Checked against WWCP_POI3 at `ec3dace` itself, on 45 more versions of QA with keys valid and not: 34 in its
+words. Still other words: a key of CBOR WWCP_POI3 can not read (the words of `@vanaheimr/cose` and
+`@vanaheimr/metrological-cbor`, not of their C# originals), a timestamp both refuse ("Invalid value for 'not before'!"
+there). Refused here, taken and written otherwise by WWCP_POI3: a key not in deterministic CBOR, a timestamp not written
+as POI writes it, a `notBefore` or `notAfter` of null.

@@ -17,7 +17,7 @@
 
 import { CoseKey } from '@vanaheimr/cose';
 
-import { checkContext, optionalString, optionalTimestamp, requireObject, requireString, CONTEXT_PREFIX } from './common.ts';
+import { optionalString, optionalTimestamp, requireObject, CONTEXT_PREFIX } from './common.ts';
 import { decodeDeterministicCbor, encodeCbor } from './encoding/cbor.ts';
 import { bytesEqual, fromBase64, toHex }      from './encoding/text.ts';
 import { get, isArray, type JSONObject, type JSONValue } from './json/value.ts';
@@ -42,6 +42,18 @@ const ALL_USAGES: readonly string[] = Object.values(KeyUsages);
 
 
 export const PUBLIC_KEY_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/publicKey/v1';
+
+/** What `Convert.FromBase64String` of .NET says of a text it can not read. */
+const DOTNET_BAD_BASE64 = 'The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.';
+
+/**
+ * Whether `Convert.FromBase64String` of .NET reads the given text, though perhaps not canonically: white space left out
+ * anywhere, groups of four characters of the alphabet, at most two padding characters at the end, unused bits of any value.
+ */
+const isDotNetBase64 = (text: string): boolean => {
+    const significant = text.replace(/[ \t\r\n]/gu, '');
+    return significant.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/u.test(significant);
+};
 
 
 /**
@@ -86,16 +98,22 @@ export class POIPublicKey {
     /**
      * Reads a key as POI writes it, `{ "@id", "key", "notBefore"?, "notAfter"?, "holder"?, "usages"? }`, and refuses it
      * unless its `@id` is its thumbprint, its key is public, deterministic CBOR in canonical Base64, its usages are known,
-     * each once, in their ordinal order (4.1).
+     * each once, in their ordinal order (4.1); in the words and order of `POIPublicKey.TryParse` of WWCP_POI3, but for a
+     * timestamp not written as POI writes it and a key not in deterministic CBOR, which WWCP_POI3 takes and writes otherwise.
+     * `what` names it where it is no JSON object.
      */
     public static parse(value: JSONValue | undefined, what = 'A public key'): POIPublicKey {
 
-        const json = requireObject(value, what);
+        const json      = requireObject(value, what);
 
-        checkContext(json, PUBLIC_KEY_CONTEXT, what);
+        const id        = optionalString(json, '@id', 'The public key identification');
+        const keyText   = optionalString(json, 'key', 'The public key');
 
-        const id        = requireString(json, '@id', `The identification of ${what.toLowerCase()}`);
-        const keyText   = requireString(json, 'key', `The key of ${what.toLowerCase()} '${id}'`);
+        if (get(json, '@context') !== undefined && get(json, '@context') !== PUBLIC_KEY_CONTEXT)
+            throw new POIError(`The JSON-LD context of the public key '${id ?? ''}' must be '${PUBLIC_KEY_CONTEXT}'!`);
+
+        if (id === undefined || keyText === undefined)
+            throw new POIError('A public key needs its identification and its key!');
 
         let keyBytes: Uint8Array;
         let key:      CoseKey;
@@ -104,30 +122,28 @@ export class POIPublicKey {
             keyBytes = fromBase64(keyText);
         }
         catch {
-            throw new POIError(`The key '${id}' must be given as canonical Base64!`);
+            throw new POIError(isDotNetBase64(keyText)
+                                   ? 'A public key must be given as canonical Base64!'
+                                   : `Invalid public key: ${DOTNET_BAD_BASE64}`);
         }
 
         try {
-            // Deterministic CBOR only: the bytes are part of what is hashed and signed.
-            const item = decodeDeterministicCbor(keyBytes);
-            if (!bytesEqual(encodeCbor(item), keyBytes))
-                throw new POIError('not deterministic CBOR');
             key = CoseKey.parse(keyBytes);
+            // Deterministic CBOR only: the bytes are part of what is hashed and signed.
+            if (!bytesEqual(encodeCbor(decodeDeterministicCbor(keyBytes)), keyBytes))
+                throw new POIError('not deterministic CBOR');
         }
         catch (e) {
-            throw new POIError(`Invalid COSE key '${id}': ${e instanceof Error ? e.message : String(e)}`);
+            throw new POIError(`Invalid COSE key: ${e instanceof Error ? e.message : String(e)}`);
         }
 
         if (key.isPrivate)
-            throw new POIError(`The public key '${id}' must not contain private parts!`);
+            throw new POIError('A public key must not contain private parts!');
 
         const notBefore = optionalTimestamp(json, 'notBefore', `The notBefore of the key '${id}'`);
         const notAfter  = optionalTimestamp(json, 'notAfter',  `The notAfter of the key '${id}'`);
 
-        if (notBefore !== undefined && notAfter !== undefined && notBefore > notAfter)
-            throw new POIError(`The key '${id}' must not expire before it becomes valid!`);
-
-        const holder = optionalString(json, 'holder', `The holder of the key '${id}'`);
+        const holder = optionalString(json, 'holder', 'The holder of a public key');
 
         if (holder !== undefined && (holder.length === 0 || holder.trim() !== holder))
             throw new POIError(`The holder of the public key '${id}' must be a nonempty text without leading or trailing white space!`);
@@ -154,13 +170,17 @@ export class POIPublicKey {
 
         }
 
+        // As the constructor of POIPublicKey checks it, after the usages, before the thumbprint.
+        if (notBefore !== undefined && notAfter !== undefined && notBefore > notAfter)
+            throw new POIError('Invalid public key: A public key must not expire before it becomes valid!');
+
         let thumbprint: string;
 
         try {
             thumbprint = toHex(key.thumbprint('sha256'));
         }
         catch (e) {
-            throw new POIError(`Invalid COSE key '${id}': ${e instanceof Error ? e.message : String(e)}`);
+            throw new POIError(`Invalid public key: ${e instanceof Error ? e.message : String(e)}`);
         }
 
         if (thumbprint !== id)
