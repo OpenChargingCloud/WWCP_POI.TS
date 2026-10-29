@@ -30,7 +30,7 @@ import { isText, objectsOf, trimmed, versionTwice, MODEL_VERSIONS } from './vers
 // WWCP_POI checks with the references, which this library leaves to WWCP_POI; an unknown property it refuses of a
 // certificate as of every entity (StrictJSON.OnlyProperties), which this library does not. The conformity assessment
 // bodies issuing them as ConformityAssessmentBody reads and constructs them: a notified body number of four digits, the
-// legislations they are notified for neither empty nor twice, a certificate only under one of them.
+// legislations they are notified for neither empty nor twice, in their ordinal order, a certificate only under one of them.
 
 
 const MODEL_PROPERTIES  = [ 'chargingStationManufacturerId', 'chargingStationModel', 'energyMeterManufacturerId', 'energyMeterModel' ];
@@ -343,7 +343,10 @@ const NOTIFIED_BODY_NUMBER = /^[0-9]{4}\n?$/u;
 
 /**
  * The error, when WWCP_POI refuses the given conformity assessment body as `ConformityAssessmentBody.TryParse` reads its
- * notifiedBodyNumber and notifiedFor, a text and an array of texts; undefined for none.
+ * notifiedBodyNumber and notifiedFor, a text and an array of texts; undefined for none. The legislations notified for as the
+ * content holds them, in their ordinal order (Achim's decision of 2026-10-29, as D13 decided it for keys): WWCP_POI writes
+ * them so, and another order, written again, would be another text than the one hashed. A legislation given twice its
+ * constructor refuses.
  */
 function invalidNotifiedTexts(body: JSONObject): string | undefined {
 
@@ -355,6 +358,11 @@ function invalidNotifiedTexts(body: JSONObject): string | undefined {
 
     if (notifiedFor !== undefined && (!isArray(notifiedFor) || notifiedFor.some(legislation => typeof legislation !== 'string')))
         return 'The legislations notified for must be a JSON array of texts!';
+
+    const legislations = textsOf(body, 'notifiedFor');
+
+    if (legislations.slice(1).some((legislation, index) => ordinal(legislations[index] ?? '', legislation) > 0))
+        return `The legislations the conformity assessment body '${typeof body['@id'] === 'string' ? body['@id'] : ''}' is notified for are written in their ordinal order!`;
 
     return undefined;
 

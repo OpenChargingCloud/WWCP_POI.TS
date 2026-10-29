@@ -251,19 +251,27 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
 
     it('refuses a legislation it is notified for empty or given twice, with case', () => {
 
-        for (const notifiedFor of [ [ 'MID', '' ], [ 'MID', ' ' ], [ '\t', 'MID' ] ])
+        for (const notifiedFor of [ [ '', 'MID' ], [ ' ', 'MID' ], [ '\t', 'MID' ] ])
             expect(refusal(qa(body => { body('PTB')['notifiedFor'] = notifiedFor; })))
                 .toBe(invalid("A legislation the conformity assessment body 'PTB' is notified for must not be empty!", 'NotifiedFor'));
 
         expect(refusal(qa(body => { body('PTB')['notifiedFor'] = [ 'MID', 'MID' ]; })))
             .toBe(invalid("A legislation the conformity assessment body 'PTB' is notified for must not be given twice!", 'NotifiedFor'));
-
-        // WWCP_POI3 writes them in their ordinal order; taken as given here.
         expect(refusal(qa(body => { body('PTB')['notifiedFor'] = [ 'MID', 'mid' ]; }))).toBe('taken');
-        expect(refusal(qa(body => { body('PTB')['notifiedFor'] = [ 'MID', 'CRA' ]; }))).toBe('taken');
 
         expect(refusal(qa(body => { body('PTB')['notifiedFor'] = 'MID'; }))).toBe('The legislations notified for must be a JSON array of texts!');
         expect(refusal(qa(body => { body('PTB')['notifiedFor'] = [ 'MID', 5 ]; }))).toBe('The legislations notified for must be a JSON array of texts!');
+
+    });
+
+    it('refuses the legislations it is notified for in another than their ordinal order, as WWCP_POI writes them', () => {
+
+        // WWCP_POI3 takes and writes them sorted: written again, another text than the one hashed (Achim, 2026-10-29).
+        for (const notifiedFor of [ [ 'MID', 'CRA' ], [ 'mid', 'MID' ], [ 'MID', '' ], [ 'RED', 'MID', 'MID' ] ])
+            expect(refusal(qa(body => { body('PTB')['notifiedFor'] = notifiedFor; })))
+                .toBe("The legislations the conformity assessment body 'PTB' is notified for are written in their ordinal order!");
+
+        expect(refusal(qa(body => { body('PTB')['notifiedFor'] = [ 'CRA', 'MID' ]; }))).toBe('taken');
 
     });
 
@@ -284,8 +292,12 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
 
         expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = '102'; body('PTB')['notifiedFor'] = [ 'MID', 'MID' ]; })))
             .toMatch(/must be four digits! \(Parameter 'NotifiedBodyNumber'\)$/u);
-        expect(refusal(qa((body, certificate) => { body('PTB')['notifiedFor'] = [ 'MID', '' ]; certificate('PTB-2026-0042')['legislation'] = 'CRA'; })))
+        expect(refusal(qa((body, certificate) => { body('PTB')['notifiedFor'] = [ '', 'MID' ]; certificate('PTB-2026-0042')['legislation'] = 'CRA'; })))
             .toMatch(/must not be empty! \(Parameter 'NotifiedFor'\)$/u);
+
+        // As the content holds them before what the constructor checks.
+        expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = '102'; body('PTB')['notifiedFor'] = [ 'MID', 'CRA' ]; })))
+            .toBe("The legislations the conformity assessment body 'PTB' is notified for are written in their ordinal order!");
 
         // BSI, read before PTB.
         expect(refusal(qa((body, certificate) => { certificate('PTB-2026-0042')['legislation'] = 'CRA'; body('BSI')['notifiedBodyNumber'] = '12'; })))

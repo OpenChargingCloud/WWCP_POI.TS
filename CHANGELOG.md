@@ -37,6 +37,12 @@ assessment body as its constructor in WWCP_POI checks it, a certificate issued u
 for, a notified body number of three digits, a legislation notified for empty, one given twice (D14 there, found against
 `1f914ac`, fixed by `4ff1fc2` here).
 
+The legislations a conformity assessment body is notified for are refused unless written in their ordinal order, as
+WWCP_POI writes them (Achim's decision of 2026-10-29, as D13 decided it for keys): WWCP_POI takes another order and
+writes it sorted, which written again would be another text than the one hashed. Refused as the body is read, before
+what its constructor checks, in the words of this library: "The legislations the conformity assessment body 'PTB' is
+notified for are written in their ordinal order!"
+
 
 ## 0.1.0 (2026-10-29)
 
