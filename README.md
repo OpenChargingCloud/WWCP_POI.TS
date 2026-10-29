@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/ci.yml/badge.svg)](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/ci.yml)
 [![Nightly](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/nightly.yml/badge.svg)](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/nightly.yml)
+[![npm](https://img.shields.io/npm/v/@open-charging-cloud/wwcp-poi)](https://www.npmjs.com/package/@open-charging-cloud/wwcp-poi)
 
 Verifies what a roaming network of [WWCP POI 3](https://github.com/OpenChargingCloud/WWCP_POI) publishes about its
 charging stations and their tariffs, from the **trust anchor** of the roaming network alone: the QR code its operator
@@ -40,6 +41,8 @@ This repository vendors the vectors and runs them in its own suite (`tests/confo
 
 
 ## Installation
+
+From npm, as [`@open-charging-cloud/wwcp-poi`](https://www.npmjs.com/package/@open-charging-cloud/wwcp-poi):
 
 ```bash
 npm install @open-charging-cloud/wwcp-poi
