@@ -27,7 +27,7 @@ this library refuses the version it leads to.
 
 The four vectors of WWCPPOIConformanceTests `d4a4928` vendored, `poi-refusals.json` of 93 vectors: a key of a party
 whose `notAfter` is written with an offset, as a date only or as null, and one whose key is another CBOR of the same
-COSE key. WWCP_POI refuses them too since `72df830` (D13 there, SPECIFICATION.md 2, Written forms), as this library did;
+COSE key. WWCP_POI refuses them too since `a425530` (D13 there, SPECIFICATION.md 2, Written forms), as this library did;
 the key not in deterministic CBOR now in its words: "Invalid COSE key: Invalid deterministic CBOR: the key of the public
 key '…' is not written as the deterministic CBOR of its COSE key!"
 
@@ -46,7 +46,7 @@ notified for are written in their ordinal order!"
 The four vectors of WWCPPOIConformanceTests `012ce9d` vendored, `poi-refusals.json` of 101 vectors: a conformity
 assessment body as the content holds it, notified for legislations out of their ordinal order, with a notified body
 number that is no text, with a notifiedFor that is no array of texts, and with the number of another body. WWCP_POI
-refuses the order since `aa87117`, in the words of this library.
+refuses the order since `8108522`, in the words of this library.
 
 WWCP_POI `f53d220`: its regular expressions end with `\z`, no longer with `$`, which in .NET matched before a last line
 feed as well. A notified body number "0102" with a line feed is refused, which this library had taken as WWCP_POI took
