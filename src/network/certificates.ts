@@ -338,8 +338,8 @@ export function invalidCertificate(certificate: JSONObject): string | undefined 
 
 }
 
-/** A notified body number as `^[0-9]{4}$` of .NET matches it: four digits, `$` also before a last line feed. */
-const NOTIFIED_BODY_NUMBER = /^[0-9]{4}\n?$/u;
+/** A notified body number: four digits, nothing after them, also no line feed (`^[0-9]{4}\z` since WWCP_POI f53d220). */
+const NOTIFIED_BODY_NUMBER = /^[0-9]{4}$/u;
 
 /**
  * The error, when WWCP_POI refuses the given conformity assessment body as `ConformityAssessmentBody.TryParse` reads its

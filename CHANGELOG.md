@@ -14,7 +14,7 @@ number names one body, in every version and after every change set (`DuplicateNo
 `The_roaming_network_operator_says_what_a_body_is_notified_for`.
 
 A conformity assessment body is refused as its constructor in WWCP_POI refuses it, in its words and order: a
-`notifiedBodyNumber` not of four digits (as `^[0-9]{4}$` of .NET matches it, also before a last line feed), a legislation
+`notifiedBodyNumber` not of four digits (nothing after them, also no line feed, since WWCP_POI `f53d220`), a legislation
 of `notifiedFor` empty or given twice (with case), a certificate issued under a legislation it is not notified for
 (exactly as written, its certificates in the ordinal order of their identifications), each wrapped as WWCP_POI wraps it,
 e.g. "The given JSON representation of a conformity assessment body is invalid: The certificate 'PTB-2026-0042' is issued
@@ -47,6 +47,11 @@ The four vectors of WWCPPOIConformanceTests `012ce9d` vendored, `poi-refusals.js
 assessment body as the content holds it, notified for legislations out of their ordinal order, with a notified body
 number that is no text, with a notifiedFor that is no array of texts, and with the number of another body. WWCP_POI
 refuses the order since `aa87117`, in the words of this library.
+
+WWCP_POI `f53d220`: its regular expressions end with `\z`, no longer with `$`, which in .NET matched before a last line
+feed as well. A notified body number "0102" with a line feed is refused, which this library had taken as WWCP_POI took
+it; a certificate timestamp with a line feed after its offset was refused here already, as every check of this library
+ends at the end of its text.
 
 
 ## 0.1.0 (2026-10-29)

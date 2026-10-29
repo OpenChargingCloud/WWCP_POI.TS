@@ -159,6 +159,12 @@ describe('Certificates', () => {
         expect(refusing(ofStation({ notAfter: '2026-02-30T00:00:00.000Z' })))
             .toThrow("The certificate 'PTB-2026-0042': notAfter: invalid timestamp.");
 
+        // Nothing after its offset, also no line feed, as StrictJSON.Date reads it since WWCP_POI f53d220.
+        expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.000Z\n' })))
+            .toThrow("The certificate 'PTB-2026-0042': notBefore: invalid timestamp.");
+        expect(refusing(ofStation({ notAfter: '2036-01-01T00:00:00+01:00\n' })))
+            .toThrow("The certificate 'PTB-2026-0042': notAfter: invalid timestamp.");
+
     });
 
     it('naming at least one release, each once, compared ordinally once trimmed, none both verified and compatible, compared without case', () => {

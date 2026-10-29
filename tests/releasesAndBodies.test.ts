@@ -237,12 +237,10 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
 
     it('refuses a notified body number of other than four digits', () => {
 
-        for (const number of [ '102', '01020', 'NB01', ' 0102', '', '٠١٠٢' ])
+        // A line feed after them as well, as ^[0-9]{4}\z refuses it since WWCP_POI f53d220 ($ of .NET matched before it).
+        for (const number of [ '102', '01020', 'NB01', ' 0102', '', '٠١٠٢', '0102\n' ])
             expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = number; })))
                 .toBe(invalid(`The notified body number '${number}' of the conformity assessment body 'PTB' must be four digits!`, 'NotifiedBodyNumber'));
-
-        // As ^[0-9]{4}$ of .NET matches it, also before a last line feed.
-        expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = '0102\n'; }))).toBe('taken');
 
         expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = 102; }))).toBe('The notified body number must be a text!');
         expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = null; }))).toBe('The notified body number must be a text!');
