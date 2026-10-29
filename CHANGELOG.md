@@ -255,3 +255,17 @@ DE*GEF*E2*1, a calibration certificate of the charging station DE*GEF*S2, signed
 gives EM-LAB, and 38 refusals, each with its control, of documents or of QA patched. Both implementations refuse a text
 of no language, or one that is no text (D10 there, fixed in WWCP_POI `bbe8fb8`), and the calibration certificate of a
 station against one of another serial number, or of none (csharp-review 23).
+
+EV Taler, phase 1 of the concept of WWCP_POI for paying for charging with GNU Taler (`concepts/EVTaler.md`), as of
+`ec3dace`: a charging station operator names its merchant at a GNU Taler merchant backend and the exchanges whose coins it
+accepts (`evTaler`, `evTalerMerchantOf`), refused where WWCP_POI refuses it and in its words: base URLs of HTTPS without
+user, query and fragment, ending in '/', read as Hermod reads them; keys as GNU Taler writes them (`isTalerPublicKey`);
+at least one exchange, each once, of an ISO 4217 currency of Styx and with a name. A change of it needs a signing key
+that may sign the new usage `payments`. Payment options are an open set of names: any nonempty text, none twice whatever
+its case, united with those of the templates of a charging pool without case; a charging pool or template naming EVTaler
+needs the merchant of its operator, after the last change of a change set. An app reads the EV Taler tariff of an EVSE
+and the exchanges in its currency from the proof of its station (`evTalerTariffOf`, `evTalerExchangesAt`), and what
+drivers see, "EV Taler (Example Exchange, EUR)" (`paymentOptionName`). The JSON, the CBOR and the tree of a version with
+a merchant are those WWCP_POI writes: `tests/evTaler.test.ts` holds the ETags WWCP_POI3 calculates of QA with the merchant
+of its EVTalerTests. Not yet: golden vectors of WWCPPOIConformanceTests, and a station proof with a merchant as WWCP_POI
+signs it (example A15 came after the frozen run). Nothing here takes or makes a payment.

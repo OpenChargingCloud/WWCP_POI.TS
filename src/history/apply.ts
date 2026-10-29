@@ -21,6 +21,7 @@ import { toTimestamp }                    from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
+import { evTalerWithoutMerchant }         from '../network/evTaler.ts';
 import type { Change, ChangeSet }         from './changeSet.ts';
 import { POIError, required }             from '../errors.ts';
 
@@ -62,7 +63,7 @@ const RNO_PROPERTIES           = [ ...REGISTRY_PROPERTIES, 'identityKeys', 'eMai
  */
 const PARTY_REGISTRIES: Readonly<Record<string, { readonly what: string, readonly article: string, readonly changeable: readonly string[] }>> = {
     RoamingNetworkOperator:            { what: 'roaming network operator',            article: 'a',  changeable: RNO_PROPERTIES },
-    ChargingStationOperator:           { what: 'charging station operator',           article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'brands' ] },
+    ChargingStationOperator:           { what: 'charging station operator',           article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'evTaler', 'brands' ] },
     EMobilityProvider:                 { what: 'e-mobility provider',                 article: 'an', changeable: MANUFACTURER_PROPERTIES },
     GridOperator:                      { what: 'grid operator',                       article: 'a',  changeable: PARTY_PROPERTIES },
     ParkingOperator:                   { what: 'parking operator',                    article: 'a',  changeable: PARTY_PROPERTIES },
@@ -227,8 +228,8 @@ const TIMESTAMP            = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 /**
  * The keys the content orders the given array by, if it orders it: identified elements by their identification, the
  * certificates of signing keys by their keys, authentication modes by their type, the transparency software status of an
- * energy meter or a charging station by its release, the lists of ORDERED_TEXTS by their texts, the days of a week Monday
- * first.
+ * energy meter or a charging station by its release, the exchanges of an EV Taler merchant by their master public keys,
+ * the lists of ORDERED_TEXTS by their texts, the days of a week Monday first.
  */
 function orderKeys(items: JSONArray, property: string | undefined): string[] | undefined {
 
@@ -240,6 +241,9 @@ function orderKeys(items: JSONArray, property: string | undefined): string[] | u
 
     if (property === 'transparencySoftwareStatus' && items.every(isObject))
         return items.map(item => isObject(item) ? asText(item['transparencySoftwareId']) : '');
+
+    if (property === 'exchanges' && items.every(isObject))
+        return items.map(item => isObject(item) ? asText(item['masterPublicKey']) : '');
 
     if (property === 'daysOfWeek')
         return items.map(item => String(DAYS_OF_WEEK.indexOf(typeof item === 'string' ? item : '')).padStart(2, '0'));
@@ -1014,12 +1018,14 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
         const id = asText(partyNamed(content, change.entityType, change.entityId)?.['@id'] ?? change.entityId);
 
         // Signing keys are rotated by the signing keys they replace or by an identity key, identity keys only by an
-        // identity key; everything else of its own by a signing key for the party.
+        // identity key; everything else of its own by a signing key for the party, but the EV Taler merchant of a charging
+        // station operator, also an element of it, by one that may sign 'payments': whoever changes it redirects the
+        // payments of every station (`POIKeyUsages.Of`).
         return {
             kind:   'party',
             type:   change.entityType,
             id,
-            usage:  KeyUsages.Party,
+            usage:  change.entityType === 'ChargingStationOperator' && change.propertyName === 'evTaler' ? KeyUsages.Payments : KeyUsages.Party,
             keys:   change.propertyName === 'signingKeys'  ? 'signingOrIdentity'
                   : change.propertyName === 'identityKeys' ? 'identity'
                   :                                          'signing',
@@ -1376,6 +1382,12 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
             throw new POIError(`Change ${index}: changes of ${change.entityType} '${change.entityId}' are not supported by this library yet!`);
 
     });
+
+    // After its last change, so that a change set may add the EV Taler merchant and the payment option EVTaler in either order.
+    const withoutMerchant = evTalerWithoutMerchant(content);
+
+    if (withoutMerchant !== undefined)
+        throw new POIError(withoutMerchant);
 
     checkStatedBy(before, content, changeSet);
 

@@ -32,6 +32,7 @@ export const KeyUsages = {
     Models:           'models',
     Software:         'software',
     Certificates:     'certificates',
+    Payments:         'payments',
     Party:            'party',
 } as const;
 

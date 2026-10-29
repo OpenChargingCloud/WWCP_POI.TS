@@ -50,6 +50,7 @@ export { auditPath, leafHash, merkleRoot, merkleRootOfLeafHashes, nodeHash, root
 
 // Roaming networks
 export { RoamingNetwork, RoamingNetworkOperator, ROAMING_NETWORK_CONTEXT } from './network/roamingNetwork.ts';
+export { EV_TALER_EXCHANGE_CONTEXT, EV_TALER_MERCHANT_CONTEXT, EV_TALER_PAYMENT_MEANS, EV_TALER_PAYMENT_OPTION, evTalerMerchantOf, isTalerPublicKey, paymentOptionName, type EVTalerExchange, type EVTalerMerchant } from './network/evTaler.ts';
 export { effectiveContent, effectiveChargingStationOperator } from './network/effective.ts';
 export { CHILD_ARRAYS, effectiveTreeETag, entityDigest, prunedTree, skeleton } from './network/tree.ts';
 
@@ -82,6 +83,7 @@ export { qiDigitalContext, type I18NText as QIDigitalI18NText } from './qidigita
 export { OperatorTrust }                                     from './verifier/trust.ts';
 export { verifyVersion, describeVersion, type VerifiedVersion } from './verifier/version.ts';
 export { verifyChargingStation, verifyPriceStatements, type Manufactured, type NamedCertificate, type NamedTransparencySoftware, type VerifiedChargingStation, type VerifiedPrice } from './verifier/chargingStation.ts';
+export { evTalerExchangesAt, evTalerTariffOf } from './verifier/evTaler.ts';
 export { parseTrustedWitnesses, verifyCheckpointLine, verifyCheckpointSignatures, type CheckpointSignatures, type TrustedWitness } from './verifier/checkpoints.ts';
 export { parseEvidence, verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';
 export { POIClient, type CheckedChargingStation, type Fetch } from './client.ts';

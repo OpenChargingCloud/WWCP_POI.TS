@@ -19,6 +19,7 @@ import { canonicalJSON, ordinal }                 from '../json/canonical.ts';
 import { asText, clone, get, isArray, isObject, set, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { parseTimestamp, toTimestamp }            from '../common.ts';
 import { POIError }                               from '../errors.ts';
+import { ignoringCase }                           from './identifications.ts';
 
 
 // The effective members of a version (SPECIFICATION.md sections 8.1 and 9.2), calculated on the JSON of the content as
@@ -35,6 +36,8 @@ interface UnionRule {
     readonly key?:   (element: JSONValue) => string;
     /** Whether the member keeps the array in the ordinal order of its keys, or as given. */
     readonly order:  'ordinal' | 'given';
+    /** What it is ordered by where not its key, e.g. a name compared without case, written in the order of its text. */
+    readonly sortBy?:  (element: JSONValue) => string;
 }
 
 interface MemberRules {
@@ -51,6 +54,9 @@ const byJSON         = (element: JSONValue): string => canonicalJSON(element);
 const bySoftwareId   = (element: JSONValue): string => isObject(element) && typeof element['transparencySoftwareId'] === 'string' ? element['transparencySoftwareId'] : canonicalJSON(element);
 
 const ordinalIds:   UnionRule = { key: byText, order: 'ordinal' };
+
+/** Names of an open set compared without case, e.g. payment options (`PaymentOptions`), kept in the order of their texts. */
+const namesWithoutCase: UnionRule = { key: element => typeof element === 'string' ? ignoringCase(element) : canonicalJSON(element), order: 'ordinal', sortBy: byText };
 const keptIds:      UnionRule = { key: byText, order: 'given'   };
 
 
@@ -100,7 +106,7 @@ const CHARGING_POOL_RULES: MemberRules = {
         authenticationModes:  { key: byType, order: 'ordinal' },
         relatedLocations:     { key: byJSON, order: 'given'   },
         facilities:           ordinalIds,
-        paymentOptions:       ordinalIds,
+        paymentOptions:       namesWithoutCase,
         uiFeatures:           ordinalIds,
         features:             ordinalIds,
         locationLanguages:    keptIds,
@@ -204,8 +210,10 @@ function applyTemplates(member: JSONObject, templates: readonly JSONObject[], ru
                     }
         }
 
-        if (rule.order === 'ordinal')
-            elements.sort((left, right) => ordinal(key(left), key(right)));
+        if (rule.order === 'ordinal') {
+            const sortBy = rule.sortBy ?? key;
+            elements.sort((left, right) => ordinal(sortBy(left), sortBy(right)));
+        }
 
         if (elements.length > 0)
             set(effective, property, elements);

@@ -23,6 +23,7 @@ import { effectiveContent }          from './effective.ts';
 import { duplicateIdentification }   from './identifications.ts';
 import { invalidVersionText }        from './versionTexts.ts';
 import { invalidCertificates }       from './certificates.ts';
+import { invalidEVTaler }            from './evTaler.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import { POIPublicKey }              from '../keys.ts';
 import { KeyStatement }              from '../proofs/keyStatement.ts';
@@ -200,8 +201,9 @@ export class RoamingNetwork {
      * of its content, where it lists any, without keys of its own, with a valid roaming network operator, and naming no
      * identification twice that WWCP_POI keeps unique within the roaming network (`duplicateIdentification`), nor a hardware
      * revision, firmware version or serial number WWCP_POI refuses (`invalidVersionText`), nor a certificate WWCP_POI
-     * refuses to read (`invalidCertificates`), also the version a change set leads to. Its `eTags` may be left out: what
-     * binds a version is the commit whose ETags it has (`matchesCommitETags`).
+     * refuses to read (`invalidCertificates`), nor an EV Taler merchant or payment options it refuses (`invalidEVTaler`),
+     * also the version a change set leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it
+     * has (`matchesCommitETags`).
      */
     public static parse(value: JSONValue | undefined): RoamingNetwork {
 
@@ -229,7 +231,7 @@ export class RoamingNetwork {
         const operatorJSON = get(json, 'operator');
         const operator     = operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, id);
 
-        const refusal      = duplicateIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content);
+        const refusal      = duplicateIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content);
 
         if (refusal !== undefined)
             throw new POIError(refusal);
