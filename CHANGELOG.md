@@ -43,6 +43,11 @@ writes it sorted, which written again would be another text than the one hashed.
 what its constructor checks, in the words of this library: "The legislations the conformity assessment body 'PTB' is
 notified for are written in their ordinal order!"
 
+The four vectors of WWCPPOIConformanceTests `012ce9d` vendored, `poi-refusals.json` of 101 vectors: a conformity
+assessment body as the content holds it, notified for legislations out of their ordinal order, with a notified body
+number that is no text, with a notifiedFor that is no array of texts, and with the number of another body. WWCP_POI
+refuses the order since `aa87117`, in the words of this library.
+
 
 ## 0.1.0 (2026-10-29)
 
