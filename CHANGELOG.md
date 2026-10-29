@@ -32,6 +32,12 @@ the key not in deterministic CBOR now in its words: "Invalid COSE key: Invalid d
 key '…' is not written as the deterministic CBOR of its COSE key!"
 
 
+The four vectors of WWCPPOIConformanceTests `ad7c73e` vendored, `poi-refusals.json` of 97 vectors: a conformity
+assessment body as its constructor in WWCP_POI checks it, a certificate issued under a legislation it is not notified
+for, a notified body number of three digits, a legislation notified for empty, one given twice (D14 there, found against
+`1f914ac`, fixed by `4ff1fc2` here).
+
+
 ## 0.1.0 (2026-10-29)
 
 The first milestone: the examples A1 to A14 of WWCP_POI (commit `33447ac`) checked in TypeScript.
