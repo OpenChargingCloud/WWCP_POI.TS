@@ -24,6 +24,7 @@ import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { evTalerWithoutMerchant }         from '../network/evTaler.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
+import { notWritten }                     from '../network/writtenForm.ts';
 import type { Change, ChangeSet }         from './changeSet.ts';
 import { POIError, required }             from '../errors.ts';
 
@@ -209,109 +210,17 @@ const TARIFF_TYPES = new Set([ 'ChargingTariff', 'ChargingTariffTemplate', 'Char
 const INFRASTRUCTURE_TYPES = new Set([ ...Object.keys(OPERATOR_CHILD_ARRAYS), 'ChargingPool', 'ChargingStation', 'EVSE' ]);
 
 
-const idOf = (value: JSONValue | undefined): string =>
-    isObject(value) && typeof value['@id'] === 'string' ? value['@id'] : '';
-
-/**
- * The lists of identifications and of predefined values the content holds in the ordinal order of their texts, each once
- * (section 2; `POIJSON.OrderedIds` of the C# implementation).
- */
-const ORDERED_TEXTS = new Set([
-    'facilities', 'paymentOptions', 'uiFeatures', 'features', 'parkingRestrictions', 'services', 'standards', 'nutsCodes',
-    'vehicleTypes', 'euVehicleCategories', 'parkingSpaceIds', 'certificateIds', 'chargingTariffIds', 'acceptedEMobilityProviderIds',
-    'paymentMeans', 'paymentBrands', 'signatureMethods', 'connectorTypes', 'EVSEIds', 'chargingStationIds', 'chargingPoolIds',
-    'energyMeterIds', 'EVSEGroupIds', 'chargingStationGroupIds', 'chargingPoolGroupIds', 'chargingStationOperatorIds',
-    'eMobilityProviderIds', 'parkingSensorIds', 'parkingProductIds', 'measurands', 'notifiedFor',
-    'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'cardTypes', 'dimensions', 'usages',
-]);
-
-/** The days of a week as the content holds them: Monday first. */
-const DAYS_OF_WEEK = [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY' ];
-
-/** The timestamps of the content: UTC to the millisecond (section 2). */
-const TIMESTAMP_PROPERTIES = new Set([ 'created', 'lastChange', 'validFrom', 'validUntil', 'notBefore', 'notAfter', 'signedAt', 'supportUntil' ]);
-const TIMESTAMP            = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-
-/**
- * The keys the content orders the given array by, if it orders it: identified elements by their identification, the
- * certificates of signing keys by their keys, authentication modes by their type, the transparency software status of an
- * energy meter or a charging station by its release, the exchanges of an EV Taler merchant by their master public keys,
- * the lists of ORDERED_TEXTS by their texts, the days of a week Monday first.
- */
-function orderKeys(items: JSONArray, property: string | undefined): string[] | undefined {
-
-    if (property === 'signingKeyCertificates' && items.every(isObject))
-        return items.map(item => `${idOf(isObject(item) ? item['signingKey'] : undefined)}\u0000${isObject(item) ? asText(item['keyId']) : ''}`);
-
-    if (property === 'authenticationModes' && items.every(isObject))
-        return items.map(item => isObject(item) ? asText(item['type']) : '');
-
-    if (property === 'transparencySoftwareStatus' && items.every(isObject))
-        return items.map(item => isObject(item) ? asText(item['transparencySoftwareId']) : '');
-
-    if (property === 'exchanges' && items.every(isObject))
-        return items.map(item => isObject(item) ? asText(item['masterPublicKey']) : '');
-
-    if (property === 'daysOfWeek')
-        return items.map(item => String(DAYS_OF_WEEK.indexOf(typeof item === 'string' ? item : '')).padStart(2, '0'));
-
-    if (items.length > 0 && items.every(item => isObject(item) && typeof item['@id'] === 'string'))
-        return items.map(idOf);
-
-    if (property !== undefined && ORDERED_TEXTS.has(property) && items.every(item => typeof item === 'string'))
-        return items.map(item => typeof item === 'string' ? item : '');
-
-    return undefined;
-
-}
-
 /**
  * A new value as a change gives it, which is what the content holds (section 4, "New values"): applied as it is, and refused
- * when it is written otherwise, as WWCP_POI refuses it. Of the written form of section 2 this library checks what it can tell
- * without the types of the values: no object names a JSON-LD context (custom data aside, which is held as given), what the
- * content orders is given in its order, each once, and timestamps are UTC to the millisecond. A value WWCP_POI writes
- * otherwise in another way, e.g. an identification in another case, ends in other after ETags here.
+ * when it is written otherwise, as WWCP_POI refuses it, as far as this library tells the written form (`notWritten`). A
+ * value WWCP_POI writes otherwise in another way, e.g. an identification in another case, ends in other after ETags here.
  */
 function asGiven(value: JSONValue, property: string | undefined, where: string): JSONValue {
 
-    const notHeld = (path: string, reason: string): POIError =>
-        new POIError(`${where}: ${path === '' ? 'it' : `'${path}'`} is not given as the content holds it: ${reason}!`);
+    const found = notWritten(value, property, property ?? '', true);
 
-    const check = (item: JSONValue, name: string | undefined, path: string): void => {
-
-        if (name === 'customData')
-            return;
-
-        if (isArray(item)) {
-
-            const keys = orderKeys(item, name);
-
-            if (keys?.some((key, index) => index > 0 && ordinal(keys[index - 1] ?? '', key) >= 0) === true)
-                throw notHeld(path, 'its elements are in the order the content holds them in, each once');
-
-            item.forEach((element, index) => { check(element, undefined, `${path}[${String(index)}]`); });
-
-        }
-
-        else if (isObject(item)) {
-
-            for (const [key, element] of Object.entries(item)) {
-
-                if (key === '@context')
-                    throw notHeld(path, 'embedded, an object names no JSON-LD context');
-
-                check(element, key, path === '' ? key : `${path}.${key}`);
-
-            }
-
-        }
-
-        else if (typeof item === 'string' && name !== undefined && TIMESTAMP_PROPERTIES.has(name) && !TIMESTAMP.test(item))
-            throw notHeld(path, 'a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ');
-
-    };
-
-    check(value, property, property ?? '');
+    if (found !== undefined)
+        throw new POIError(`${where}: ${found.path === '' ? 'it' : `'${found.path}'`} is not given as the content holds it: ${found.reason}!`);
 
     return clone(value);
 

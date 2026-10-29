@@ -113,9 +113,9 @@ describe('Identifications unique within the roaming network', () => {
 
     it('refuses a grid connection point, a release, a certificate, a charging tariff offer or a parking space given twice, without case', () => {
 
-        expect(() => read({ gridOperators: [ entity('DE*NET', { gridConnectionPoints: [ { '@id': 'connection-1' } ] }),
-                                             entity('DE*NE2', { gridConnectionPoints: [ { '@id': 'CONNECTION-1' } ] }) ] }))
-            .toThrow("The grid connection point 'CONNECTION-1' of the grid operator 'DE*NE2' must be unique within the roaming network, but the grid operator 'DE*NET' has it too!");
+        expect(() => read({ gridOperators: [ entity('DE*NE1', { gridConnectionPoints: [ { '@id': 'connection-1' } ] }),
+                                             entity('DE*NET', { gridConnectionPoints: [ { '@id': 'CONNECTION-1' } ] }) ] }))
+            .toThrow("The grid connection point 'CONNECTION-1' of the grid operator 'DE*NET' must be unique within the roaming network, but the grid operator 'DE*NE1' has it too!");
 
         expect(() => read({ transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ { '@id': 'chargy-1.0' } ] }),
                                                                  entity('ZAP',  { transparencySoftware: [ { '@id': 'Chargy-1.0' } ] }) ] }))

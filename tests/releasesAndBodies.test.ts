@@ -199,9 +199,9 @@ describe('The roaming network operator says what a body is notified for (S32)', 
 
         const bsi = { '@id': 'BSI', notifiedBodyNumber: '0102', notifiedFor: [ 'CRA' ], created: CREATED, lastChange: CREATED };
 
-        expect(() => RoamingNetwork.parse(networkOf(ptb(), bsi)))
-            .toThrow("The notified body number '0102' of the conformity assessment body 'BSI' is the one of the conformity assessment body 'PTB' already!");
-        expect(() => RoamingNetwork.parse(networkOf(ptb(), { ...bsi, notifiedBodyNumber: '0103' }))).not.toThrow();
+        expect(() => RoamingNetwork.parse(networkOf(bsi, ptb())))
+            .toThrow("The notified body number '0102' of the conformity assessment body 'PTB' is the one of the conformity assessment body 'BSI' already!");
+        expect(() => RoamingNetwork.parse(networkOf({ ...bsi, notifiedBodyNumber: '0103' }, ptb()))).not.toThrow();
 
     });
 

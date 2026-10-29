@@ -76,6 +76,21 @@ describe('New values, given as the content holds them (4)', () => {
 
     });
 
+    it('refuses a list given empty and a property given as null, which the content leaves out', () => {
+
+        // As WWCP_POI refuses a new value the content does not hold at all, "e.g. an empty array written as none".
+        const empty = changed(15, change => { change['newValue'] = []; });
+
+        expect(() => applyChangeSet(before(15), empty, { checkOwnership: false }))
+            .toThrow("'identityKeys' is not given as the content holds it: a list without elements is left out!");
+
+        const description = changed(11, change => { newValue(change)['description'] = null; });
+
+        expect(() => applyChangeSet(before(11), description, { checkOwnership: false }))
+            .toThrow("Change 0, the ChargingTariff 'DE*GEF*T_AC' to add: 'description' is not given as the content holds it: a property without a value is left out!");
+
+    });
+
     it('refuses a timestamp not UTC to the millisecond', () => {
 
         const created = changed(11, change => { newValue(change)['created'] = '2026-10-25T18:25:00+02:00'; });

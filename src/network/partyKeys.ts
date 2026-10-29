@@ -18,14 +18,17 @@
 import { asText, get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { ordinal }       from '../json/canonical.ts';
 import { compactJSON }   from '../qidigital/json.ts';
+import { onlyProperties } from '../common.ts';
 import { POIPublicKey }  from '../keys.ts';
 import { POIError }      from '../errors.ts';
 
 
 // The keys of the parties of a roaming network and of its operator, read as WWCP_POI3 reads them wherever it reads a party
 // (POIPartyKeys.TryParse, then POIPartyKeys.Check in the constructor of the party), in its words: every key as
-// POIPublicKey.TryParse reads it, none twice, none both a signing and an identity key, no identity key naming usages. Keys
-// given in another order WWCP_POI3 writes in the order of their identifications; they are taken here as given.
+// POIPublicKey.TryParse reads it, none twice, none both a signing and an identity key, no identity key naming usages. What
+// WWCP_POI3 takes and writes otherwise is refused, as the content holds a key only as it writes it: a property of a key
+// it does not read, here; keys in another order than that of their identifications, none of a kind given as an empty
+// list, and a key naming a JSON-LD context, embedded in its party, with the content (`notWrittenAsHeld`).
 
 
 /** The parties of a roaming network in the order WWCP_POI3 reads them (RoamingNetwork.TryParse), as it names one. */
@@ -40,13 +43,16 @@ const PARTIES: readonly (readonly [ property: string, kind: string, article: str
     [ 'chargingStationOperators',           'charging station operator',           'a'  ],
 ];
 
+/** What a key names, as POIPublicKey.TryParse reads it; WWCP_POI3 takes another property and leaves it out. */
+const KEY_PROPERTIES = [ '@id', '@context', 'key', 'notBefore', 'notAfter', 'holder', 'usages' ];
+
 /** The keys of a party. */
 export interface PartyKeys {
     readonly signingKeys:   readonly POIPublicKey[];
     readonly identityKeys:  readonly POIPublicKey[];
 }
 
-/** The keys of one kind as POIJSON.TryParseObjects reads them, each as POIPublicKey.TryParse reads it. */
+/** The keys of one kind as POIJSON.TryParseObjects reads them, each as POIPublicKey.TryParse reads it, naming nothing else. */
 function keysOf(party: JSONObject, property: string, description: string): POIPublicKey[] {
 
     const value = get(party, property);
@@ -63,7 +69,9 @@ function keysOf(party: JSONObject, property: string, description: string): POIPu
             throw new POIError(`Invalid ${description} '${compactJSON(item)}'!`);
 
         try {
-            return POIPublicKey.parse(item);
+            const key = POIPublicKey.parse(item);
+            onlyProperties(item, KEY_PROPERTIES, `The public key '${key.id}'`);
+            return key;
         }
         catch (e) {
             throw new POIError(`Invalid ${description} '${compactJSON(item)}': ${e instanceof Error ? e.message : String(e)}`);

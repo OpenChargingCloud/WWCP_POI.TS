@@ -89,7 +89,7 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
 
     });
 
-    it('reads the parties in the order of WWCP_POI3, the charging station operators last, and takes keys in any order', () => {
+    it('reads the parties in the order of WWCP_POI3, the charging station operators last, and refuses keys out of their order', () => {
 
         // The conformity assessment body first, though the charging station operator comes first in the content.
         expect(refusal(qa(n => {
@@ -97,8 +97,15 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
             key(gef(n), 'signingKeys')['usages'] = [ 'yyy' ];
         }))).toMatch(/^Invalid signing key '\{"@id":"b6148aa7/u);
 
-        // WWCP_POI3 writes them in the order of their identifications; taken as given here.
-        expect(refusal(qa(n => { keys(gef(n), 'signingKeys').reverse(); (gef(n)['identityKeys'] as JSONArray).reverse(); }))).toBe('taken');
+        // WWCP_POI3 takes them and writes them in the order of their identifications; refused as the content holds them so.
+        expect(refusal(qa(n => { keys(gef(n), 'signingKeys').reverse(); (gef(n)['identityKeys'] as JSONArray).reverse(); })))
+            .toBe("'chargingStationOperators[0].signingKeys' is not written as the content holds it: its elements are in the order the content holds them in!");
+        expect(refusal(qa(n => { (gef(n)['identityKeys'] as JSONArray).reverse(); })))
+            .toBe("'chargingStationOperators[0].identityKeys' is not written as the content holds it: its elements are in the order the content holds them in!");
+
+        // Also a property of a key WWCP_POI3 does not read, which it leaves out.
+        expect(refusal(qa(n => { key(gef(n), 'signingKeys')['x'] = 1; })))
+            .toMatch(/^Invalid signing key '\{"@id":"1cf5b42e.*\}': The public key '1cf5b42ec174e163cd2ca721d0f5357e162d61caf5f869f776f64b2919b33811' must not name the property 'x'!$/u);
         expect(refusal(qa(n => { key(gef(n), 'signingKeys')['usages'] = [ 'payments', 'priceStatements', 'tariffs' ]; }))).toBe('taken');
 
     });

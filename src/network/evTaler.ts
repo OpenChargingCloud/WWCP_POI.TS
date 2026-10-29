@@ -26,7 +26,11 @@ import { trimmed }        from './versionTexts.ts';
 // EV Taler (WWCP_POI concepts/EVTaler.md, phase 1): paying for charging with GNU Taler, step by step. A charging station
 // operator names its merchant at a GNU Taler merchant backend and the exchanges whose coins it accepts (`evTaler`, of
 // `EVTalerMerchant`), changed with a signing key that may sign `payments`; a charging pool or a charging pool template
-// naming the payment option EVTaler needs it. Read and checked as WWCP_POI reads and checks them, in its words.
+// naming the payment option EVTaler needs it. Read and checked as WWCP_POI reads and checks them, in its words; then what
+// it takes and writes otherwise is refused, as the content holds them only as it writes them: a property it does not read,
+// a base URL or a currency not written as it writes them, here; exchanges out of the order of their master public keys, a
+// JSON-LD context, the languages of a name and payment options out of their order, untrimmed or empty, with the content
+// (`notWrittenAsHeld`).
 
 export const EV_TALER_MERCHANT_CONTEXT  = CONTEXT_PREFIX + 'roamingNetwork/evTalerMerchant/v1';
 export const EV_TALER_EXCHANGE_CONTEXT  = CONTEXT_PREFIX + 'roamingNetwork/evTalerExchange/v1';
@@ -37,6 +41,10 @@ export const EV_TALER_PAYMENT_MEANS     = 'EV_TALER';
 
 /** The alphabet of Crockford's Base32, in which GNU Taler writes its keys: no I, L, O and U. */
 const CROCKFORD_BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+/** What WWCP_POI reads of a merchant and of an exchange (`EVTalerMerchant.PropertyKeys`, `EVTalerExchange.PropertyKeys`). */
+const MERCHANT_PROPERTIES  = [ '@context', 'merchantBaseURL', 'merchantPublicKey', 'exchanges' ];
+const EXCHANGE_PROPERTIES  = [ '@context', 'masterPublicKey', 'baseURL', 'currency', 'name' ];
 
 /** The ISO 4217 codes of the currencies of Styx (`Currency`), as `Currency.TryParseISO` takes them: XXX is none. */
 const CURRENCIES = new Set(`EUR CHF USD CZK GBP HRK PLN RON RSD RUB SEK AED AFN ALL AMD AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF
@@ -195,6 +203,39 @@ function lenientI18N(value: JSONObject): I18NText {
 
 }
 
+/** The first property of the given object WWCP_POI does not read, of those it does. */
+const unread = (json: JSONObject, properties: readonly string[]): string | undefined =>
+    Object.keys(json).find(property => !properties.includes(property));
+
+/**
+ * The error, when the given merchant or exchange, read as WWCP_POI reads it, is not written as it writes it again: a
+ * property it does not read, a base URL as Hermod writes it, trimmed and with its scheme, a currency by its code.
+ */
+function notWrittenAsRead(json: JSONObject, read: EVTalerMerchant | EVTalerExchange): string | undefined {
+
+    if ('merchantPublicKey' in read) {
+        const property = unread(json, MERCHANT_PROPERTIES);
+        if (property !== undefined)
+            return `The EV Taler merchant must not name the property '${property}'!`;
+        if (get(json, 'merchantBaseURL') !== read.merchantBaseURL)
+            return `The merchant base URL '${tokenText(get(json, 'merchantBaseURL') ?? '')}' is written as '${read.merchantBaseURL}'!`;
+        return undefined;
+    }
+
+    const exchange = (error: string): string =>
+        `Invalid exchange of an EV Taler merchant: ${error}`;
+
+    const property = unread(json, EXCHANGE_PROPERTIES);
+    if (property !== undefined)
+        return exchange(`The exchange '${read.masterPublicKey}' must not name the property '${property}'!`);
+    if (get(json, 'baseURL') !== read.baseURL)
+        return exchange(`The base URL '${tokenText(get(json, 'baseURL') ?? '')}' of the exchange '${read.masterPublicKey}' is written as '${read.baseURL}'!`);
+    if (get(json, 'currency') !== read.currency)
+        return exchange(`The currency '${tokenText(get(json, 'currency') ?? '')}' of the exchange '${read.masterPublicKey}' is written as '${read.currency}'!`);
+    return undefined;
+
+}
+
 /** The exchange of a merchant as `EVTalerExchange.TryParse` reads it, its error otherwise. */
 function exchangeOf(json: JSONObject): EVTalerExchange | string {
 
@@ -276,6 +317,7 @@ export function evTalerMerchantOf(value: JSONValue): EVTalerMerchant | string {
         return invalid('The exchanges of an EV Taler merchant must be a JSON array!');
 
     const exchanges: EVTalerExchange[] = [];
+    const read:      (readonly [ JSONObject, EVTalerExchange ])[] = [];
 
     for (const exchangeJSON of exchangesJSON) {
 
@@ -288,6 +330,7 @@ export function evTalerMerchantOf(value: JSONValue): EVTalerMerchant | string {
             return invalid(`Invalid exchange of an EV Taler merchant: ${exchange}`);
 
         exchanges.push(exchange);
+        read.push([ exchangeJSON, exchange ]);
 
     }
 
@@ -302,11 +345,16 @@ export function evTalerMerchantOf(value: JSONValue): EVTalerMerchant | string {
     if (new Set(exchanges.map(exchange => exchange.masterPublicKey)).size !== exchanges.length)
         return invalid("An exchange must not be given twice! (Parameter 'Exchanges')");
 
-    return {
+    const merchant: EVTalerMerchant = {
         merchantBaseURL:    merchantBaseURL.text,
         merchantPublicKey,
         exchanges:          exchanges.sort((left, right) => ordinal(left.masterPublicKey, right.masterPublicKey)),
     };
+
+    // What WWCP_POI takes and writes otherwise, after all it refuses: the merchant, then its exchanges as given.
+    const notWritten = notWrittenAsRead(value, merchant) ?? read.map(([ json, exchange ]) => notWrittenAsRead(json, exchange)).find(error => error !== undefined);
+
+    return notWritten === undefined ? merchant : invalid(notWritten);
 
 }
 

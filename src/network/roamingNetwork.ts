@@ -25,6 +25,7 @@ import { invalidVersionText }        from './versionTexts.ts';
 import { invalidCertificates }       from './certificates.ts';
 import { invalidEVTaler }            from './evTaler.ts';
 import { invalidPartyKeys, partyKeysOf } from './partyKeys.ts';
+import { notWrittenAsHeld }          from './writtenForm.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { KeyStatement }              from '../proofs/keyStatement.ts';
@@ -204,6 +205,7 @@ export class RoamingNetwork {
      * revision, firmware version or serial number WWCP_POI refuses (`invalidVersionText`), nor a certificate WWCP_POI
      * refuses to read (`invalidCertificates`), nor an EV Taler merchant or payment options it refuses (`invalidEVTaler`),
      * nor keys of a party it refuses (`invalidPartyKeys`),
+     * nor what WWCP_POI takes and writes otherwise than the content holds it (`notWrittenAsHeld`),
      * also the version a change set leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it
      * has (`matchesCommitETags`).
      */
@@ -235,7 +237,7 @@ export class RoamingNetwork {
 
         // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them.
         const refusal      = invalidVersionText(content) ?? invalidCertificates(content) ?? invalidEVTaler(content) ?? invalidPartyKeys(content) ??
-                             duplicateIdentification(content);
+                             notWrittenAsHeld(content) ?? duplicateIdentification(content);
 
         if (refusal !== undefined)
             throw new POIError(refusal);

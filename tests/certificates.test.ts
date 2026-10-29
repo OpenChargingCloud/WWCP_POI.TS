@@ -55,7 +55,7 @@ describe('Certificates', () => {
 
     it('of a charging station model and of an energy meter model, as WWCP_POI reads them', () => {
 
-        expect(() => read([ ofStation(), ofMeter() ])).not.toThrow();
+        expect(() => read([ ofMeter(), ofStation() ])).not.toThrow();
 
         // Optional: the energy meters, the releases of one list, the documentURL, the validity, the legislation.
         expect(() => read([ without(ofStation(), 'energyMeters', 'compatibleTransparencySoftwareIds', 'documentURL', 'notBefore', 'notAfter', 'legislation') ]))
@@ -64,8 +64,10 @@ describe('Certificates', () => {
         expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [], compatibleTransparencySoftwareIds: [ 'chargy-1.5.0' ] }) ]))
             .not.toThrow();
 
-        // A model named as null names none, as StrictJSON.Text reads it.
-        expect(() => read([ ofMeter({ chargingStationManufacturerId: null, chargingStationModel: null }) ])).not.toThrow();
+        // A model named as null names none, as StrictJSON.Text reads it, which WWCP_POI writes without it: refused, as the
+        // content holds it without.
+        expect(() => read([ ofMeter({ chargingStationManufacturerId: null, chargingStationModel: null }) ]))
+            .toThrow("'conformityAssessmentBodies[0].certificates[0].chargingStationManufacturerId' is not written as the content holds it: a property without a value is left out!");
 
     });
 
@@ -149,9 +151,11 @@ describe('Certificates', () => {
         expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.000Z', notAfter: '2026-01-01T01:59:59.999+02:00' })))
             .toThrow("The certificate 'PTB-2026-0042': notBefore must not exceed notAfter.");
 
-        // A day long, or not at all; and in another offset, as DateTimeOffset reads it.
+        // A day long, or not at all; and in another offset, as DateTimeOffset reads it, which WWCP_POI writes in UTC to the
+        // millisecond: refused, as the content holds it so.
         expect(() => read([ ofStation({ notAfter: '2026-01-01T00:00:00.000Z' }) ])).not.toThrow();
-        expect(() => read([ ofStation({ notBefore: '2026-01-01T01:00:00+01:00', notAfter: '2026-01-01T00:00Z' }) ])).not.toThrow();
+        expect(() => read([ ofStation({ notBefore: '2026-01-01T01:00:00+01:00', notAfter: '2026-01-01T00:00Z' }) ]))
+            .toThrow("'conformityAssessmentBodies[0].certificates[0].notBefore' is not written as the content holds it: a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ!");
 
         expect(refusing(ofStation({ notBefore: '2026-01-01T00:00:00.000' })))
             .toThrow("The certificate 'PTB-2026-0042': notBefore: invalid timestamp.");
@@ -181,8 +185,10 @@ describe('Certificates', () => {
         expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'CHARGY-1.5.0' ] })))
             .toThrow("The certificate 'PTB-2026-0017': A release cannot be both verified and merely compatible in the same document.");
 
-        // As WWCP_POI takes it (References): named twice in another case is not twice.
-        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', 'CHARGY-1.5.0' ] }) ])).not.toThrow();
+        // As WWCP_POI takes it (References): named twice in another case is not twice; in their ordinal order, as it writes them.
+        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'CHARGY-1.5.0', 'chargy-1.5.0' ] }) ])).not.toThrow();
+        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', 'CHARGY-1.5.0' ] }) ]))
+            .toThrow("'conformityAssessmentBodies[0].certificates[0].verifiedTransparencySoftwareIds' is not written as the content holds it: its elements are in the order the content holds them in!");
 
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', ' ' ] })))
             .toThrow("The certificate 'PTB-2026-0017': verifiedTransparencySoftwareIds[1]: Invalid text representation of a transparency software identification: ' '!");

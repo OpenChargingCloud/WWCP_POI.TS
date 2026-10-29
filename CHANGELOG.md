@@ -53,6 +53,24 @@ feed as well. A notified body number "0102" with a line feed is refused, which t
 it; a certificate timestamp with a line feed after its offset was refused here already, as every check of this library
 ends at the end of its text.
 
+The content as WWCP_POI writes it (SPECIFICATION.md 2, Written forms): what WWCP_POI takes of a version and writes otherwise
+is refused, as written again it would be another text than the one hashed (Achim's decision of 2026-10-29, as D13
+decided it for keys and 9decdb5 for the legislations a body is notified for). Of every entity, `notWrittenAsHeld`, as a
+version is read, after its entities and before the identifications unique within the network: what the content orders
+(its ordered lists, `POIJSON.OrderedIds`, entities, keys, exchanges) out of its ordinal order, the texts of an ordered list
+untrimmed, a list WWCP_POI writes only with an element given empty (about ninety; not the versions, releases and energy
+meters of a certificate, the elements of a price, the exchanges of a merchant, the identity keys of a key statement), a
+property given as null, an embedded object naming a JSON-LD context, a text in languages not naming each language as
+Styx writes it, in lower case, with a text, a timestamp not UTC to the millisecond; custom data held as given. Of a key of
+a party, a property WWCP_POI does not read; of an EV Taler merchant and its exchanges, such a property, a base URL not as
+Hermod writes it, trimmed and with its scheme, and a currency not by its code. In the words of this library, e.g.
+"'chargingStationOperators[0].chargingPools[1].paymentOptions' is not written as the content holds it: its elements are in the
+order the content holds them in!". The new values of a change set are checked by the same rules (`asGiven`), as
+WWCP_POI refuses a new value the content holds otherwise, "e.g. an empty array written as none". Found by probing
+WWCP_POI3 at 8108522 with 201 versions of QA: of the 20 it takes and writes otherwise this library took all, and
+refuses all now; every one it takes as given is taken, every one it refuses refused, and every version of the frozen run
+is written as the content holds it. `tests/writtenForm.test.ts`.
+
 
 ## 0.1.0 (2026-10-29)
 

@@ -181,6 +181,51 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
 
     });
 
+    it('refuses a merchant WWCP_POI3 takes and writes otherwise, as the content holds it only as it writes it', () => {
+
+        const changed = (change: (merchant: JSONObject, exchange: JSONObject) => void): string =>
+            refusal(qa(gef => {
+                const given = gef['evTaler'] as JSONObject;
+                change(given, defined((given['exchanges'] as JSONObject[])[0]));
+            }));
+
+        const invalid     = (error: string): string => `Invalid EV Taler merchant: ${error}`;
+        const ofExchange  = (error: string): string => invalid(`Invalid exchange of an EV Taler merchant: ${error}`);
+        const notWritten  = (path: string, reason: string): string => `'chargingStationOperators[0].${path}' is not written as the content holds it: ${reason}!`;
+
+        // What WWCP_POI3 leaves out: a property it does not read, the JSON-LD context of the embedded merchant and exchange.
+        expect(changed(given => { given['x'] = 1; })).toBe(invalid("The EV Taler merchant must not name the property 'x'!"));
+        expect(changed((_, exchange) => { exchange['x'] = 1; })).toBe(ofExchange(`The exchange '${EUR_EXCHANGE}' must not name the property 'x'!`));
+        expect(changed(given => { given['@context'] = EV_TALER_MERCHANT_CONTEXT; }))
+            .toBe(notWritten('evTaler', 'embedded, an object names no JSON-LD context'));
+        expect(changed((_, exchange) => { exchange['@context'] = 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/evTalerExchange/v1'; }))
+            .toBe(notWritten('evTaler.exchanges[0]', 'embedded, an object names no JSON-LD context'));
+
+        // What it writes in its own form: a base URL as Hermod writes it, a currency by its code, the exchanges in the order
+        // of their master public keys, a name in languages as Styx writes them.
+        expect(changed(given => { given['merchantBaseURL'] = 'taler.gef.example/instances/de-gef/'; }))
+            .toBe(invalid("The merchant base URL 'taler.gef.example/instances/de-gef/' is written as 'https://taler.gef.example/instances/de-gef/'!"));
+        expect(changed(given => { given['merchantBaseURL'] = ' https://taler.gef.example/instances/de-gef/ '; }))
+            .toBe(invalid("The merchant base URL ' https://taler.gef.example/instances/de-gef/ ' is written as 'https://taler.gef.example/instances/de-gef/'!"));
+        expect(changed((_, exchange) => { exchange['baseURL'] = 'exchange.example.eu/'; }))
+            .toBe(ofExchange(`The base URL 'exchange.example.eu/' of the exchange '${EUR_EXCHANGE}' is written as 'https://exchange.example.eu/'!`));
+        expect(changed((_, exchange) => { exchange['currency'] = ' EUR'; }))
+            .toBe(ofExchange(`The currency ' EUR' of the exchange '${EUR_EXCHANGE}' is written as 'EUR'!`));
+        expect(changed(given => { (given['exchanges'] as JSONArray).reverse(); }))
+            .toBe(notWritten('evTaler.exchanges', 'its elements are in the order the content holds them in'));
+        for (const name of [ { EN: 'Example Exchange' }, { en: 'Example Exchange', xx: 'Foo' }, { en: 'Example Exchange', de: 5 } ] as JSONObject[])
+            expect(changed((_, exchange) => { exchange['name'] = name; }))
+                .toBe(notWritten('evTaler.exchanges[0].name', 'a text in languages names each language as Styx writes it, in lower case, with a text'));
+
+        // Its payment options as well, which WWCP_POI3 writes trimmed and in their ordinal order.
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler', 'Cash' ]; })))
+            .toBe(notWritten('chargingPools[1].paymentOptions', 'its elements are in the order the content holds them in'));
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler ' ]; })))
+            .toBe(notWritten('chargingPools[1].paymentOptions', 'the texts of its elements are trimmed'));
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler' ]; }))).toBe('taken');
+
+    });
+
 });
 
 
