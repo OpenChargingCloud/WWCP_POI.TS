@@ -111,6 +111,15 @@ out). Not ported yet: properties of another JSON type or missing that WWCP_POI3 
 and the references it checks (23, of templates, tariffs, members, manufacturers, models, releases and certificates).
 `tests/operator.test.ts`, and in `writtenForm`, `identifications` and `certificates`.
 
+The 27 vectors of WWCPPOIConformanceTests `1c36c6d` vendored, `poi-refusals.json` of 128 vectors: versions not written as
+the content holds them (`version-held-*`), the 20 versions WWCP_POI3 at 8108522 took and wrote otherwise and more of their
+kinds (bodies, keys, payment options and exchanges out of their order, an untrimmed payment option, lists given empty, a
+property given as null, embedded JSON-LD contexts, texts in languages not as Styx writes them, a timestamp with an offset,
+properties of keys, merchants and exchanges not read, URLs and currencies not as written), ten with their eTags as
+published, their reasons in the words of this library, which refuses them since `5c534d4`. WWCP_POI refuses them as well
+since D15 of WWCPPOIConformanceTests, fixed there in `1c36c6d` (SPECIFICATION.md 2: a reader MUST refuse a version not
+written so).
+
 
 ## 0.1.0 (2026-10-29)
 
