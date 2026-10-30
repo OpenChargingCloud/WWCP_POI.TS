@@ -90,7 +90,7 @@ describe('Certificates', () => {
         // Optional: the energy meters, the documentURL, the validity, the legislation. Not the releases of a list, even of
         // none, which WWCP_POI writes also empty.
         expect(() => read([ without(ofStation(), 'compatibleTransparencySoftwareIds') ]))
-            .toThrow("'conformityAssessmentBodies[0].certificates[0]' is not written as the content holds it: WWCP_POI writes its 'compatibleTransparencySoftwareIds' also without an element!");
+            .toThrow("'conformityAssessmentBodies[0].certificates[0].compatibleTransparencySoftwareIds' is not written as the content holds it: the content holds it as '[]'!");
         expect(() => read([ without(ofStation(), 'energyMeters', 'documentURL', 'notBefore', 'notAfter', 'legislation') ]))
             .not.toThrow();
 

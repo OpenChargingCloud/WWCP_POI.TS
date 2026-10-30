@@ -87,7 +87,7 @@ export const isTalerPublicKey = (value: JSONValue | undefined): value is string 
  * one, which is a name of RFC 3986, then its user information, host, port, path, query and fragment. Its text is what it
  * writes again: as given, trimmed, the scheme put in front where it named none.
  */
-interface HermodURL {
+export interface HermodURL {
     readonly text:      string;
     readonly scheme:    string;
     readonly user:      boolean;
@@ -97,7 +97,7 @@ interface HermodURL {
 
 const DOMAIN_LABEL = /^[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?$/u;
 
-function hermodURL(given: string): HermodURL | undefined {
+export function hermodURL(given: string): HermodURL | undefined {
 
     let text = trimmed(given);
 

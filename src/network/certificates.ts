@@ -34,6 +34,12 @@ import { isText, objectsOf, trimmed, versionTwice, MODEL_VERSIONS } from './vers
 
 
 const MODEL_PROPERTIES  = [ 'chargingStationManufacturerId', 'chargingStationModel', 'energyMeterManufacturerId', 'energyMeterModel' ];
+
+/** What ConformityCertificate and CertifiedEnergyMeter of WWCP_POI2 read: another property they refuse (StrictJSON.OnlyProperties). */
+const CERTIFICATE_PROPERTIES      = [ '@context', '@id', ...MODEL_PROPERTIES, 'hardwareRevisions', 'firmwareVersions', 'verifiedTransparencySoftwareIds',
+                                      'compatibleTransparencySoftwareIds', 'energyMeters', 'documentNumber', 'documentURL', 'notBefore', 'notAfter',
+                                      'legislation', 'statedBy' ];
+const CERTIFIED_METER_PROPERTIES  = [ 'manufacturerId', 'modelId', 'hardwareRevisions', 'firmwareVersions' ];
 const RELEASES          = [ 'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds' ];
 
 /** The text of the given property, trimmed as the identifications of WWCP_POI are; empty for none. */
@@ -194,6 +200,11 @@ function invalidEnergyMeter(meter: JSONValue): string | undefined {
     if (!isObject(meter))
         return 'Expected an object.';
 
+    const unknown = Object.keys(meter).find(property => !CERTIFIED_METER_PROPERTIES.includes(property));
+
+    if (unknown !== undefined)
+        return `Unknown property '${unknown}'.`;
+
     for (const property of [ 'manufacturerId', 'modelId' ]) {
         if (meter[property] !== undefined && typeof meter[property] !== 'string')
             return `${property}: expected a string.`;
@@ -217,7 +228,12 @@ function invalidEnergyMeter(meter: JSONValue): string | undefined {
  */
 function invalidArgument(certificate: JSONObject): string | undefined {
 
-    // Its identification first, as StrictJSON reads it.
+    // A property it does not read (StrictJSON.OnlyProperties), then its identification, as StrictJSON reads it.
+    const unknown = Object.keys(certificate).find(property => !CERTIFICATE_PROPERTIES.includes(property));
+
+    if (unknown !== undefined)
+        return `Unknown property '${unknown}'.`;
+
     if (certificate['@id'] !== undefined && typeof certificate['@id'] !== 'string')
         return '@id: expected a string.';
 

@@ -32,7 +32,7 @@ const KEY2: JSONObject = { '@id': 'a43be87741d7964969d8ecdb688f0bd7d9ecbd0db83a0
 const status = (transparencySoftwareId: string, legalStatus: string): JSONObject => ({ transparencySoftwareId, legalStatus });
 
 const release = (id: string, version: string): JSONObject =>
-    ({ '@id': id, name: { en: 'Chargy' }, version, created: CREATED, lastChange: CREATED });
+    ({ '@id': id, name: { en: 'Chargy' }, version, openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [ 'https://www.gnu.org/licenses/agpl-3.0.html' ] } ] });
 
 /**
  * Chargy 1.0 and 1.1; DE*GEF with the station S1, its serial number, its public key and Chargy 1.0 under the German

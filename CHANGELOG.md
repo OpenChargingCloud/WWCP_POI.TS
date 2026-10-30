@@ -120,6 +120,27 @@ published, their reasons in the words of this library, which refuses them since 
 since D15 of WWCPPOIConformanceTests, fixed there in `1c36c6d` (SPECIFICATION.md 2: a reader MUST refuse a version not
 written so).
 
+The written form as WWCP_POI3 refuses it since WWCP_POI `3de830a`, which writes a version again and walks both
+(RoamingNetwork.WrittenForm.cs, FirstNotWritten): `notWritten` walks a version in that order and in those words, the
+reasons of this library, which WWCP_POI took over, and two of its own. "the content leaves it out", of a property given
+that WWCP_POI does not write: of every entity a property its type in WWCP_POI3 neither writes (ToJSON) nor reads
+(PropertyKeys), drawn from it at `3de830a` for 33 kinds and checked against the 605 versions it wrote in the frozen run
+and the probes, of a key statement, its signatures, a certificate of a signing key, a coordinate, a price component and
+a public key of a meter as well; `dataLicenseIds`, which a version names completely (`dataLicenses`), a license it does not know
+in its words; a text in languages without a language WWCP_POI reads. "the content holds it as '…'", of a value it writes
+otherwise, by the path of that value: the lastChange of an entity naming none (its created), the name of a party naming
+none (not of grid and parking operators), the lists it writes also empty, an identification given as a number, texts
+its types write trimmed (identifications, references, currencies, versions, e-mail addresses, URLs), URLs with the
+scheme https, the identification of a charging station operator in upper case, the role of a meter, the legal status of
+a release and signature methods as they are named, coordinates as doubles (50.92710 as 50.9271; quantities keep their
+decimals). Of a release and its licenses, a certificate and the meters it was issued with, a property they do not read
+as WWCP_POI2 refuses it ("Unknown property 'x'."). The roaming network and its operator compared without case and
+trimmed, as their types read them, also of the key statement and the certificates, signed as read. Seven cases keep the
+words of this library, refused where it reads them, before the written form, as WWCP_POI takes them over (Achim's
+decision of 2026-10-30): a property of a key of a party, of an EV Taler merchant or of an exchange, the merchant base URL,
+the base URL and the currency of an exchange not as written. Probed against WWCP_POI3 at `3de830a` with 1257 versions of
+QA: none it takes is refused here; of what it refuses as written otherwise, all in its words but those seven.
+
 
 ## 0.1.0 (2026-10-29)
 

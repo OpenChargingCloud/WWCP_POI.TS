@@ -21,6 +21,7 @@ import { get, isObject, without, type JSONObject, type JSONValue } from '../json
 import { verifySignature }       from '../crypto/signature.ts';
 import { POIPublicKey }          from '../keys.ts';
 import { POIError }              from '../errors.ts';
+import { trimmed }               from '../network/versionTexts.ts';
 
 
 export const SIGNING_KEY_CERTIFICATE_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/signingKeyCertificate/v2';
@@ -60,7 +61,8 @@ export class SigningKeyCertificate {
         if (get(json, '@context') !== undefined && get(json, '@context') !== SIGNING_KEY_CERTIFICATE_CONTEXT)
             throw new POIError(`The JSON-LD context of a signing key certificate must be '${SIGNING_KEY_CERTIFICATE_CONTEXT}'!`);
 
-        const roamingNetworkOperatorId = mandatoryText(json, 'roamingNetworkOperatorId', 'The roaming network operator of a certificate');
+        // As its type reads it: trimmed.
+        const roamingNetworkOperatorId = trimmed(mandatoryText(json, 'roamingNetworkOperatorId', 'The roaming network operator of a certificate'));
 
         let signingKey: POIPublicKey;
 

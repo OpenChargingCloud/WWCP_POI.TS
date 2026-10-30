@@ -20,12 +20,12 @@ import { asText, get, isArray, isObject, sameValue, set, without, type JSONObjec
 import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type ETag } from '../etags.ts';
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
-import { duplicateIdentification, inRoamingNetwork, invalidIdentification } from './identifications.ts';
-import { invalidVersionText }        from './versionTexts.ts';
+import { duplicateIdentification, ignoringCase, inRoamingNetwork, invalidIdentification } from './identifications.ts';
+import { invalidVersionText, trimmed } from './versionTexts.ts';
 import { invalidCertificates }       from './certificates.ts';
 import { invalidEVTaler }            from './evTaler.ts';
 import { invalidPartyKeys, partyKeysOf } from './partyKeys.ts';
-import { notWrittenAsHeld }          from './writtenForm.ts';
+import { asRead, notWrittenAsHeld }  from './writtenForm.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { KeyStatement }              from '../proofs/keyStatement.ts';
@@ -42,6 +42,11 @@ export const ROAMING_NETWORK_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/v1';
  * argument of the `Operator` of its constructor; after the last change of a change set, bare.
  */
 class KeyStatementError extends POIError {}
+
+
+/** Whether two identifications of a roaming network or an operator are one, as their types read and compare them. */
+const sameId = (left: string, right: string): boolean =>
+    ignoringCase(trimmed(left)) === ignoringCase(trimmed(right));
 
 
 /** The holders of keys: keys naming no holder have one holder together (4.1). */
@@ -93,7 +98,8 @@ export class RoamingNetworkOperator {
 
         const identityKeys  = partyKeysOf(json, `the roaming network operator '${id}'`, 'a roaming network operator').identityKeys;
         const minConsensus  = get(json, 'minConsensus') === undefined ? 1 : requireInteger(json, 'minConsensus', 1, 255, 'The minConsensus of a roaming network operator');
-        const keyStatement  = get(json, 'keyStatement') === undefined ? undefined : KeyStatement.parse(requireObject(get(json, 'keyStatement'), 'The key statement'));
+        // As WWCP_POI3 reads them, without what it does not read, which the written form of the content refuses.
+        const keyStatement  = get(json, 'keyStatement') === undefined ? undefined : KeyStatement.parse(asRead(requireObject(get(json, 'keyStatement'), 'The key statement'), 'keyStatement'));
 
         const certificatesJSON = get(json, 'signingKeyCertificates');
         const certificates     = certificatesJSON === undefined
@@ -101,7 +107,7 @@ export class RoamingNetworkOperator {
                                      : ((): SigningKeyCertificate[] => {
                                            if (!isArray(certificatesJSON) || certificatesJSON.length === 0)
                                                throw new POIError('The signingKeyCertificates of a roaming network operator must be a nonempty array!');
-                                           return certificatesJSON.map(certificate => SigningKeyCertificate.parse(certificate));
+                                           return certificatesJSON.map(certificate => SigningKeyCertificate.parse(asRead(certificate, 'signingKeyCertificates')));
                                        })();
 
         // What the constructor of the operator refuses, as its TryParse names it (RoamingNetworkOperator of WWCP_POI3): a
@@ -119,7 +125,7 @@ export class RoamingNetworkOperator {
 
         for (const certificate of certificates) {
             const before = certified.get(certificate.signingKey.id);
-            if (before !== undefined && !sameValue(without(before.json, '@context'), without(certificate.signingKey.json, '@context')))
+            if (before !== undefined && !sameValue(without(before.json, '@context'), without(asRead(certificate.signingKey.json, 'signingKey') as JSONObject, '@context')))
                 throw invalid(`An signing key of the roaming network operator '${id}' must not be given twice!`);
             certified.set(certificate.signingKey.id, certificate.signingKey);
         }
@@ -150,12 +156,14 @@ export class RoamingNetworkOperator {
 
         // What the roaming network refuses of its operator as it is made of it (KeyStatementError of WWCP_POI3), in its order:
         // a key statement of another roaming network, then the certificates, then the rest of the key statement.
-        if (keyStatement !== undefined && keyStatement.roamingNetworkId !== roamingNetworkId)
+        // The identifications of a roaming network and of its operator compared as their types read and compare them: trimmed,
+        // without case.
+        if (keyStatement !== undefined && !sameId(keyStatement.roamingNetworkId, roamingNetworkId))
             throw new KeyStatementError(`The key statement of the roaming network operator '${id}' is one of the roaming network '${keyStatement.roamingNetworkId}', not of '${roamingNetworkId}'!`);
 
         for (const certificate of certificates) {
 
-            if (certificate.roamingNetworkOperatorId !== id)
+            if (!sameId(certificate.roamingNetworkOperatorId, id))
                 throw new KeyStatementError(`The certificate of the signing key '${certificate.signingKey.id}' of the roaming network operator '${id}' is one of '${certificate.roamingNetworkOperatorId}'!`);
 
             try {
@@ -169,10 +177,10 @@ export class RoamingNetworkOperator {
 
         if (keyStatement !== undefined) {
 
-            if (keyStatement.roamingNetworkOperatorId !== id)
+            if (!sameId(keyStatement.roamingNetworkOperatorId, id))
                 throw new KeyStatementError(`The key statement of the roaming network operator '${id}' is one of '${keyStatement.roamingNetworkOperatorId}'!`);
 
-            const unknown = keyStatement.identityKeys.find(key => !identityKeys.some(identityKey => sameValue(without(identityKey.json, '@context'), without(key.json, '@context'))));
+            const unknown = keyStatement.identityKeys.find(key => !identityKeys.some(identityKey => sameValue(without(asRead(identityKey.json, 'identityKeys') as JSONObject, '@context'), without(key.json, '@context'))));
             if (unknown !== undefined)
                 throw new KeyStatementError(`The key statement of the roaming network operator '${id}' names the identity key '${unknown.id}', which is not one of its identity keys!`);
 

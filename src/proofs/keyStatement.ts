@@ -21,6 +21,7 @@ import { get, isArray, isObject, without, type JSONObject, type JSONValue } from
 import { verifySignature }       from '../crypto/signature.ts';
 import { POIPublicKey }          from '../keys.ts';
 import { POIError }              from '../errors.ts';
+import { trimmed }               from '../network/versionTexts.ts';
 
 
 export const KEY_STATEMENT_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/keyStatement/v3';
@@ -66,8 +67,9 @@ export class KeyStatement {
         if (get(json, '@context') !== undefined && get(json, '@context') !== KEY_STATEMENT_CONTEXT)
             throw new POIError(`The JSON-LD context of the key statement must be '${KEY_STATEMENT_CONTEXT}'!`);
 
-        const roamingNetworkId          = mandatoryText(json, 'roamingNetworkId',         'The roaming network of a key statement');
-        const roamingNetworkOperatorId  = mandatoryText(json, 'roamingNetworkOperatorId', 'The roaming network operator of a key statement');
+        // As their types read them: trimmed.
+        const roamingNetworkId          = trimmed(mandatoryText(json, 'roamingNetworkId',         'The roaming network of a key statement'));
+        const roamingNetworkOperatorId  = trimmed(mandatoryText(json, 'roamingNetworkOperatorId', 'The roaming network operator of a key statement'));
 
         const identityKeysJSON = get(json, 'identityKeys');
 
