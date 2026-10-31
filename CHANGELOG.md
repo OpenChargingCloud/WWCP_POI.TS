@@ -2,14 +2,17 @@
 
 ## Unreleased
 
-## 0.1.1 — 2026-10-31
+## 0.1.1 (2026-10-31)
 
-Add portable TrustContext authorization and TrustEvaluation diagnostics for apps
-that separate import from trust. The context preserves holder groups and quorum,
-binds RN/RNO/statement/time, and is accepted by operator, version, station and
-station-checkpoint verifiers. Existing trusted-TrustAnchor APIs remain compatible.
-Apps retain storage and UI responsibilities and recreate contexts from current
-local decisions. Covered by genuine signatures, conformance proofs and Chromium.
+`TrustContext`, for apps that import a trust anchor before they trust its keys. `TrustContext.evaluate` checks a key
+statement against the identity keys of a trust anchor the app trusts locally and reports its signatures, signers, quorum
+and validity apart (`TrustEvaluation`); a context only when all of them hold, `TrustContext.create` throws otherwise.
+The context keeps the holders of the trust anchor and its quorum, and binds the roaming network, its operator, the
+signed key statement and the time of the evaluation. `OperatorTrust.of` and `fromOperatorJSON`, `verifyVersion`,
+`verifyChargingStation`, `ChargingStationProof.verify` and `verifyCheckpoint` take it in place of a trust anchor; given
+a trust anchor, they verify as before. The app keeps storing and showing its decisions and creates a context from its
+current decisions for every verification. Tested with genuine signatures, the proofs of the conformance tests and in
+Chromium.
 
 S31 and S32 of WWCP_POI `d6b0127`. A release keeps its version: a new version is a new release, so that a
 certificate naming a release names the version that was assessed. A change set updating or removing the `version` of a

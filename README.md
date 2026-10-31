@@ -215,55 +215,61 @@ refused as well.
 
 ## Local authorization and shared trust contexts
 
-Applications that allow importing an anchor before trusting its keys must not pass
-that imported anchor directly to a verifier. The legacy TrustAnchor APIs assume
-that every pinned key is already trusted. Use TrustContext instead:
+An app that lets its users import a trust anchor before they trust its keys does not hand that anchor to a verifier: a
+verifier given a `TrustAnchor` trusts every identity key it pins. The app evaluates a `TrustContext` instead, from the
+identity keys it trusts locally:
 
 ```ts
-const result = TrustContext.evaluate(anchor, statement, {
-    trustedIdentityKeyIds: locallyAuthorizedKeyIds,
-    otherIdentityKeys: downloadedIdentityKeys,
-    at: evaluationTime
-});
-// Render signatures, signers, quorum and validity separately.
-// canTrustKeys permits importing valid signed data even without trusted consensus.
-if (result.context !== undefined) {
-    const station = verifyChargingStation(result.context, stationProof, { evseId });
+import { ChargingStationProof, RoamingNetworkOperator, TrustContext, verifyChargingStation } from '@open-charging-cloud/wwcp-poi';
+
+// The key statement and the identity keys of the operator as the proof gives them: trusted only once evaluated.
+const proof     = ChargingStationProof.parse(proofJSON);
+const operator  = RoamingNetworkOperator.parse(proof.roamingNetwork['operator'], anchor.id);
+
+if (operator.keyStatement !== undefined) {
+
+    const result = TrustContext.evaluate(anchor, operator.keyStatement, {
+        trustedIdentityKeyIds:  locallyAuthorizedKeyIds,
+        otherIdentityKeys:      operator.identityKeys,
+        at:                     Date.now()
+    });
+
+    // Show signatures, signers, quorum and validity apart. canTrustKeys allows importing
+    // validly signed data even without a trusted quorum.
+    if (result.context !== undefined) {
+        const station = verifyChargingStation(result.context, proof, { evseId: 'DE*GEF*E1*1' });
+    }
+
 }
 ```
 
-The library intersects authorized IDs with the original anchor holder groups,
-checks every signature and key validity at signing, verifies statement validity
-and holder consistency, and requires the larger of both quorums. Two accepted
-keys of one holder still count once. A context exists only if all required checks
-pass. TrustContext.create performs the same evaluation and throws on failure.
+`TrustContext.evaluate` keeps of the holders of the trust anchor the identity keys the app trusts, and checks every
+signature of the key statement and that its key was valid when the statement was signed, that the statement is valid at
+`at`, that it names the holders of the trusted keys as the trust anchor does, and that trusted keys of as many holders
+as the larger of both quorums signed it. Two trusted keys of one holder still count once. A context exists only when all
+of that holds; `TrustContext.create` evaluates the same and throws otherwise.
 
-The context binds subsequent checks to the network, RNO and canonical signed
-statement content. Embedded statements can omit their JSON-LD
-context without changing that identity. Another statement, even genuinely signed,
-requires explicit reevaluation; context verification does not silently implement
-key succession. Signature ordering or another valid signature set does not change
-the content digest; every supplied signature and the trusted quorum are rechecked.
+The context binds what is verified with it to the roaming network, its operator and the signed content of the key
+statement, which a statement embedded without its JSON-LD context gives as well. Another key statement, even one signed
+genuinely, needs another evaluation: a context does not follow the keys of the operator to their successors by itself.
+Other valid signatures, or the same in another order, do not change the content; every signature given and the trusted
+quorum are checked again.
 
-OperatorTrust.of/fromOperatorJSON, verifyVersion, verifyChargingStation and
-ChargingStationProof.verify/verifyCheckpoint accept the shared context. A context
-represents one explicit evaluation time. Passing another time requires creating
-another context. Existing TrustAnchor calls remain compatible and retain their
-already-trusted-pins semantics. Other APIs accepting raw anchors, including
-verifyEvidence and POIClient, still need application authorization before use;
-they must not be used to bypass an app's local policy.
+`OperatorTrust.of` and `fromOperatorJSON`, `verifyVersion`, `verifyChargingStation`, `ChargingStationProof.verify` and
+`verifyCheckpoint` take a context in place of a trust anchor. A context is evaluated for one time: `at` is that time or
+left out, another time needs another context. Given a trust anchor, they verify as before, trusting every key it pins.
+The other APIs taking a trust anchor, among them `verifyEvidence` and `POIClient`, take only one the app has authorized:
+they are no way around its local policy.
 
-The app owns storage, UI, key selection and local exclusions. Read its current
-decisions consistently and recreate a context for every verification operation.
-Do not persist a context as authority or reuse one after withdrawal, deletion or
-policy changes. A snapshot cannot observe future changes. The library has no
-IndexedDB, localStorage, network, DOM, Node or application-specific dependency.
+The app keeps storing and showing its decisions, choosing keys and excluding them locally. It reads its current
+decisions consistently and creates a context from them for every verification: a context is no authority to store, nor
+to use again after a key was withdrawn or deleted or the policy changed, and does not see what changes after it was
+created. The library needs no IndexedDB, localStorage, network, DOM, Node or anything of an app.
 
-Removing a bootstrap key from the local roots removes its initial authority.
-A quorum-authorized statement may still delegate to its declared identity keys;
-this is distinct from a global key revocation or denylist. Revocation and verified
-succession need separate policies. Unknown imports, invalid evidence and expired
-data never create an authorized context.
+Removing a pinned key from the local roots removes the trust it started with. A key statement signed by the quorum may
+still name it among its identity keys and so delegate to it: excluding a key locally is no global revocation or deny
+list. Revocation and verified succession need policies of their own. Unknown imports, invalid evidence and expired data
+never give an authorized context.
 
 
 ## Tests

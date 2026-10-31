@@ -1,11 +1,28 @@
-import { timeOf } from '../common.ts';
-import { POIError } from '../errors.ts';
-import { canonicalJSONBytes } from '../json/canonical.ts';
-import { hash } from '../crypto/hash.ts';
-import { toHex } from '../encoding/text.ts';
-import type { POIPublicKey } from '../keys.ts';
-import type { KeyStatement } from './keyStatement.ts';
-import { TrustAnchor } from './trustAnchor.ts';
+/*
+ * Copyright (c) 2014-2026 GraphDefined GmbH <achim.friedland@graphdefined.com>
+ * This file is part of WWCP POI TS <https://github.com/OpenChargingCloud/WWCP_POI.TS>
+ *
+ * Licensed under the Affero GPL license, Version 3.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.gnu.org/licenses/agpl.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { timeOf }                from '../common.ts';
+import { canonicalJSONBytes }    from '../json/canonical.ts';
+import { toHex }                 from '../encoding/text.ts';
+import { hash }                  from '../crypto/hash.ts';
+import type { POIPublicKey }     from '../keys.ts';
+import type { KeyStatement }     from './keyStatement.ts';
+import { TrustAnchor }           from './trustAnchor.ts';
+import { POIError }              from '../errors.ts';
 
 export interface TrustEvaluationOptions {
     readonly trustedIdentityKeyIds: Iterable<string>;
@@ -135,6 +152,11 @@ export class TrustContext {
         return statement.verifyHolders(this.trustedHolders, otherIdentityKeys,
             { minConsensus: this.anchor.minConsensus, at: time });
     }
+}
+
+/** The trust anchor a verifier checks against: of a context the one naming only the identity keys authorized locally. */
+export function anchorOf(basis: TrustAnchor | TrustContext): TrustAnchor {
+    return basis instanceof TrustContext ? basis.authorizedAnchor : basis;
 }
 
 /** Embedded contexts and signature ordering do not change the identity of the signed statement content. */

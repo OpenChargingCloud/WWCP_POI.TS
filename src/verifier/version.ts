@@ -19,7 +19,7 @@ import { firstText }                    from '../common.ts';
 import type { JSONValue }               from '../json/value.ts';
 import { Commit }                       from '../history/commit.ts';
 import { RoamingNetwork }               from '../network/roamingNetwork.ts';
-import { TrustContext } from '../proofs/trustContext.ts';
+import { anchorOf, type TrustContext }  from '../proofs/trustContext.ts';
 import type { TrustAnchor }             from '../proofs/trustAnchor.ts';
 import { OperatorTrust }                from './trust.ts';
 import { POIError }                     from '../errors.ts';
@@ -56,7 +56,7 @@ export function verifyVersion(basis:       TrustAnchor | TrustContext,
                               at?:         number | Date | string): VerifiedVersion {
 
     // b)
-    const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+    const anchor  = anchorOf(basis);
     const network = RoamingNetwork.parse(networkJSON);
 
     if (network.id !== anchor.id)

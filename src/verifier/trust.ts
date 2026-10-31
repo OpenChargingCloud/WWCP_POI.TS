@@ -22,7 +22,7 @@ import { SignatureRoles, type RoleSignature } from '../history/commit.ts';
 import { RoamingNetworkOperator, type RoamingNetwork } from '../network/roamingNetwork.ts';
 import type { KeyStatement }            from '../proofs/keyStatement.ts';
 import type { SigningKeyCertificate }   from '../proofs/signingKeyCertificate.ts';
-import { TrustContext } from '../proofs/trustContext.ts';
+import { TrustContext, anchorOf }       from '../proofs/trustContext.ts';
 import type { TrustAnchor }             from '../proofs/trustAnchor.ts';
 import { POIError }                     from '../errors.ts';
 
@@ -66,7 +66,7 @@ export class OperatorTrust {
      */
     public static of(basis: TrustAnchor | TrustContext, network: RoamingNetwork, at?: number | Date | string): OperatorTrust {
 
-        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const anchor = anchorOf(basis);
 
         if (network.id !== anchor.id)
             throw new POIError('this is not the roaming network of the trust anchor');
@@ -80,7 +80,7 @@ export class OperatorTrust {
      * statement verified against the trust anchor at `at`.
      */
     public static fromOperatorJSON(basis: TrustAnchor | TrustContext, operatorJSON: JSONValue | undefined, at?: number | Date | string): OperatorTrust {
-        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const anchor = anchorOf(basis);
         return OperatorTrust.ofOperator(basis, operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, anchor.id), at);
     }
 
@@ -125,7 +125,7 @@ export class OperatorTrust {
 
     private static ofOperator(basis: TrustAnchor | TrustContext, operator: RoamingNetworkOperator | undefined, at?: number | Date | string): OperatorTrust {
 
-        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const anchor     = anchorOf(basis);
         const statement  = operator?.keyStatement;
 
         if (operator === undefined || statement === undefined)

@@ -26,7 +26,7 @@ import { POIPublicKey, KeyUsages }   from '../keys.ts';
 import { KeyStatement }              from './keyStatement.ts';
 import { SigningKeyCertificate }     from './signingKeyCertificate.ts';
 import { Attestation }               from './attestation.ts';
-import { TrustContext } from './trustContext.ts';
+import { TrustContext, anchorOf }    from './trustContext.ts';
 import type { TrustAnchor }          from './trustAnchor.ts';
 import type { Checkpoint, CheckpointProof } from '../history/checkpoint.ts';
 import { POIError, required as present } from '../errors.ts';
@@ -150,7 +150,7 @@ export class ChargingStationProof {
      */
     public verify(basis: TrustAnchor | TrustContext, at?: number | Date | string): VerifiedProof {
 
-        const anchor      = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const anchor      = anchorOf(basis);
         const time        = basis instanceof TrustContext ? basis.evaluationTime(at) : timeOf(at);
         const networkId   = this.roamingNetwork['@id'];
 
@@ -232,8 +232,8 @@ export class ChargingStationProof {
      */
     public verifyCheckpoint(checkpoint: Checkpoint, basis: TrustAnchor | TrustContext, at?: number | Date | string): string[] {
 
-        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
-        const time = basis instanceof TrustContext ? basis.evaluationTime(at) : timeOf(at);
+        const anchor = anchorOf(basis);
+        const time   = basis instanceof TrustContext ? basis.evaluationTime(at) : timeOf(at);
 
         if (this.roamingNetwork['@id'] !== anchor.id || checkpoint.roamingNetworkId !== anchor.id)
             throw new POIError(`The trust anchor is one of the roaming network '${anchor.id}'!`);
@@ -288,7 +288,7 @@ export class ChargingStationProof {
      */
     private certifiedSigningKeys(basis: TrustAnchor | TrustContext, time: number): CertifiedSigningKeys {
 
-        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const anchor    = anchorOf(basis);
         const networkId = this.roamingNetwork['@id'];
         const operator  = get(this.roamingNetwork, 'operator');
 

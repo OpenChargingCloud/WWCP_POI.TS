@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { AT }                   from '../at.ts';
 import { readJSON, readText }   from './vectors.ts';
 
-import { ChargingStationProof, TrustContext, TrustAnchor, parseEvidence, parseTrustedWitnesses, verifyChargingStation, verifyEvidence, verifyPriceStatements, verifyVersion } from '../../src/index.ts';
+import { ChargingStationProof, RoamingNetworkOperator, TrustContext, TrustAnchor, parseEvidence, parseTrustedWitnesses, verifyChargingStation, verifyEvidence, verifyPriceStatements, verifyVersion } from '../../src/index.ts';
 import { get, isObject, type JSONValue } from '../../src/json/value.ts';
 
 
@@ -58,7 +58,8 @@ describe('The library in Chromium', () => {
     test('uses locally authorized trust contexts in the browser', () => {
         const anchor = TrustAnchor.parse(readText('published/QA-trustAnchor-mldsa.txt'));
         const proof = ChargingStationProof.parse(readJSON('proofs/QA-proof-station-DE_GEF_S1.json'));
-        const statement = proof.verify(anchor, AT).keyStatement;
+        const statement = RoamingNetworkOperator.parse(proof.roamingNetwork['operator'], anchor.id).keyStatement;
+        if (statement === undefined) throw new Error('Missing key statement');
         const unknown = TrustContext.evaluate(anchor, statement, { trustedIdentityKeyIds: [], at: AT });
         expect(unknown.signatures).toBe('valid');
         expect(unknown.quorum).toBe('invalid');

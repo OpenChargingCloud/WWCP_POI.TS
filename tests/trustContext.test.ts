@@ -2,7 +2,7 @@ import { createPrivateKey, createPublicKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { CoseCurves, CoseKey } from '@vanaheimr/cose';
-import { ChargingStationProof, KeyStatement, OperatorTrust, POIPublicKey, TrustAnchor, TrustContext,
+import { ChargingStationProof, KeyStatement, OperatorTrust, POIPublicKey, RoamingNetworkOperator, TrustAnchor, TrustContext,
          parseJSON, toBase64, toHex, verifyChargingStation } from '../src/index.ts';
 import type { JSONObject, JSONValue } from '../src/index.ts';
 
@@ -128,7 +128,9 @@ describe('TrustContext in the public verifier APIs', () => {
     const proof = ChargingStationProof.parse(parseJSON(vector.proof));
     const operator = proof.roamingNetwork['operator'];
     const verified = proof.verify(pinned, vector.at);
-    const trusted = TrustContext.create(pinned, verified.keyStatement, { trustedIdentityKeyIds: pinned.keys, at: vector.at });
+    const statement = RoamingNetworkOperator.parse(operator, pinned.id).keyStatement;
+    if (statement === undefined) throw new Error('Missing key statement');
+    const trusted = TrustContext.create(pinned, statement, { trustedIdentityKeyIds: pinned.keys, at: vector.at });
 
     test('the same real proof passes through the context and legacy APIs', () => {
         expect(proof.verify(trusted).attestedBy).toEqual(verified.attestedBy);

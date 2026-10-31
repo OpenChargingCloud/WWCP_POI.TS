@@ -21,7 +21,7 @@ import type { ETag }                        from '../etags.ts';
 import { POIPublicKey }                     from '../keys.ts';
 import { ChargingStationProof }             from '../proofs/stationProof.ts';
 import { PriceStatement, priceStatementChainOf, verifyPriceStatementChain } from '../proofs/priceStatement.ts';
-import { TrustContext } from '../proofs/trustContext.ts';
+import { TrustContext }                     from '../proofs/trustContext.ts';
 import type { TrustAnchor }                 from '../proofs/trustAnchor.ts';
 import { POIError }                         from '../errors.ts';
 
