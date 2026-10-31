@@ -1,7 +1,7 @@
 {
     "name": "@open-charging-cloud/wwcp-poi",
-    "version": "0.1.0",
-    "description": "Verifies WWCP POI 3 data in TypeScript: trust anchors, key statements, roaming networks and their ETags, commits, checkpoints, charging station proofs and price statements - so that an EV driver's app knows the charging station and its tariffs it shows are the ones the roaming network signed and published.",
+    "version": "0.1.1",
+    "description": "Verifies WWCP/POI data in TypeScript: trust anchors, key statements, roaming networks and their ETags, commits, checkpoints, charging station proofs and price statements - so that an EV driver's app knows the charging station and its tariffs it shows are the ones the roaming network signed and published.",
     "keywords": [
         "wwcp",
         "poi",

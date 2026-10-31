@@ -26,6 +26,7 @@ import { POIPublicKey, KeyUsages }   from '../keys.ts';
 import { KeyStatement }              from './keyStatement.ts';
 import { SigningKeyCertificate }     from './signingKeyCertificate.ts';
 import { Attestation }               from './attestation.ts';
+import { TrustContext } from './trustContext.ts';
 import type { TrustAnchor }          from './trustAnchor.ts';
 import type { Checkpoint, CheckpointProof } from '../history/checkpoint.ts';
 import { POIError, required as present } from '../errors.ts';
@@ -147,9 +148,10 @@ export class ChargingStationProof {
      *
      * Attestations of a subject (8.5) attest one entity, not the root: they do not count here.
      */
-    public verify(anchor: TrustAnchor, at?: number | Date | string): VerifiedProof {
+    public verify(basis: TrustAnchor | TrustContext, at?: number | Date | string): VerifiedProof {
 
-        const time        = timeOf(at);
+        const anchor      = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const time        = basis instanceof TrustContext ? basis.evaluationTime(at) : timeOf(at);
         const networkId   = this.roamingNetwork['@id'];
 
         if (networkId !== anchor.id)
@@ -157,7 +159,7 @@ export class ChargingStationProof {
 
         const { eTag, attested } = this.calculate();
 
-        const { keyStatement, required, signingKeyOf } = this.certifiedSigningKeys(anchor, time);
+        const { keyStatement, required, signingKeyOf } = this.certifiedSigningKeys(basis, time);
 
         // Valid when it attested and at `at`: the signedAt of an attestation is the choice of its signer.
         const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string } | undefined =>
@@ -228,9 +230,10 @@ export class ChargingStationProof {
      * signed and at `at`, and allowed to sign for the party, as attestations are verified. Signatures that do not count are
      * ignored, not refused; the other signatures, e.g. of witnesses, are not checked here. Returns the holders that signed.
      */
-    public verifyCheckpoint(checkpoint: Checkpoint, anchor: TrustAnchor, at?: number | Date | string): string[] {
+    public verifyCheckpoint(checkpoint: Checkpoint, basis: TrustAnchor | TrustContext, at?: number | Date | string): string[] {
 
-        const time = timeOf(at);
+        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        const time = basis instanceof TrustContext ? basis.evaluationTime(at) : timeOf(at);
 
         if (this.roamingNetwork['@id'] !== anchor.id || checkpoint.roamingNetworkId !== anchor.id)
             throw new POIError(`The trust anchor is one of the roaming network '${anchor.id}'!`);
@@ -248,7 +251,7 @@ export class ChargingStationProof {
         if (!bytesEqual(eTag.digest, named.digest))
             throw new POIError(`The proof leads to ${etagToText(eTag)}, not to ${etagToText(named)}!`);
 
-        const { required, signingKeyOf } = this.certifiedSigningKeys(anchor, time);
+        const { required, signingKeyOf } = this.certifiedSigningKeys(basis, time);
         const holders = new Set<string>();
 
         for (const signature of checkpoint.signatures) {
@@ -283,8 +286,9 @@ export class ChargingStationProof {
      * and operator and their holders as the trust anchor does, and is valid at `time`; its identity keys are trusted then
      * as well. A signing key counts where a trusted identity key of its holder certifies it for this operator.
      */
-    private certifiedSigningKeys(anchor: TrustAnchor, time: number): CertifiedSigningKeys {
+    private certifiedSigningKeys(basis: TrustAnchor | TrustContext, time: number): CertifiedSigningKeys {
 
+        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
         const networkId = this.roamingNetwork['@id'];
         const operator  = get(this.roamingNetwork, 'operator');
 
@@ -310,7 +314,9 @@ export class ChargingStationProof {
 
         // A key statement trusted names identity keys to trust, e.g. those replacing pinned ones, with their holders, which
         // it must name as the trust anchor does.
-        const { holderOf }  = keyStatement.verifyHolders(anchor.holders, operatorIdentityKeys, { minConsensus: anchor.minConsensus, at: time });
+        const { holderOf }  = basis instanceof TrustContext
+            ? basis.verifyStatement(keyStatement, operatorIdentityKeys, time)
+            : keyStatement.verifyHolders(anchor.holders, operatorIdentityKeys, { minConsensus: anchor.minConsensus, at: time });
         const identityKeys  = [ ...keyStatement.identityKeys, ...operatorIdentityKeys ];
         const trustedIds    = new Set(holderOf.keys());
 

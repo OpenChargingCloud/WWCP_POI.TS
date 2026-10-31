@@ -55,6 +55,7 @@ export { effectiveContent, effectiveChargingStationOperator } from './network/ef
 export { CHILD_ARRAYS, effectiveTreeETag, entityDigest, prunedTree, skeleton } from './network/tree.ts';
 
 // Proofs, statements and trust anchors
+export { TrustContext, type TrustEvaluation, type TrustEvaluationOptions } from './proofs/trustContext.ts';
 export { TrustAnchor, TRUST_ANCHOR_CONTEXT, TRUST_ANCHOR_QR_PREFIX, type I18NText } from './proofs/trustAnchor.ts';
 export { KeyStatement, KEY_STATEMENT_CONTEXT, type KeyStatementSignature } from './proofs/keyStatement.ts';
 export { SigningKeyCertificate, SIGNING_KEY_CERTIFICATE_CONTEXT } from './proofs/signingKeyCertificate.ts';

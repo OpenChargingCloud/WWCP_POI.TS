@@ -19,6 +19,7 @@ import { firstText }                    from '../common.ts';
 import type { JSONValue }               from '../json/value.ts';
 import { Commit }                       from '../history/commit.ts';
 import { RoamingNetwork }               from '../network/roamingNetwork.ts';
+import { TrustContext } from '../proofs/trustContext.ts';
 import type { TrustAnchor }             from '../proofs/trustAnchor.ts';
 import { OperatorTrust }                from './trust.ts';
 import { POIError }                     from '../errors.ts';
@@ -49,12 +50,13 @@ export interface VerifiedVersion {
  *    trusted identity key of its holder, valid when it signed, and one that may sign for the party;
  * g) the texts to show are those of the checked version; a trust anchor naming the network otherwise is warned of.
  */
-export function verifyVersion(anchor:      TrustAnchor,
+export function verifyVersion(basis:       TrustAnchor | TrustContext,
                               networkJSON: JSONValue,
                               commitJSON:  JSONValue,
                               at?:         number | Date | string): VerifiedVersion {
 
     // b)
+    const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
     const network = RoamingNetwork.parse(networkJSON);
 
     if (network.id !== anchor.id)
@@ -68,7 +70,7 @@ export function verifyVersion(anchor:      TrustAnchor,
         throw new POIError('the commit does not lead to the roaming network');
 
     // e)
-    const trust = OperatorTrust.of(anchor, network, at);
+    const trust = OperatorTrust.of(basis, network, at);
 
     // f)
     const signedBy = trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');

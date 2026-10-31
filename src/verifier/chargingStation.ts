@@ -21,6 +21,7 @@ import type { ETag }                        from '../etags.ts';
 import { POIPublicKey }                     from '../keys.ts';
 import { ChargingStationProof }             from '../proofs/stationProof.ts';
 import { PriceStatement, priceStatementChainOf, verifyPriceStatementChain } from '../proofs/priceStatement.ts';
+import { TrustContext } from '../proofs/trustContext.ts';
 import type { TrustAnchor }                 from '../proofs/trustAnchor.ts';
 import { POIError }                         from '../errors.ts';
 
@@ -266,7 +267,7 @@ function transparencySoftwareOf(attested: JSONObject, station: JSONObject, energ
  * tariffs they take, and the signing keys of the operator. With `chargingStationId` or `evseId`, the proof must give that
  * station, or the station of that EVSE.
  */
-export function verifyChargingStation(anchor:   TrustAnchor,
+export function verifyChargingStation(anchor:   TrustAnchor | TrustContext,
                                       proof:    JSONValue | ChargingStationProof,
                                       options:  { at?: number | Date | string, chargingStationId?: string, evseId?: string } = {}): VerifiedChargingStation {
 
@@ -274,6 +275,7 @@ export function verifyChargingStation(anchor:   TrustAnchor,
     const verified  = parsed.verify(anchor, options.at);
     const attested  = verified.attested;
     const warnings: string[] = [];
+    const shownAnchor = anchor instanceof TrustContext ? anchor.anchor : anchor;
 
     // The station the proof gives completely: below a given operator and pool.
     const found: Array<{ operator: JSONObject, pool: JSONObject, station: JSONObject }> = [];
@@ -333,7 +335,7 @@ export function verifyChargingStation(anchor:   TrustAnchor,
 
     const certificates = certificatesOf(attested, station, energyMeters, warnings);
 
-    for (const [kind, shown, proven] of [ [ 'name', anchor.name, get(attested, 'name') ], [ 'description', anchor.description, get(attested, 'description') ] ] as const)
+    for (const [kind, shown, proven] of [ [ 'name', shownAnchor.name, get(attested, 'name') ], [ 'description', shownAnchor.description, get(attested, 'description') ] ] as const)
         for (const [language, text] of Object.entries(shown))
             if (!isObject(proven) || get(proven, language) !== text)
                 warnings.push(`the trust anchor shows the ${kind} '${text}' (${language}), not the one of the network in the proof`);

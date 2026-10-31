@@ -22,6 +22,7 @@ import { SignatureRoles, type RoleSignature } from '../history/commit.ts';
 import { RoamingNetworkOperator, type RoamingNetwork } from '../network/roamingNetwork.ts';
 import type { KeyStatement }            from '../proofs/keyStatement.ts';
 import type { SigningKeyCertificate }   from '../proofs/signingKeyCertificate.ts';
+import { TrustContext } from '../proofs/trustContext.ts';
 import type { TrustAnchor }             from '../proofs/trustAnchor.ts';
 import { POIError }                     from '../errors.ts';
 
@@ -63,12 +64,14 @@ export class OperatorTrust {
      * Verifies the key statement of the operator of the given version against the trust anchor (A1 step e) and returns the
      * trust in its keys. `at` is when the statement must be valid, now by default.
      */
-    public static of(anchor: TrustAnchor, network: RoamingNetwork, at?: number | Date | string): OperatorTrust {
+    public static of(basis: TrustAnchor | TrustContext, network: RoamingNetwork, at?: number | Date | string): OperatorTrust {
+
+        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
 
         if (network.id !== anchor.id)
             throw new POIError('this is not the roaming network of the trust anchor');
 
-        return OperatorTrust.ofOperator(anchor, network.operator, at);
+        return OperatorTrust.ofOperator(basis, network.operator, at);
 
     }
 
@@ -76,8 +79,9 @@ export class OperatorTrust {
      * The same from the roaming network operator alone, e.g. as a proof of a charging station gives it (8.4): its key
      * statement verified against the trust anchor at `at`.
      */
-    public static fromOperatorJSON(anchor: TrustAnchor, operatorJSON: JSONValue | undefined, at?: number | Date | string): OperatorTrust {
-        return OperatorTrust.ofOperator(anchor, operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, anchor.id), at);
+    public static fromOperatorJSON(basis: TrustAnchor | TrustContext, operatorJSON: JSONValue | undefined, at?: number | Date | string): OperatorTrust {
+        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
+        return OperatorTrust.ofOperator(basis, operatorJSON === undefined ? undefined : RoamingNetworkOperator.parse(operatorJSON, anchor.id), at);
     }
 
     /**
@@ -119,14 +123,17 @@ export class OperatorTrust {
 
     }
 
-    private static ofOperator(anchor: TrustAnchor, operator: RoamingNetworkOperator | undefined, at?: number | Date | string): OperatorTrust {
+    private static ofOperator(basis: TrustAnchor | TrustContext, operator: RoamingNetworkOperator | undefined, at?: number | Date | string): OperatorTrust {
 
+        const anchor = basis instanceof TrustContext ? basis.authorizedAnchor : basis;
         const statement  = operator?.keyStatement;
 
         if (operator === undefined || statement === undefined)
             throw new POIError('the roaming network operator states no keys');
 
-        const { signedBy, holderOf } = statement.verifyHolders(anchor.holders, operator.identityKeys, { minConsensus: anchor.minConsensus, at: timeOf(at) });
+        const { signedBy, holderOf } = basis instanceof TrustContext
+            ? basis.verifyStatement(statement, operator.identityKeys, at)
+            : statement.verifyHolders(anchor.holders, operator.identityKeys, { minConsensus: anchor.minConsensus, at: timeOf(at) });
 
         return new OperatorTrust(anchor,
                                  operator,

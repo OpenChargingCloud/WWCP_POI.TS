@@ -4,7 +4,7 @@
 [![Nightly](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/nightly.yml/badge.svg)](https://github.com/OpenChargingCloud/WWCP_POI.TS/actions/workflows/nightly.yml)
 [![npm](https://img.shields.io/npm/v/@open-charging-cloud/wwcp-poi)](https://www.npmjs.com/package/@open-charging-cloud/wwcp-poi)
 
-Verifies what a roaming network of [WWCP POI 3](https://github.com/OpenChargingCloud/WWCP_POI) publishes about its
+Verifies what a roaming network of [WWCP/POI](https://github.com/OpenChargingCloud/WWCP_POI) publishes about its
 charging stations and their tariffs, from the **trust anchor** of the roaming network alone: the QR code its operator
 publishes, naming the identity keys of the operator and its quorum.
 
@@ -213,6 +213,59 @@ And whatever it calculated otherwise than the C# implementation would end in oth
 refused as well.
 
 
+## Local authorization and shared trust contexts
+
+Applications that allow importing an anchor before trusting its keys must not pass
+that imported anchor directly to a verifier. The legacy TrustAnchor APIs assume
+that every pinned key is already trusted. Use TrustContext instead:
+
+```ts
+const result = TrustContext.evaluate(anchor, statement, {
+    trustedIdentityKeyIds: locallyAuthorizedKeyIds,
+    otherIdentityKeys: downloadedIdentityKeys,
+    at: evaluationTime
+});
+// Render signatures, signers, quorum and validity separately.
+// canTrustKeys permits importing valid signed data even without trusted consensus.
+if (result.context !== undefined) {
+    const station = verifyChargingStation(result.context, stationProof, { evseId });
+}
+```
+
+The library intersects authorized IDs with the original anchor holder groups,
+checks every signature and key validity at signing, verifies statement validity
+and holder consistency, and requires the larger of both quorums. Two accepted
+keys of one holder still count once. A context exists only if all required checks
+pass. TrustContext.create performs the same evaluation and throws on failure.
+
+The context binds subsequent checks to the network, RNO and canonical signed
+statement content. Embedded statements can omit their JSON-LD
+context without changing that identity. Another statement, even genuinely signed,
+requires explicit reevaluation; context verification does not silently implement
+key succession. Signature ordering or another valid signature set does not change
+the content digest; every supplied signature and the trusted quorum are rechecked.
+
+OperatorTrust.of/fromOperatorJSON, verifyVersion, verifyChargingStation and
+ChargingStationProof.verify/verifyCheckpoint accept the shared context. A context
+represents one explicit evaluation time. Passing another time requires creating
+another context. Existing TrustAnchor calls remain compatible and retain their
+already-trusted-pins semantics. Other APIs accepting raw anchors, including
+verifyEvidence and POIClient, still need application authorization before use;
+they must not be used to bypass an app's local policy.
+
+The app owns storage, UI, key selection and local exclusions. Read its current
+decisions consistently and recreate a context for every verification operation.
+Do not persist a context as authority or reuse one after withdrawal, deletion or
+policy changes. A snapshot cannot observe future changes. The library has no
+IndexedDB, localStorage, network, DOM, Node or application-specific dependency.
+
+Removing a bootstrap key from the local roots removes its initial authority.
+A quorum-authorized statement may still delegate to its declared identity keys;
+this is distinct from a global key revocation or denylist. Revocation and verified
+succession need separate policies. Unknown imports, invalid evidence and expired
+data never create an authorized context.
+
+
 ## Tests
 
 ```bash
@@ -280,12 +333,12 @@ npx tsx examples/validate-examples.ts D:\Coding\OpenChargingCloud\WWCP_POI\examp
 ## Publishing
 
 ```
-npm version 0.1.0 --no-git-tag-version
+npm version 0.1.1 --no-git-tag-version
 git commit -a
-git tag -s v0.1.0 -m "v0.1.0"
-git push origin master v0.1.0
-git push git1 master v0.1.0
-git push git2 master v0.1.0
+git tag -s v0.1.1 -m "v0.1.1"
+git push origin master v0.1.1
+git push git1 master v0.1.1
+git push git2 master v0.1.1
 
 npm run verify
 npm pack --dry-run

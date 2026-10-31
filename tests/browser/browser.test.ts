@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { AT }                   from '../at.ts';
 import { readJSON, readText }   from './vectors.ts';
 
-import { TrustAnchor, parseEvidence, parseTrustedWitnesses, verifyChargingStation, verifyEvidence, verifyPriceStatements, verifyVersion } from '../../src/index.ts';
+import { ChargingStationProof, TrustContext, TrustAnchor, parseEvidence, parseTrustedWitnesses, verifyChargingStation, verifyEvidence, verifyPriceStatements, verifyVersion } from '../../src/index.ts';
 import { get, isObject, type JSONValue } from '../../src/json/value.ts';
 
 
@@ -53,6 +53,18 @@ describe('The library in Chromium', () => {
         expect(station.warnings).toEqual([]);
         expect(prices.get('EVSE:DE*GEF*E1*1')?.statement.algorithm).toBe('ML-DSA-65');
 
+    });
+
+    test('uses locally authorized trust contexts in the browser', () => {
+        const anchor = TrustAnchor.parse(readText('published/QA-trustAnchor-mldsa.txt'));
+        const proof = ChargingStationProof.parse(readJSON('proofs/QA-proof-station-DE_GEF_S1.json'));
+        const statement = proof.verify(anchor, AT).keyStatement;
+        const unknown = TrustContext.evaluate(anchor, statement, { trustedIdentityKeyIds: [], at: AT });
+        expect(unknown.signatures).toBe('valid');
+        expect(unknown.quorum).toBe('invalid');
+        expect(unknown.context).toBeUndefined();
+        const context = TrustContext.create(anchor, statement, { trustedIdentityKeyIds: anchor.keys, at: AT });
+        expect(verifyChargingStation(context, proof).chargingStation['@id']).toBe('DE*GEF*S1');
     });
 
     test('checks the evidence of a session months later, against the checkpoints its witnesses signed', () => {
