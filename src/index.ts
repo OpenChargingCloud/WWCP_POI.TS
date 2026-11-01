@@ -89,3 +89,15 @@ export { parseTrustedWitnesses, verifyCheckpointLine, verifyCheckpointSignatures
 export { parseEvidence, verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';
 export { POIClient, type CheckedChargingStation, type Fetch } from './client.ts';
 export { LIVE_TOPICS, RUNTIME_STATUS_KINDS, STATUS_UPDATE_CONTEXT, RuntimeStatus, liveRequest, parseFrame, parseStatusUpdate, subscribeRequest, type LiveFrame, type RuntimeStatusEntry, type RuntimeStatusKind, type StatusUpdate } from './live.ts';
+
+export { parseMeasurementPublicKey, verifyMeterKey, MeasurementKeyError, type MeasurementPublicKey, type MeasurementKeyFormat, type MeasurementKeyProblem, type VerifiedMeterKeyBinding } from './verifier/measurementKeys.ts';
+
+export * from './verifier/historicalMeasurements.ts';
+
+export * from './verifier/sessionPrices.ts';
+
+export * from './verifier/observedVersions.ts';
+
+export * from './verifier/documentKeys.ts';
+
+export * from './verifier/trustTransitions.ts';

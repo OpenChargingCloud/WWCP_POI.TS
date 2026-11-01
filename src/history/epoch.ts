@@ -127,6 +127,8 @@ export class EpochProfiles {
 /** An epoch: its number, from 1 on, and its profiles (11.1). */
 export interface Epoch {
     readonly number:    number;
+    /** Locally verified first-checkpoint time; not a wire field. */
+    readonly startedAt?: number;
     readonly profiles:  EpochProfiles;
 }
 

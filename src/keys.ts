@@ -27,6 +27,7 @@ import { POIError }                           from './errors.ts';
 /** What a signing key may sign (SPECIFICATION.md section 4.1); a signing key naming none signs everything of its party. */
 export const KeyUsages = {
     Infrastructure:   'infrastructure',
+    ChargeTransparencyRecords: 'chargeTransparencyRecords',
     Tariffs:          'tariffs',
     PriceStatements:  'priceStatements',
     Models:           'models',

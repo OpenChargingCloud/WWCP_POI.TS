@@ -37,6 +37,8 @@ export const PROOF_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/proof/v1';
 
 /** What a verified proof attests, and by whom. */
 export interface VerifiedProof {
+    /** Conservative expiry of counted attestations and their certified signing/identity keys. */
+    readonly validUntil: number;
     /** The root the proof leads to: the `effectiveTree` ETag of its version. */
     readonly eTag:          ETag;
     /** The roaming network with what the proof gives completely; pruned arrays as they are. */
@@ -60,7 +62,7 @@ interface CertifiedSigningKeys {
      * holder, valid then and at the time verified, and allowed to sign for the party; with that holder as the verifier
      * knows it, never as the signing key names itself. Undefined unless all of that holds.
      */
-    readonly signingKeyOf:  (keyId: string, signedAt: number) => { key: POIPublicKey, holder: string } | undefined;
+    readonly signingKeyOf:  (keyId: string, signedAt: number) => { key: POIPublicKey, holder: string, validUntil: number } | undefined;
 }
 
 
@@ -162,14 +164,17 @@ export class ChargingStationProof {
         const { keyStatement, required, signingKeyOf } = this.certifiedSigningKeys(basis, time);
 
         // Valid when it attested and at `at`: the signedAt of an attestation is the choice of its signer.
-        const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string } | undefined =>
+        const certifiedSigningKeyOf = (attestation: Attestation): { key: POIPublicKey, holder: string, validUntil: number } | undefined =>
             signingKeyOf(attestation.keyId, attestation.signedAt);
 
+        let validUntil = keyStatement.validUntil;
         const counted:  Attestation[] = [];
         const holders   = new Set<string>();
         const refused:  string[] = [];
 
+        if(basis instanceof TrustContext&&basis.epoch.number>1&&this.commitId.length!==({sha256:64,sha384:96,sha512:128}[basis.epoch.profiles.identificationHash]))throw new POIError('The station commit identification does not match its verified epoch profile');
         for (const attestation of this.attestations) {
+            if(basis instanceof TrustContext&&(!basis.epoch.profiles.allowsSignatureAlgorithm(attestation.algorithm)||attestation.signedAt<(basis.epoch.startedAt??-Infinity)))continue;
 
             if (attestation.roamingNetworkId !== networkId     ||
                 attestation.commitId         !== this.commitId ||
@@ -208,6 +213,7 @@ export class ChargingStationProof {
             }
 
             counted.push(attestation);
+            validUntil = Math.min(validUntil, attestation.validUntil, certified.validUntil);
             holders.add(certified.holder);
 
         }
@@ -216,7 +222,7 @@ export class ChargingStationProof {
             throw new POIError(`Valid attestations of trusted keys of ${holders.size} holder${holders.size === 1 ? '' : 's'} attest the root ${etagToText(eTag)} of the proof, not of ${required}!` +
                                (refused.length > 0 ? ` (${refused.join('; ')})` : ''));
 
-        return { eTag, attested, attestations: counted, attestedBy: [ ...holders ].sort(), keyStatement };
+        return { eTag, attested, attestations: counted, attestedBy: [ ...holders ].sort(), keyStatement, validUntil };
 
     }
 
@@ -320,7 +326,7 @@ export class ChargingStationProof {
         const identityKeys  = [ ...keyStatement.identityKeys, ...operatorIdentityKeys ];
         const trustedIds    = new Set(holderOf.keys());
 
-        const signingKeyOf = (keyId: string, signedAt: number): { key: POIPublicKey, holder: string } | undefined => {
+        const signingKeyOf = (keyId: string, signedAt: number): { key: POIPublicKey, holder: string, validUntil: number } | undefined => {
 
             for (const certificate of certificates) {
 
@@ -332,8 +338,9 @@ export class ChargingStationProof {
                     continue;
 
                 try {
-                    certificate.verify(identityKeys, trustedIds);
-                    return { key: certificate.signingKey, holder: present(holderOf.get(certificate.keyId), 'The holder of a trusted identity key') };
+                    const identity = certificate.verify(identityKeys, trustedIds);
+                    return { key: certificate.signingKey, holder: present(holderOf.get(certificate.keyId), 'The holder of a trusted identity key'),
+                        validUntil: Math.min(certificate.signingKey.notAfter ?? Infinity, identity.notAfter ?? Infinity) };
                 }
                 catch {
                     continue;

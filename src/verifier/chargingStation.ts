@@ -29,6 +29,9 @@ import { POIError }                         from '../errors.ts';
 /** A charging station as a verified proof gives it: everything here is attested by the roaming network operator. */
 export interface VerifiedChargingStation {
 
+    /** Evaluation time and conservative freshness bound of the counted root attestations. */
+    readonly verification: { readonly at: number; readonly validUntil: number };
+
     readonly roamingNetwork:  { readonly id: string, readonly name: string | undefined, readonly description: string | undefined };
     /** The charging station operator, as its skeleton: its own properties and keys, its child arrays as far as given. */
     readonly operator:        JSONObject;
@@ -361,6 +364,8 @@ export function verifyChargingStation(anchor:   TrustAnchor | TrustContext,
         revision:             parsed.revision,
         eTag:                 verified.eTag,
         attestedBy:           verified.attestedBy,
+        verification: { at: anchor instanceof TrustContext ? anchor.evaluatedAt : timeOf(options.at),
+            validUntil: verified.validUntil },
         warnings,
     };
 

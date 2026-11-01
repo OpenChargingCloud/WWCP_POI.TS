@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.2-dev.0 (unpublished development candidate)
+
+Independent CPO charging-document key authority; experimental dual-quorum policy delegation, historical authority timelines and verified epoch continuation/profile enforcement.
+
+Shared authenticated-version comparison: durable caller-owned rollback/fork constraints, historical/current distinction, gap filling and explicit epoch-transition refusal.
+
+Session-bound prices and separate publication/rate checks.
+
+Historical per-reading meter evidence and checkpoint verification under current local authorization.
+
+Shared EVSE/meter/key association and explicit SPKI/COSE P-256 normalization;
+conservative observation freshness; no historical-association claim.
+
+
 ## Unreleased
 
 ## 0.1.1 (2026-10-31)

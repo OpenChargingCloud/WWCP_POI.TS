@@ -1,0 +1,152 @@
+/*
+ * Copyright (c) 2014-2026 GraphDefined GmbH <achim.friedland@graphdefined.com>
+ * This file is part of WWCP POI TS <https://github.com/OpenChargingCloud/WWCP_POI.TS>
+ *
+ * Licensed under the Affero GPL license, Version 3.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.gnu.org/licenses/agpl.html
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { requireObject, requireArray, requireString, requireTimestamp, onlyProperties } from '../common.ts';
+import { asText, isObject, isNumber, type JSONValue, type JSONObject } from '../json/value.ts';
+import { Decimal } from '../json/decimal.ts';
+import { canonicalJSONBytes } from '../json/canonical.ts';
+import { isLowerHex } from '../encoding/text.ts';
+import { verifySignature } from '../crypto/signature.ts';
+import { TrustContext } from '../proofs/trustContext.ts';
+import { ChargingStationProof } from '../proofs/stationProof.ts';
+import { PriceStatement, PriceStatementProof } from '../proofs/priceStatement.ts';
+import { Checkpoint } from '../history/checkpoint.ts';
+import { verifyCheckpointLine } from './checkpoints.ts';
+import { verifyChargingStation, verifyPriceStatements, type VerifiedChargingStation } from './chargingStation.ts';
+import { HistoricalTrustContext, historicalOperatorContext, verifyAuthorizedCheckpoint, type HistoricalMeterPolicy } from './historicalMeasurements.ts';
+import { POIError } from '../errors.ts';
+
+export const SESSION_PRICE_EVIDENCE_CONTEXT = 'https://open.charging.cloud/contexts/wwcp/sessionPriceEvidence/v1';
+export const SESSION_PRICE_AGREEMENT_CONTEXT = 'https://open.charging.cloud/contexts/wwcp/sessionPriceAgreement/v1';
+export const SIMPLE_GROSS_PRICE_PROFILE = 'chargy-gross-rates/v1';
+/** Experimental CPO assertion, distinct from customer consent. */
+export class SessionPriceAgreement {
+    private constructor(public readonly json: JSONObject, public readonly chargingStarted: number, public readonly signedAt: number) {}
+    public static parse(value: JSONValue): SessionPriceAgreement {
+        const json = requireObject(value,'A session price assignment');
+        onlyProperties(json,['@context','roamingNetworkId','EVSEId','meterSerialNumber','chargingStarted','startDocumentSHA256','chargingMode','chargingTariffId','priceStatementDigest','priceBinding','pricingProfile','role','signer','signedAt','algorithm','keyId','value'],'A session price assignment');
+        if(json['@context']!==SESSION_PRICE_AGREEMENT_CONTEXT || json['role']!=='chargingStationOperator') throw new POIError('Unsupported price assignment context/role');
+        for(const field of ['roamingNetworkId','EVSEId','meterSerialNumber','chargingMode','chargingTariffId','priceBinding','pricingProfile','signer','algorithm','keyId','value']) requireString(json,field);
+        for(const field of ['startDocumentSHA256','priceStatementDigest']) if(!isLowerHex(requireString(json,field),32)) throw new POIError('Invalid price assignment digest');
+        return new SessionPriceAgreement(json,requireTimestamp(json,'chargingStarted'),requireTimestamp(json,'signedAt'));
+    }
+    public signingBytes(): Uint8Array { const { value:_,...signed }=this.json; return canonicalJSONBytes(signed); }
+    public verify(station: VerifiedChargingStation): void {
+        if(this.json['roamingNetworkId']!==station.roamingNetwork.id || this.json['signer']!==station.operator['@id']) throw new POIError('Foreign price assignment authority');
+        const key=station.operatorSigningKeys.find(item=>item.id===this.json['keyId']);
+        if(key===undefined || !key.isValidAt(this.signedAt) || !key.isValidAt(this.chargingStarted) || !key.maySign('priceStatements')) throw new POIError('Unauthorized/expired price assignment key');
+        verifySignature(requireString(this.json,'algorithm'),key.key,this.signingBytes(),requireString(this.json,'value'));
+    }
+}
+export interface SessionPriceEvidence {
+    readonly evseId: string; readonly proof: JSONValue; readonly priceStatements: readonly JSONValue[];
+    readonly agreement?: JSONValue; readonly priceProofs: readonly JSONValue[];
+    readonly checkpoints: readonly { readonly checkpoint: JSONValue; readonly operator: JSONValue }[];
+}
+export function parseSessionPriceEvidence(value: JSONValue): SessionPriceEvidence {
+    const json=requireObject(value,'Session price evidence');
+    onlyProperties(json,['@context','EVSEId','chargingStationProof','priceStatements','agreement','priceStatementProofs','checkpoints'],'Session price evidence');
+    if(json['@context']!==SESSION_PRICE_EVIDENCE_CONTEXT) throw new POIError('Unsupported session price evidence');
+    return { evseId:requireString(json,'EVSEId'),proof:requireObject(json['chargingStationProof'],'The priced station proof'),priceStatements:requireArray(json['priceStatements'],'Price statements'),
+        ...(json['agreement']===undefined?{}:{agreement:json['agreement']}),priceProofs:json['priceStatementProofs']===undefined?[]:requireArray(json['priceStatementProofs'],'Price inclusion proofs'),
+        checkpoints:(json['checkpoints']===undefined?[]:requireArray(json['checkpoints'],'Price checkpoints')).map(item=>{
+            const entry=requireObject(item,'A price checkpoint entry');onlyProperties(entry,['checkpoint','operator'],'A price checkpoint entry');
+            return {checkpoint:requireObject(entry['checkpoint'],'A price checkpoint'),operator:requireObject(entry['operator'],'The checkpoint authority')};
+        }) };
+}
+export interface SessionPriceRequest { readonly evseId:string;readonly meterSerialNumber:string;readonly chargingStarted:number;readonly startDocumentSHA256:string; }
+export interface SessionPriceVerification {
+    readonly station:VerifiedChargingStation;readonly signatures:'valid'|'invalid'|'missing';
+    readonly applicability:'bound'|'unbound'|'missing'|'invalid'|'ambiguous'|'unsupported';readonly agreement:'valid'|'invalid'|'missing';
+    readonly publication:'valid'|'invalid'|'missing'|'incomplete';readonly publicationBeforeStart:'not-proven';readonly customerConsent:'not-proven';readonly latestOrSoleOffer:'not-proven';
+    readonly chainGaps:boolean;readonly checkedAt:number;readonly checkpointIds:readonly string[];readonly witnessedBy:readonly string[];readonly diagnostics:readonly string[];
+    readonly selected?:{readonly statement:JSONObject;readonly digest:string;readonly tariff:JSONObject;readonly currency:string;readonly elements:readonly JSONObject[];
+        readonly rates?:{readonly currency:string;readonly energyPerKWh?:string;readonly flatFee?:string;readonly timePerHour?:string}};
+}
+function grossRates(currency:string,elements:readonly JSONObject[]):NonNullable<NonNullable<SessionPriceVerification['selected']>['rates']>|undefined {
+    if(elements.length!==1)return undefined;
+    const element=elements[0];if(element===undefined||Object.keys(element).some(key=>key!=='priceComponents'&&key!=='restrictions'))return undefined;
+    if(element['restrictions']!==undefined&&(!isObject(element['restrictions'])||Object.keys(element['restrictions']).length>0))return undefined;
+    const components=element['priceComponents'];if(!Array.isArray(components)||components.length===0)return undefined;
+    const rates:{currency:string;energyPerKWh?:string;flatFee?:string;timePerHour?:string}={currency};
+    for(const raw of components){
+        if(!isObject(raw)||Object.keys(raw).some(key=>!['type','price','stepSize'].includes(key)))return undefined;
+        const type=raw['type'],value=raw['price'],step=raw['stepSize'];
+        if(!isNumber(value)||Decimal.parse(asText(value)).mantissa<0n||typeof step!=='number'||!Number.isSafeInteger(step)||step<1)return undefined;
+        const field=type==='ENERGY'?'energyPerKWh':type==='FLAT'?'flatFee':type==='TIME'?'timePerHour':undefined;
+        if(field===undefined||rates[field]!==undefined)return undefined;rates[field]=asText(value);
+    }
+    return rates;
+}
+export function verifySessionPriceEvidence(current:TrustContext|HistoricalTrustContext,value:JSONValue,request:SessionPriceRequest,
+    policy:HistoricalMeterPolicy&{readonly relatedCheckpoints?:readonly {readonly checkpoint:JSONValue;readonly operator:JSONValue}[]}={}):SessionPriceVerification {
+    if(!(current instanceof TrustContext)&&!(current instanceof HistoricalTrustContext))throw new POIError('Session prices require current local authorization');
+    if(!Number.isFinite(request.chargingStarted)||request.chargingStarted>current.evaluatedAt||!isLowerHex(request.startDocumentSHA256,32))throw new POIError('Invalid original price context');
+    for(const item of policy.revocations??[])if(!Number.isFinite(item.invalidFrom))throw new POIError('Invalid compromise time');
+    const evidence=parseSessionPriceEvidence(value);if(evidence.evseId!==request.evseId)throw new POIError('Price evidence belongs to another EVSE');
+    const proof=ChargingStationProof.parse(evidence.proof),context=historicalOperatorContext(current,proof.roamingNetwork['operator']??null,request.chargingStarted);
+    const station=verifyChargingStation(context,evidence.proof,{evseId:request.evseId}),diagnostics:string[]=[];
+    const base={station,publicationBeforeStart:'not-proven' as const,customerConsent:'not-proven' as const,latestOrSoleOffer:'not-proven' as const,checkedAt:current.evaluatedAt,checkpointIds:[] as string[],witnessedBy:[] as string[]};
+    const fail=(signatures:SessionPriceVerification['signatures'],applicability:SessionPriceVerification['applicability'],message:string):SessionPriceVerification=>({...base,signatures,applicability,agreement:'missing',publication:'missing',chainGaps:false,diagnostics:[message]});
+    if(evidence.priceStatements.length===0)return fail('missing','missing','No signed price statement supplied');
+    let statements:PriceStatement[];
+    try{statements=evidence.priceStatements.map(item=>PriceStatement.parse(item));for(const statement of statements){
+        statement.verify(station.roamingNetwork.id,asText(station.operator['@id']),station.operatorSigningKeys);
+        if(statement.signedAt>current.evaluatedAt||(policy.revocations??[]).some(item=>item.keyId===statement.keyId&&statement.signedAt>=item.invalidFrom))throw new POIError('Future/revoked CPO price signature');
+    }}catch(error){return fail('invalid','invalid',error instanceof Error?error.message:String(error));}
+    let active:ReturnType<typeof verifyPriceStatements>;
+    try{active=verifyPriceStatements(station,[...evidence.priceStatements],{at:request.chargingStarted});}
+    catch(error){return fail('valid','invalid',error instanceof Error?error.message:String(error));}
+    const chainGaps=statements.some(statement=>statement.sequence>0&&!statements.some(before=>statement.follows(before)));
+    let agreement:SessionPriceAgreement|undefined;
+    if(evidence.agreement!==undefined){try{
+        agreement=SessionPriceAgreement.parse(evidence.agreement);agreement.verify(station);const a=agreement.json;
+        if(a['EVSEId']!==request.evseId||a['meterSerialNumber']!==request.meterSerialNumber||agreement.chargingStarted!==request.chargingStarted||a['startDocumentSHA256']!==request.startDocumentSHA256||agreement.signedAt>current.evaluatedAt||
+            (policy.revocations??[]).some(item=>item.keyId===a['keyId']&&agreement!==undefined&&agreement.signedAt>=item.invalidFrom))throw new POIError('Price assignment does not match this original session');
+    }catch(error){return {...fail('valid','invalid',error instanceof Error?error.message:String(error)),agreement:'invalid',chainGaps};}}
+    const tariffs=station.tariffs.get(request.evseId)??[];
+    const candidates=[...active.values()].flatMap(({statement,digest})=>statement.prices.flatMap(price=>{const tariff=tariffs.find(item=>item['@id']===price['chargingTariffId']);return tariff===undefined?[]:[{statement,digest,tariff,price}];}));
+    const eligible=agreement===undefined?candidates:candidates.filter(item=>item.digest===agreement.json['priceStatementDigest']&&item.tariff['@id']===agreement.json['chargingTariffId']);
+    if(eligible.length!==1)return {...fail('valid',eligible.length===0?'missing':'ambiguous',eligible.length===0?'No selected tariff/price is active at charging start':'Competing price/tariff candidates need a signed selection'),agreement:agreement===undefined?'missing':'invalid',chainGaps};
+    const selected=eligible[0];if(selected===undefined)throw new POIError('Missing selected price');
+    const currency=requireString(selected.tariff,'currency'),elements=requireArray(selected.price['elements'],'Signed price elements').map(item=>requireObject(item,'A signed price element')),rates=grossRates(currency,elements);
+    let applicability:SessionPriceVerification['applicability']=agreement===undefined?'unbound':'bound';
+    if(agreement!==undefined&&(agreement.json['chargingMode']!=='adhoc'||agreement.json['priceBinding']!=='fixed-at-start'||agreement.json['pricingProfile']!==SIMPLE_GROSS_PRICE_PROFILE||rates===undefined)){
+        applicability='unsupported';diagnostics.push('EMP/contract terms, variable binding, unknown price profile or conditional elements are not established by this profile');
+    }
+    let publication:SessionPriceVerification['publication']='missing';const checkpointIds:string[]=[],witnessed=new Set<string>();
+    if(evidence.priceProofs.length>0||evidence.checkpoints.length>0){try{
+        const entries=evidence.checkpoints.map(entry=>({...entry,checked:verifyAuthorizedCheckpoint(current,Checkpoint.parse(entry.checkpoint),entry.operator,policy)})),byId=new Map(entries.map(entry=>[entry.checked.checkpoint.id,entry.checked])),heads=new Map<string,string>();
+        for(const checked of [...entries.map(entry=>entry.checked),...(policy.relatedCheckpoints??[]).map(entry=>verifyAuthorizedCheckpoint(current,Checkpoint.parse(entry.checkpoint),entry.operator,policy))]){
+            const cp=checked.checkpoint,coordinate=`${cp.epoch}:${cp.sequence}`;if(heads.has(coordinate)&&heads.get(coordinate)!==cp.id)throw new POIError('Conflicting station/price checkpoint heads');heads.set(coordinate,cp.id);
+        }
+        let selectedProof=false;
+        for(const raw of evidence.priceProofs){const p=PriceStatementProof.parse(raw),checked=byId.get(p.checkpointId);if(checked===undefined)throw new POIError('Missing price checkpoint');
+            p.priceStatement.verify(station.roamingNetwork.id,asText(station.operator['@id']),station.operatorSigningKeys);
+            if(!statements.some(statement=>statement.digestHex()===p.priceStatement.digestHex()))throw new POIError('Price proof belongs to an unsupplied statement');p.verify(checked.checkpoint);
+            if(p.priceStatement.digestHex()!==selected.digest)continue;selectedProof=true;checkpointIds.push(checked.checkpoint.id);for(const name of checked.witnessedBy)witnessed.add(name);
+            if(p.priceStatement.after!==undefined){const after=byId.get(p.priceStatement.after)?.checkpoint;
+                if(after===undefined){publication='incomplete';diagnostics.push('Missing checkpoint named by after-link');continue;}
+                if(after.epoch!==checked.checkpoint.epoch||after.sequence>=checked.checkpoint.sequence)throw new POIError('Invalid checkpoint temporal order');
+                verifyCheckpointLine(entries.map(entry=>entry.checked.checkpoint).filter(cp=>cp.epoch===after.epoch&&cp.sequence>=after.sequence&&cp.sequence<=checked.checkpoint.sequence).sort((a,b)=>a.sequence-b.sequence));
+            }
+        }
+        if(publication!=='incomplete')publication=selectedProof?'valid':'missing';
+    }catch(error){publication='invalid';diagnostics.push(error instanceof Error?error.message:String(error));}}
+    if(policy.requirePublication===true&&publication!=='valid')diagnostics.push('Required price publication evidence is incomplete');
+    return {...base,signatures:'valid',applicability,agreement:agreement===undefined?'missing':'valid',publication,chainGaps,diagnostics,checkpointIds,witnessedBy:[...witnessed],
+        selected:{statement:selected.statement.json,digest:selected.digest,tariff:selected.tariff,currency,elements,...(rates===undefined||agreement?.json['pricingProfile']!==SIMPLE_GROSS_PRICE_PROFILE?{}:{rates})}};
+}

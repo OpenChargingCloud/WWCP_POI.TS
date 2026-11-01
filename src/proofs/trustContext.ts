@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import {FIRST_EPOCH,type Epoch} from '../history/epoch.ts';
 import { timeOf }                from '../common.ts';
 import { canonicalJSONBytes }    from '../json/canonical.ts';
 import { toHex }                 from '../encoding/text.ts';
@@ -63,7 +64,7 @@ export class TrustContext {
     public readonly validUntil: number;
 
     private constructor(anchor: TrustAnchor, holders: readonly (readonly string[])[],
-                        statement: KeyStatement, public readonly evaluatedAt: number) {
+                        private readonly statement: KeyStatement, public readonly evaluatedAt: number,public readonly epoch:Epoch=FIRST_EPOCH,public readonly epochs:readonly Epoch[]=[FIRST_EPOCH]) {
         this.anchor = frozenAnchor(anchor);
         this.trustedHolders = Object.freeze(holders.map(holder => Object.freeze([...holder])));
         // The wire format permits no empty groups. Removing empty groups never splits a holder or reduces the quorum.
@@ -77,6 +78,10 @@ export class TrustContext {
         Object.freeze(this);
     }
 
+    /** Attach only profiles established by a verified transition; the bootstrap keeps the first epoch. */
+    public static withEpoch(reference:TrustContext,epoch:Epoch,epochs:readonly Epoch[]=[epoch]):TrustContext {
+        return new TrustContext(reference.anchor,reference.trustedHolders,reference.statement,reference.evaluatedAt,epoch,Object.freeze([...epochs]));
+    }
     public static create(anchor: TrustAnchor, statement: KeyStatement, options: TrustEvaluationOptions): TrustContext {
         const result = TrustContext.evaluate(anchor, statement, options);
         if (result.context === undefined)
