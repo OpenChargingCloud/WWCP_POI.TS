@@ -35,7 +35,7 @@ const refusal = (json: JSONObject): string => {
     return 'taken';
 };
 
-const UNKNOWN = 'is unknown: it is one of certificates, chargeTransparencyRecords, infrastructure, models, party, payments, priceStatements, software, tariffs!';
+const UNKNOWN = 'is unknown: it is one of certificates, chargeTransparencyRecords, infrastructure, models, party, payments, priceStatements, software, tariffs, witnessPublications!';
 
 
 describe('The keys of the parties of a roaming network, read with it (D12)', () => {

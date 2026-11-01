@@ -69,8 +69,8 @@
     },
     "dependencies": {
         "@noble/hashes": "^2.4.0",
-        "@vanaheimr/cose": "^0.10.0",
-        "@vanaheimr/metrological-cbor": "^0.11.1"
+        "@vanaheimr/cose": "^0.12.0",
+        "@vanaheimr/metrological-cbor": "^0.12.0"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",

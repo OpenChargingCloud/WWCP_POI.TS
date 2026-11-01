@@ -101,3 +101,5 @@ export * from './verifier/observedVersions.ts';
 export * from './verifier/documentKeys.ts';
 
 export * from './verifier/trustTransitions.ts';
+
+export * from './verifier/pricePublication.ts';

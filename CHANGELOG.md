@@ -2,6 +2,10 @@
 
 ## 0.1.2-dev.0 (unpublished development candidate)
 
+Align COSE and Metrological CBOR dependencies on ^0.12.0 so direct and transitive consumers share one codec; existing proof and signature fixtures remain valid.
+
+Experimental public-price-retrieval receipts, separate witness organization/network/clock policy, key-usage restrictions and a conservative pre-signed-start result; no automatic witness authority or actual-start/customer-consent claim.
+
 Independent CPO charging-document key authority; experimental dual-quorum policy delegation, historical authority timelines and verified epoch continuation/profile enforcement.
 
 Shared authenticated-version comparison: durable caller-owned rollback/fork constraints, historical/current distinction, gap filling and explicit epoch-transition refusal.

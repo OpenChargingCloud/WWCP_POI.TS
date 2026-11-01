@@ -30,6 +30,7 @@ export const KeyUsages = {
     ChargeTransparencyRecords: 'chargeTransparencyRecords',
     Tariffs:          'tariffs',
     PriceStatements:  'priceStatements',
+    WitnessPublications: 'witnessPublications',
     Models:           'models',
     Software:         'software',
     Certificates:     'certificates',

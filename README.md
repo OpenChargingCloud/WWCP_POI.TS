@@ -483,3 +483,36 @@ checkpoint epoch evidence. Unverified epoch jumps and quorum reductions fail clo
 historical contexts can carry a reverified authority timeline. These objects are
 recreated from local decisions and original evidence, never serialized green flags.
 See the app's illustrated trust-succession guide and genuine public fixtures.
+
+### Experimental independent price publication receipts
+
+`parseWitnessPublicationPolicy` parses separately authorized organization, network,
+key and clock decisions. Parsing a recommendation grants no trust. Pass the
+accepted policy as `publicationPolicy` to `verifySessionPriceEvidence`; its optional
+`publicationReceipts` and `witnessCandidates` do not authorize themselves.
+`PricePublicationReceipt` signs a versioned public-retrieval assertion for the
+exact selected price/EVSE/network/checkpoint and public source. The experimental
+key usage is `witnessPublications`; existing usage restrictions still apply.
+
+The result `publicationBeforeStart: 'witnessed-before-signed-start'` requires the
+separate distinct-organization quorum, valid original signatures and inclusion,
+and every counted latest signing bound (including locally accepted clock error)
+strictly before the original signed start. Several keys/aliases of one approved
+organization count once; reused key material cannot create another organization.
+Known RNO/CPO key material is excluded from independent witnessing. Actual clock
+accuracy and organizational independence remain explicit caller trust assumptions.
+The physical charging start, global latest/sole offer, customer consent and final
+billing are not independently proven. This is not an RFC 3161 implementation.
+
+`tests/vectors/price-publication.json` contains public Ed25519/ML-DSA-65 vectors
+and negative timing, scope, signature and duplicate-organization cases. The caller
+must reread current policy across asynchronous work and persist original receipts,
+never serialized green verdicts. No production witness service is implied.
+
+Publication receipts additionally bind `priceStatementSHA256` (the complete
+original CPO-signed object including its signature value) and `tariffSHA256`
+(the exact selected tariff including its currency). The ordinary statement
+digest excludes its signature value and cannot alone prove that a signed offer,
+rather than its draft, was retrieved. `pricePublicationOfferHashes` computes these
+bindings consistently for generators and callers. Neither alternate signature
+encodings nor changed tariff definitions reuse another original's receipt.
