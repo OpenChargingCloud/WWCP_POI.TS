@@ -336,67 +336,138 @@ npx tsx examples/validate-examples.ts D:\Coding\OpenChargingCloud\WWCP_POI\examp
 ```
 
 
-## Meter-key association (unpublished 0.1.2-dev.0 candidate)
+## Unpublished extensions of 0.1.2-dev.0
 
-`verifyMeterKey(context, proof, { evseId, meterSerialNumber, keyFormat: 'spki-der' })`
-re-verifies the original proof with a locally authorized `TrustContext`, selects
-only that EVSE's directly associated meter and requires an exact serial match.
-Multiple keys require an explicit `keyId`; it never searches unrelated meters or
-tries keys until one verifies. No fallback to CPO/RNO signing keys is performed.
+Experimental, in a development candidate not published; WWCP_POI3 has them as well (`WWCP_POI3/Verifier`), but the
+local journal of observed versions, which is the app's.
 
-The first pilot supports public uncompressed ECDSA P-256 measurement keys.
-`parseMeasurementPublicKey(value, 'spki-der' | 'cose-key')` requires an explicit
-format: it checks SHA-256(SPKI) or the deterministic COSE key thumbprint as
-appropriate, validates the point and produces a canonical COSE key/material ID.
-It retains the original ID and its derivation scheme. Unsupported algorithms
-and ambiguous associations fail explicitly rather than becoming trusted keys.
+### Meter-key association
 
-The result carries RN/RNO, EVSE, station, meter, original/canonical key identity,
-commit/revision/root, KeyStatement digest, evaluation time and a conservative
-expiry bounded by the counted attestations and their certified keys. It is a
-current-snapshot observation, not historical key-rotation/installation evidence
-or a permanent authorization token. Reconstruct local authorization for each
-operation. Future station-owned measurement signers and additional key formats
+`verifyMeterKey(context, proof, { evseId, meterSerialNumber, keyFormat: 'spki-der' })` re-verifies the original proof
+with a locally authorized `TrustContext`, selects only that EVSE's directly associated meter and requires an exact
+serial match. Multiple keys require an explicit `keyId`; it never searches unrelated meters or tries keys until one
+verifies. No fallback to CPO/RNO signing keys is performed.
+
+The first pilot supports public uncompressed ECDSA P-256 measurement keys. `parseMeasurementPublicKey(value, 'spki-der'
+| 'cose-key')` requires an explicit format: it checks SHA-256(SPKI) or the deterministic COSE key thumbprint as
+appropriate, validates the point and produces a canonical COSE key/material ID. It retains the original ID and its
+derivation scheme. Unsupported algorithms and ambiguous associations fail explicitly rather than becoming trusted keys.
+
+The result carries RN/RNO, EVSE, station, meter, original/canonical key identity, commit/revision/root, KeyStatement
+digest, evaluation time and a conservative expiry bounded by the counted attestations and their certified keys. It is a
+current-snapshot observation, not historical key-rotation/installation evidence or a permanent authorization token.
+Reconstruct local authorization for each operation. Future station-owned measurement signers and additional key formats
 need explicit association rules; they are not guessed by this pilot.
 
-The portable public test vector `tests/vectors/meter-session.json` originates
-from ChargyWebApp commit 97da24d (`tests/fixtures/POISession`); its source manifest
-is `meter-session-meta.json`. It contains public demonstration keys only.
+The portable public test vector `tests/vectors/meter-session.json` originates from ChargyWebApp commit 97da24d
+(`tests/fixtures/POISession`); its source manifest is `meter-session-meta.json`. It contains public demonstration keys
+only.
 
 
-### Historical meter evidence (unpublished candidate)
+### Historical meter evidence
 
-`parseHistoricalMeterEvidence` and `verifyHistoricalMeterEvidence(currentContext, value,
-request, policy?)` keep current local authorization separate from historical validity.
-The request supplies the actual original reading times, EVSE, meter serial and explicit
-key format. Expired historical statements and operational certificates are checked at
-those times; each later checkpoint uses its own supplied operator and signature times.
-The output is an immutable per-time binding for Core, not a serialized trust token.
+`parseHistoricalMeterEvidence` and `verifyHistoricalMeterEvidence(currentContext, value, request, policy?)` keep current
+local authorization separate from historical validity. The request supplies the actual original reading times, EVSE,
+meter serial and explicit key format. Expired historical statements and operational certificates are checked at those
+times; each later checkpoint uses its own supplied operator and signature times. The output is an immutable per-time
+binding for Core, not a serialized trust token.
 
-The versioned `historicalMeterEvidence/v1` envelope is a TS-library extension, not a
-change to the existing strict Evidence schema. It contains `EVSEId` and `versions`,
-each with `chargingStationProof`, optional `commitProof`, and optional `checkpoints`
-entries shaped as `{checkpoint, operator}`. Missing inclusion stays visible; malformed
-supplied inclusion fails. Prices are not required just to verify a meter assignment.
-Only caller-authorized witnesses/revocations count. `invalidFrom` compromise times
-apply to signature times or measurement-key use; ordinary expiry does not retroactively
-invalidate a valid historical signature. An unauthorized current quorum still blocks
-all checks. Identity succession not connected to today's authorized pins fails closed.
+The versioned `historicalMeterEvidence/v1` envelope is a TS-library extension, not a change to the existing strict
+Evidence schema. It contains `EVSEId` and `versions`, each with `chargingStationProof`, optional `commitProof`, and
+optional `checkpoints` entries shaped as `{checkpoint, operator}`. Missing inclusion stays visible; malformed supplied
+inclusion fails. Prices are not required just to verify a meter assignment. Only caller-authorized witnesses/revocations
+count. `invalidFrom` compromise times apply to signature times or measurement-key use; ordinary expiry does not
+retroactively invalidate a valid historical signature. An unauthorized current quorum still blocks all checks. Identity
+succession not connected to today's authorized pins fails closed.
 
-The claim is RNO attestation at the signed measurement times and optionally checkpoint
-inclusion. Independently established actual time, sole/latest membership, complete
-owner-signed change replay and checkpoint continuity are not inferred. A checkpoint
-obtained later does not prove it was public before charging. No full network archive
-is downloaded. See the app's illustrated historical-session guide for integration.
+The claim is RNO attestation at the signed measurement times and optionally checkpoint inclusion. Independently
+established actual time, sole/latest membership, complete owner-signed change replay and checkpoint continuity are not
+inferred. A checkpoint obtained later does not prove it was public before charging. No full network archive is
+downloaded. See the app's illustrated historical-session guide for integration.
 
 
-`HistoricalTrustContext.create(anchor, savedReferenceStatement, {trustedIdentityKeyIds,
-otherIdentityKeys?, now?})` authorizes historical checks from fresh caller-supplied
-local decisions. It verifies the saved reference at its own signed time; expiry today
-does not require a server or a newly issued statement. Its one-minute validity bound
-is an operation deadline, not historical document validity. Recreate it for each check
-and reread local authorization after async work. Current `TrustContext` remains the
-separate path for fresh/current station checks. Unknown identity succession still fails.
+`HistoricalTrustContext.create(anchor, savedReferenceStatement, {trustedIdentityKeyIds, otherIdentityKeys?, now?})`
+authorizes historical checks from fresh caller-supplied local decisions. It verifies the saved reference at its own
+signed time; expiry today does not require a server or a newly issued statement. Its one-minute validity bound is an
+operation deadline, not historical document validity. Recreate it for each check and reread local authorization after
+async work. Current `TrustContext` remains the separate path for fresh/current station checks. Unknown identity
+succession still fails.
+
+
+### Session-bound prices
+
+`verifySessionPriceEvidence` verifies the attested station at the original start, CPO PriceStatements with existing
+generic algorithms (including Ed25519 and ML-DSA), usage/validity, entity/tariff references, supplied chains and
+explicit selection. `SessionPriceAgreement` binds the exact original start document SHA-256, meter/EVSE, time, tariff,
+statement digest, mode and binding/profile in a CPO signature. This is a CPO assertion, not customer consent. Unknown
+agreements never authorize themselves. The experimental `chargy-gross-rates/v1` profile fixes unconditional gross rates
+at start. EMP contracts, variable bindings and unsupported restrictions stay unproven.
+
+Checkpoint authority is shared with historical meter verification. Price inclusion, `after` links/continuity, selected
+statement identity and related checkpoint forks are checked separately. A later checkpoint never proves pre-start
+publication, independent time or sole/latest offer. Original decimals are preserved. There is no P-256-only restriction
+on CPO price/assignment signatures. See the app's price guide.
+
+
+### Locally observed versions
+
+`compareObservedVersions` is a pure, shared policy for monotonic current selection and persistent authenticated
+contradictions. Metadata projection helpers for station proofs, checkpoint positions/root revisions and PriceStatements
+do not authenticate anything: call the usual role, quorum, subject and validity verifiers before recording them. The
+caller owns durable storage and must compare and replace the state atomically. The app uses a separate IndexedDB journal
+scoped to the exact local anchor policy and authenticated RN/RNO identity.
+
+Current selection rejects known rollbacks, unresolved forks, missing checkpoint, price or live predecessors, and
+unverified epoch changes. Historical inspection allows older coordinates and never advances current heads. Authenticated
+gaps and rejected conflicting originals remain negative knowledge. A rejected gap cannot advance its head by
+resubmitting the same tip. Station snapshots permit revision jumps without claiming commit ancestry. Limits are 4096
+points and 128 conflicts; storage must fail closed rather than silently evict history. These local rules establish
+neither global freshness nor independently authorized witnesses.
+
+
+### CPO envelope authority and compact trust succession
+
+`verifyChargingDocumentKeys` re-verifies the original station/EVSE proof, exact CPO, document-time validity and the
+explicit `chargeTransparencyRecords` usage (or an unrestricted party key). It returns normalized COSE material for the
+shared Core envelope verifier; a price-only key does not authorize document signing. This is independent of the
+P-256/OCMF meter pilot.
+
+A transition names the policy it continues by `trustPolicyId(anchor)`: the SHA-256 of the canonical JSON of `{network,
+holders, minConsensus, urls}`, the URLs as a WHATWG URL serializes them without trailing slashes, in their ordinal order,
+as WWCP_POI3 calculates it. `TrustTransition` and `VerifiedTrustTransition` implement an experimental compact delegation
+certificate, signed by both old authorized and target identity holder quorums, binding exact policies, statements,
+sources and predecessor. It is not History owner/change-set replay and does not misuse `followedBy`.
+`applyVerifiedTrustTransition` preserves negative journal knowledge while adopting explicit policy delegation and exact
+final-checkpoint/genesis/first-checkpoint epoch evidence. Unverified epoch jumps and quorum reductions fail closed.
+`TrustContext.withEpoch` carries verified profiles into subsequent proof checks; historical contexts can carry a
+reverified authority timeline. These objects are recreated from local decisions and original evidence, never serialized
+green flags. See the app's illustrated trust-succession guide and genuine public fixtures.
+
+### Independent price publication receipts
+
+`parseWitnessPublicationPolicy` parses separately authorized organization, network, key and clock decisions. Parsing a
+recommendation grants no trust. Pass the accepted policy as `publicationPolicy` to `verifySessionPriceEvidence`; its
+optional `publicationReceipts` and `witnessCandidates` do not authorize themselves. `PricePublicationReceipt` signs a
+versioned public-retrieval assertion for the exact selected price/EVSE/network/checkpoint and public source. The
+experimental key usage is `witnessPublications`; existing usage restrictions still apply.
+
+The result `publicationBeforeStart: 'witnessed-before-signed-start'` requires the separate distinct-organization quorum,
+valid original signatures and inclusion, and every counted latest signing bound (including locally accepted clock error)
+strictly before the original signed start. Several keys/aliases of one approved organization count once; reused key
+material cannot create another organization. Known RNO/CPO key material is excluded from independent witnessing. Actual
+clock accuracy and organizational independence remain explicit caller trust assumptions. The physical charging start,
+global latest/sole offer, customer consent and final billing are not independently proven. This is not an RFC 3161
+implementation.
+
+`tests/vectors/price-publication.json` contains public Ed25519/ML-DSA-65 vectors and negative timing, scope, signature
+and duplicate-organization cases. The caller must reread current policy across asynchronous work and persist original
+receipts, never serialized green verdicts. No production witness service is implied.
+
+Publication receipts additionally bind `priceStatementSHA256` (the complete original CPO-signed object including its
+signature value) and `tariffSHA256` (the exact selected tariff including its currency). The ordinary statement digest
+excludes its signature value and cannot alone prove that a signed offer, rather than its draft, was retrieved.
+`pricePublicationOfferHashes` computes these bindings consistently for generators and callers. Neither alternate
+signature encodings nor changed tariff definitions reuse another original's receipt.
 
 
 ## Publishing
@@ -423,96 +494,3 @@ npm publish
 [GNU Affero General Public License v3.0](LICENSE), as WWCP_POI.
 
 Copyright 2014-2026 GraphDefined GmbH
-
-
-
-### Session-bound prices (unpublished experimental extension)
-
-`verifySessionPriceEvidence` verifies the attested station at the original start,
-CPO PriceStatements with existing generic algorithms (including Ed25519 and ML-DSA),
-usage/validity, entity/tariff references, supplied chains and explicit selection.
-`SessionPriceAgreement` binds the exact original start document SHA-256, meter/EVSE,
-time, tariff, statement digest, mode and binding/profile in a CPO signature. This is
-a CPO assertion, not customer consent. Unknown agreements never authorize themselves.
-The experimental `chargy-gross-rates/v1` profile fixes unconditional gross rates at
-start. EMP contracts, variable bindings and unsupported restrictions stay unproven.
-
-Checkpoint authority is shared with historical meter verification. Price inclusion,
-`after` links/continuity, selected statement identity and related checkpoint forks
-are checked separately. A later checkpoint never proves pre-start publication,
-independent time or sole/latest offer. Original decimals are preserved. There is no
-P-256-only restriction on CPO price/assignment signatures. See the app's price guide.
-
-
-### Locally observed versions (unpublished development extension)
-
-`compareObservedVersions` is a pure, shared policy for monotonic current
-selection and persistent authenticated contradictions. Metadata projection helpers
-for station proofs, checkpoint positions/root revisions and PriceStatements do
-not authenticate anything: call the usual role, quorum, subject and validity
-verifiers before recording them. The caller owns durable storage and must compare
-and replace the state atomically. The app uses a separate IndexedDB journal scoped
-to the exact local anchor policy and authenticated RN/RNO identity.
-
-Current selection rejects known rollbacks, unresolved forks, missing checkpoint,
-price or live predecessors, and unverified epoch changes. Historical inspection
-allows older coordinates and never advances current heads. Authenticated gaps and
-rejected conflicting originals remain negative knowledge. A rejected gap cannot
-advance its head by resubmitting the same tip. Station snapshots permit revision
-jumps without claiming commit ancestry. Limits are 4096 points and 128 conflicts;
-storage must fail closed rather than silently evict history. These local rules
-establish neither global freshness nor independently authorized witnesses.
-
-
-### CPO envelope authority and compact trust succession (experimental)
-
-`verifyChargingDocumentKeys` re-verifies the original station/EVSE proof,
-exact CPO, document-time validity and the explicit `chargeTransparencyRecords`
-usage (or an unrestricted party key). It returns normalized COSE material for the
-shared Core envelope verifier; a price-only key does not authorize document signing.
-This is independent of the P-256/OCMF meter pilot.
-
-`TrustTransition` and `VerifiedTrustTransition` implement an experimental
-compact delegation certificate, signed by both old authorized and target identity
-holder quorums, binding exact policies, statements, sources and predecessor.
-It is not History owner/change-set replay and does not misuse `followedBy`.
-`applyVerifiedTrustTransition` preserves negative journal knowledge while
-adopting explicit policy delegation and exact final-checkpoint/genesis/first-
-checkpoint epoch evidence. Unverified epoch jumps and quorum reductions fail closed.
-`TrustContext.withEpoch` carries verified profiles into subsequent proof checks;
-historical contexts can carry a reverified authority timeline. These objects are
-recreated from local decisions and original evidence, never serialized green flags.
-See the app's illustrated trust-succession guide and genuine public fixtures.
-
-### Experimental independent price publication receipts
-
-`parseWitnessPublicationPolicy` parses separately authorized organization, network,
-key and clock decisions. Parsing a recommendation grants no trust. Pass the
-accepted policy as `publicationPolicy` to `verifySessionPriceEvidence`; its optional
-`publicationReceipts` and `witnessCandidates` do not authorize themselves.
-`PricePublicationReceipt` signs a versioned public-retrieval assertion for the
-exact selected price/EVSE/network/checkpoint and public source. The experimental
-key usage is `witnessPublications`; existing usage restrictions still apply.
-
-The result `publicationBeforeStart: 'witnessed-before-signed-start'` requires the
-separate distinct-organization quorum, valid original signatures and inclusion,
-and every counted latest signing bound (including locally accepted clock error)
-strictly before the original signed start. Several keys/aliases of one approved
-organization count once; reused key material cannot create another organization.
-Known RNO/CPO key material is excluded from independent witnessing. Actual clock
-accuracy and organizational independence remain explicit caller trust assumptions.
-The physical charging start, global latest/sole offer, customer consent and final
-billing are not independently proven. This is not an RFC 3161 implementation.
-
-`tests/vectors/price-publication.json` contains public Ed25519/ML-DSA-65 vectors
-and negative timing, scope, signature and duplicate-organization cases. The caller
-must reread current policy across asynchronous work and persist original receipts,
-never serialized green verdicts. No production witness service is implied.
-
-Publication receipts additionally bind `priceStatementSHA256` (the complete
-original CPO-signed object including its signature value) and `tariffSHA256`
-(the exact selected tariff including its currency). The ordinary statement
-digest excludes its signature value and cannot alone prove that a signed offer,
-rather than its draft, was retrieved. `pricePublicationOfferHashes` computes these
-bindings consistently for generators and callers. Neither alternate signature
-encodings nor changed tariff definitions reuse another original's receipt.

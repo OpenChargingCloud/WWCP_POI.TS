@@ -1,24 +1,31 @@
 # Changelog
 
-## 0.1.2-dev.0 (unpublished development candidate)
-
-Align COSE and Metrological CBOR dependencies on ^0.12.0 so direct and transitive consumers share one codec; existing proof and signature fixtures remain valid.
-
-Experimental public-price-retrieval receipts, separate witness organization/network/clock policy, key-usage restrictions and a conservative pre-signed-start result; no automatic witness authority or actual-start/customer-consent claim.
-
-Independent CPO charging-document key authority; experimental dual-quorum policy delegation, historical authority timelines and verified epoch continuation/profile enforcement.
-
-Shared authenticated-version comparison: durable caller-owned rollback/fork constraints, historical/current distinction, gap filling and explicit epoch-transition refusal.
-
-Session-bound prices and separate publication/rate checks.
-
-Historical per-reading meter evidence and checkpoint verification under current local authorization.
-
-Shared EVSE/meter/key association and explicit SPKI/COSE P-256 normalization;
-conservative observation freshness; no historical-association claim.
-
-
 ## Unreleased
+
+0.1.2-dev.0, a development candidate not published:
+
+- Shared association of an EVSE, its energy meter and its key, with an explicit normalization of SubjectPublicKeyInfo
+  and COSE P-256 keys and a conservative freshness of the observation; no claim of a historical association.
+- Historical meter evidence per reading, and checkpoints verified under the current local authorization.
+- Prices bound to a session, their publication and their rates checked apart.
+- A shared comparison of authenticated versions: rollback and fork constraints the caller keeps durably, historical and
+  current versions told apart, gaps filled, a change of the epoch refused unless verified.
+- The charging document keys of a CPO, an authority of their own; experimental delegation of a policy signed by two
+  quorums, historical timelines of authorities, and verified epoch continuation and profiles.
+- Experimental receipts of a public retrieval of prices, a policy of witness organizations, networks and clocks of
+  its own, restrictions of key usages and a conservative result before the signed start; no witness authorized
+  automatically, no claim of the actual start or of the consent of the customer.
+- COSE and Metrological CBOR on ^0.12.0, so that direct and transitive consumers share one codec; existing proof and
+  signature fixtures remain valid.
+- `trustPolicyId` is the SHA-256 of the canonical JSON of `{network, holders, minConsensus, urls}`, the URLs as a WHATWG
+  URL serializes them without trailing slashes, in their ordinal order, as WWCP_POI3 calculates it
+  (`TrustTransition.PolicyIdOf`); in place of their `JSON.stringify`, whose order of properties and escapes are those of
+  JavaScript, so that every implementation calculates the same. Every policy identification changes: decisions an app
+  keeps under one are made again, and transitions are signed again.
+- A commit is refused without its `json`, `cbor` and `effectiveTree` ETags (SPECIFICATION.md 8.3), as WWCP_POI3 refuses
+  it; the epoch change of `tests/vectors/trust-transitions.json` names the ETags of its versions.
+- `trustTransitions.ts` and `documentKeys.ts` with the license header and in the layout of the other sources.
+
 
 ## 0.1.1 (2026-10-31)
 

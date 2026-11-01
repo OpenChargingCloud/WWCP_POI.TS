@@ -173,8 +173,10 @@ export class Commit {
         if ((parentIds.length === 0) !== (changeSet === undefined))
             throw new POIError(`The commit '${id}' must have parents and a change set, or neither, as a genesis commit!`);
 
-        if (!eTags.some(eTag => eTag.format === 'effectiveTree'))
-            throw new POIError(`The commit '${id}' names no effectiveTree ETag!`);
+        // The ETags of its version (8.3), as WWCP_POI3 requires them: its json, its cbor and its effectiveTree ETags.
+        for (const format of [ 'json', 'cbor', 'effectiveTree' ] as const)
+            if (!eTags.some(eTag => eTag.format === format))
+                throw new POIError(`The commit '${id}' names no ${format} ETag: a commit requires the json, cbor and effectiveTree ETags of its version!`);
 
         const signaturesJSON  = get(json, 'signatures');
         const signatures      = signaturesJSON === undefined
