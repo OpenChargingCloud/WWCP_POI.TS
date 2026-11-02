@@ -3,7 +3,7 @@
 ## Unreleased
 
 
-## 0.2.0 (prepared; not yet published)
+## 0.2.0 (2026-11-02)
 
 Shared trust and session verification APIs, previously delivered as the unpublished 0.1.2-dev.0 development candidate.
 The experimental evidence and delegation profiles described below remain experimental in this release.
