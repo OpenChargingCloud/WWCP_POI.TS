@@ -24,6 +24,11 @@ ML-DSA-44/65/87.
 
 ## Status
 
+**0.2.0 is prepared, not yet published to npm.** It includes the shared trust and session verification APIs previously
+supplied as 0.1.2-dev.0 development packages. See [the changelog](CHANGELOG.md#020-prepared-not-yet-published) for the
+changes and migration requirements. The experimental profiles below remain experimental; a package release does not
+establish production witness services or independently verified actual measurement time.
+
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A14 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) at commit `33447ac` are checked
 from what the C# examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations
@@ -336,10 +341,12 @@ npx tsx examples/validate-examples.ts D:\Coding\OpenChargingCloud\WWCP_POI\examp
 ```
 
 
-## Unpublished extensions of 0.1.2-dev.0
+## Shared trust and session verification in 0.2.0
 
-Experimental, in a development candidate not published; WWCP_POI3 has them as well (`WWCP_POI3/Verifier`), but the
-local journal of observed versions, which is the app's.
+These APIs were previously supplied in the unpublished 0.1.2-dev.0 candidate. WWCP_POI3 has them as well
+(`WWCP_POI3/Verifier`), except for the local journal of observed versions, which is the app's. The versioned historical
+and session-price evidence, compact trust delegation and publication-receipt profiles remain experimental; they do not
+change the strict standard Evidence schema. See [Migration](CHANGELOG.md#migration) before upgrading a consumer.
 
 ### Meter-key association
 
@@ -472,21 +479,40 @@ signature encodings nor changed tariff definitions reuse another original's rece
 
 ## Publishing
 
-```
-npm version 0.1.1 --no-git-tag-version
-git commit -a
-git tag -s v0.1.1 -m "v0.1.1"
-git push origin master v0.1.1
-git push git1 master v0.1.1
-git push git2 master v0.1.1
+Version 0.2.0 is prepared locally. Preparation does not publish to npm, create a release tag or change a consumer's
+pinned development package. Validate the source and inspect the package before approving a release:
 
+```bash
+npm ci
+npx playwright install chromium
 npm run verify
+npm run examples
 npm pack --dry-run
 npm pack
+```
+
+After release approval, replace the prepared-release markers in this README and the changelog with the actual release
+status and date, rebuild and check the final archive. Commit the reviewed release files, then tag and push that exact
+commit to each configured remote:
+
+```bash
+git tag -s v0.2.0 -m "v0.2.0"
+git push origin master v0.2.0
+git push git1 master v0.2.0
+git push git2 master v0.2.0
+```
+
+Publish the inspected archive only after that separate approval:
+
+```bash
 npm login
 npm whoami
-npm publish
+npm publish ./open-charging-cloud-wwcp-poi-0.2.0.tgz --access public
 ```
+
+After publication, consumers can replace their local POI development archive with
+`@open-charging-cloud/wwcp-poi@^0.2.0`, refresh their lockfile and verify a clean install. Their separate ChargyCore
+candidate still needs its own release; publishing POI alone does not replace it.
 
 
 ## License

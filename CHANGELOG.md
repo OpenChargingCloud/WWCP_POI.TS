@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-0.1.2-dev.0, a development candidate not published:
+
+## 0.2.0 (prepared; not yet published)
+
+Shared trust and session verification APIs, previously delivered as the unpublished 0.1.2-dev.0 development candidate.
+The experimental evidence and delegation profiles described below remain experimental in this release.
 
 - Shared association of an EVSE, its energy meter and its key, with an explicit normalization of SubjectPublicKeyInfo
   and COSE P-256 keys and a conservative freshness of the observation; no claim of a historical association.
@@ -25,6 +29,21 @@
 - A commit is refused without its `json`, `cbor` and `effectiveTree` ETags (SPECIFICATION.md 8.3), as WWCP_POI3 refuses
   it; the epoch change of `tests/vectors/trust-transitions.json` names the ETags of its versions.
 - `trustTransitions.ts` and `documentKeys.ts` with the license header and in the layout of the other sources.
+
+
+### Migration
+
+- Commits must name all three version ETags: `json`, `cbor` and `effectiveTree`. A commit accepted by 0.1.1 with
+  only an effective-tree ETag is now refused. Producers must generate the complete ETags and sign the resulting commits
+  and checkpoints again; do not edit previously signed documents or silently repair an archived original.
+- When moving from the unpublished 0.1.2-dev.0 candidate that used `JSON.stringify` for policy identity, recompute
+  `trustPolicyId` from canonical JSON. Reconfirm local decisions under the new identity and regenerate and sign affected
+  trust transitions. Retain old observations and original evidence; a changed policy identity must not erase known forks
+  or rollbacks. Candidates already using canonical JSON keep their policy identities.
+- COSE and Metrological CBOR both require ^0.12.0. Keep both dependency ranges aligned in consumers that use them directly.
+- The minimum runtime remains Node 22.18, and the package remains ESM-only. Local trust decisions, durable observation
+  storage and independently authorized witness policies remain the caller's responsibility. No production trust roots
+  or witness service are bundled.
 
 
 ## 0.1.1 (2026-10-31)
