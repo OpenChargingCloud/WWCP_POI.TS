@@ -20,6 +20,7 @@ import { asText, isArray, isObject, type JSONArray, type JSONObject, type JSONVa
 import { LANGUAGES }  from '../qidigital/json.ts';
 import { hermodURL }  from './evTaler.ts';
 import { trimmed }    from './versionTexts.ts';
+import { operatorId, providerId } from './poiJSON.ts';
 
 
 // The written form of the content (SPECIFICATION.md 2, Written forms): a value as WWCP_POI writes it again once it has read
@@ -280,8 +281,33 @@ const ENTITY_PROPERTIES: Readonly<Record<string, readonly string[]>> = {
                                           'signatureMethods' ],
 };
 
+/**
+ * The properties of the parking entities, of brands, and of the price and the discount of a charging tariff offer, as their
+ * types in WWCP_POI3 write them (ToJSON) at 89d2e02.
+ */
+const PARKING_SPACE_PROPERTIES = [ '@context', '@id', 'apdsReference', 'chargingStationIds', 'created', 'customData', 'dangerousGoodsAllowed',
+                                   'dataSource', 'description', 'direction', 'driveThrough', 'euVehicleCategories', 'evsePosition', 'geoLocation',
+                                   'illuminated', 'images', 'lastChange', 'length', 'maxVehicleHeight', 'maxVehicleLength', 'maxVehicleWeight',
+                                   'maxVehicleWidth', 'name', 'parkingGarageId', 'parkingProductIds', 'parkingRestrictions', 'parkingSensorIds',
+                                   'physicalReference', 'protectedArea', 'refrigerationOutlet', 'reservationRequired', 'restrictedToVehicleTypes',
+                                   'roofed', 'slope', 'standards', 'surface', 'templateIds', 'timeLimit', 'vehicleTypes', 'width' ];
+
+const MORE_PROPERTIES: Readonly<Record<string, readonly string[]>> = {
+    parkingGarages:         [ '@context', '@id', 'address', 'chargingStationIds', 'created', 'customData', 'dataSource', 'description', 'geoLocation',
+                              'images', 'lastChange', 'name', 'openingTimes', 'parkingProductIds' ],
+    parkingSpaces:          PARKING_SPACE_PROPERTIES,
+    parkingSpaceTemplates:  PARKING_SPACE_PROPERTIES.filter(property => property !== 'apdsReference' && property !== 'templateIds'),
+    parkingSensors:         [ '@context', '@id', 'chargingStationIds', 'created', 'customData', 'dataSource', 'description', 'geoLocation', 'lastChange', 'name' ],
+    parkingSpaceGroups:     [ '@context', '@id', 'created', 'customData', 'dataSource', 'description', 'lastChange', 'name', 'parkingSpaceIds' ],
+    parkingProducts:        [ '@context', '@id', 'customData', 'description', 'minDuration', 'name', 'stopParkingAfterTime' ],
+    brands:                 [ '@context', '@id', 'customData', 'description', 'homepage', 'logo', 'name' ],
+    discount:               [ '@context', 'dimensions', 'percent' ],
+    chargingTariff:         [ '@context', 'currency', 'elements', 'energyMix', 'maxPrice', 'minPrice', 'paymentBrands', 'paymentMeans', 'tariffURL' ],
+};
+
 export const PROPERTIES_OF: Readonly<Record<string, readonly string[]>> = {
     ...ENTITY_PROPERTIES,
+    ...MORE_PROPERTIES,
     geoLocation:             [ '@context', 'lat', 'lng', 'alt', 'projection' ],
     priceComponents:         [ '@context', 'type', 'price', 'stepSize', 'vat' ],
     publicKeys:              [ '@context', '@id', 'key', 'certificateChain' ],
@@ -314,18 +340,6 @@ const NAMED_VALUES: Readonly<Record<string, readonly string[]>> = {
     legalStatus:       [ 'forInformationOnly', 'germanCalibrationLaw', 'verified' ],
     signatureMethods:  [ 'AlfenCrypt01', 'AlfenCrypt03', 'ChargePointCrypt01', 'EDL40', 'EMHCrypt01', 'MennekesCrypt01', 'OCMF', 'PCDF' ],
 };
-
-/**
- * What a transparency software release and its open source licenses name, as TransparencySoftware of WWCP_POI2 reads them:
- * another property it refuses (StrictJSON.OnlyProperties).
- */
-const RELEASE_PROPERTIES  = [ '@context', '@id', 'name', 'version', 'openSourceLicenses', 'sourceCodeRepository', 'supportUntil', 'declarationOfConformity',
-                              'softwareBillOfMaterials', 'howToUse', 'moreInformation', 'logo' ];
-const LICENSE_PROPERTIES  = [ '@context', '@id', 'description', 'URLs' ];
-
-/** The data licenses WWCP_POI knows by their identifications alone, which a version names completely (`dataLicenses`). */
-const KNOWN_DATA_LICENSES = new Set([ 'None', 'PDDL', 'ODC-By', 'ODbL', 'dl-de/by-2-0', 'dl-de/zero-2-0', 'GeoLizenz_V1.3', 'CC BY 4.0', 'CC BY-SA 4.0',
-                                      'CC BY-ND 4.0', 'CC BY-NC 4.0', 'CC BY-NC-SA 4.0', 'CC BY-NC-ND 4.0' ]);
 
 /** The days of a week as the content holds them: Monday first. */
 const DAYS_OF_WEEK = [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY' ];
@@ -392,8 +406,12 @@ function writtenValueOf(property: string, value: JSONValue, holder: string | und
 
     if (typeof value === 'string') {
 
-        if (property === '@id' && holder === 'chargingStationOperators')
-            return trimmed(value).toUpperCase();
+        // The identifications of operators and providers as their types write them: `DE*GEF`, `DE-GDF`.
+        if (property === '@id' && (holder === 'chargingStationOperators' || holder === 'gridOperators'))
+            return operatorId(value)?.text ?? trimmed(value).toUpperCase();
+
+        if (property === '@id' && holder === 'eMobilityProviders')
+            return providerId(value)?.text ?? trimmed(value).toUpperCase();
 
         if (TRIMMED.has(property) || (property === 'type' && holder === 'chargingConnectors'))
             return trimmed(value);
@@ -593,43 +611,6 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
  * it, its own JSON-LD context aside; undefined where it is.
  */
 export function notWrittenAsHeld(content: JSONObject): string | undefined {
-
-    // Of a data license named by its identification alone, which WWCP_POI does not know, as it refuses it as it reads it.
-    const unknownLicense = (value: JSONValue): string | undefined => {
-        if (isArray(value))
-            return value.map(unknownLicense).find(found => found !== undefined);
-        if (!isObject(value))
-            return undefined;
-        for (const [ key, element ] of Object.entries(value)) {
-            if (key === 'customData')
-                continue;
-            const unknown = key === 'dataLicenseIds' && isArray(element) ? element.find(id => typeof id === 'string' && !KNOWN_DATA_LICENSES.has(id)) : undefined;
-            if (unknown !== undefined)
-                return `The data license '${asText(unknown)}' is not well-known, so it must be given completely!`;
-            const found = unknownLicense(element);
-            if (found !== undefined)
-                return found;
-        }
-        return undefined;
-    };
-
-    const license = unknownLicense(content);
-
-    if (license !== undefined)
-        return license;
-
-    // Of a release or its license, a property it does not read, as it refuses it as it reads it.
-    for (const manufacturer of isArray(content['transparencySoftwareManufacturers']) ? content['transparencySoftwareManufacturers'].filter(isObject) : [])
-        for (const release of isArray(manufacturer['transparencySoftware']) ? manufacturer['transparencySoftware'].filter(isObject) : []) {
-            const unknown = Object.keys(release).find(property => !RELEASE_PROPERTIES.includes(property));
-            if (unknown !== undefined)
-                return `TransparencySoftware: Unknown property '${unknown}'.`;
-            for (const [ index, license ] of (isArray(release['openSourceLicenses']) ? release['openSourceLicenses'] : []).entries()) {
-                const unknownOfLicense = isObject(license) ? Object.keys(license).find(property => !LICENSE_PROPERTIES.includes(property)) : undefined;
-                if (unknownOfLicense !== undefined)
-                    return `TransparencySoftware: openSourceLicenses[${String(index)}]: Unknown property '${unknownOfLicense}'.`;
-            }
-        }
 
     const found = notWritten(content, undefined, '', 'version');
 

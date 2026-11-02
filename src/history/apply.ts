@@ -21,7 +21,7 @@ import { toTimestamp }                    from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
-import { evTalerWithoutMerchant }         from '../network/evTaler.ts';
+import { invalidGroupOrOffer, invalidPaymentOption } from '../network/references.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
 import { notWritten }                     from '../network/writtenForm.ts';
@@ -1307,11 +1307,17 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
     });
 
-    // After its last change, so that a change set may add the EV Taler merchant and the payment option EVTaler in either order.
-    const withoutMerchant = evTalerWithoutMerchant(content);
+    // After its last change, bare, as WWCP_POI3 checks the groups, offers and payment options of every charging station
+    // operator there (RoamingNetwork.ChangeSets.cs), in the ordinal order of their identifications: a charging station moved
+    // to another charging pool was no member of its operator in between, and a change set may add the EV Taler merchant and
+    // the payment option EVTaler in either order.
+    const groupOrOffer = objectsOf(get(content, 'chargingStationOperators')).
+                             sort((left, right) => ordinal(asText(left['@id']), asText(right['@id']))).
+                             map(operator => invalidGroupOrOffer(operator) ?? invalidPaymentOption(operator)).
+                             find(error => error !== undefined);
 
-    if (withoutMerchant !== undefined)
-        throw new POIError(withoutMerchant);
+    if (groupOrOffer !== undefined)
+        throw new POIError(groupOrOffer);
 
     checkStatedBy(before, content, changeSet);
 
@@ -1323,7 +1329,7 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     // A change set sets the lastChange of the roaming network always (4).
     content['lastChange'] = createdAt;
 
-    const after = RoamingNetwork.afterChangeSet(content);
+    const after = RoamingNetwork.afterChangeSet(content, before.content);
 
     matchETags(changeSet.afterETags, after, 'The result does not match the change set');
 

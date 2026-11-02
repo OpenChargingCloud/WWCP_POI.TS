@@ -20,11 +20,11 @@ import { asText, get, isArray, isObject, sameValue, set, without, type JSONObjec
 import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type ETag } from '../etags.ts';
 import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
-import { duplicateIdentification, ignoringCase, inRoamingNetwork, invalidIdentification } from './identifications.ts';
-import { invalidVersionText, trimmed } from './versionTexts.ts';
-import { invalidCertificates }       from './certificates.ts';
-import { invalidEVTaler }            from './evTaler.ts';
-import { invalidPartyKeys, partyKeysOf } from './partyKeys.ts';
+import { ignoringCase, inRoamingNetwork } from './identifications.ts';
+import { trimmed }                   from './versionTexts.ts';
+import { partyKeysOf }               from './partyKeys.ts';
+import { invalidNetworkProperties, invalidOperatorMetadata, invalidOperatorTexts, invalidReading } from './reading.ts';
+import { invalidReferences }         from './references.ts';
 import { asRead, notWrittenAsHeld }  from './writtenForm.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import type { POIPublicKey }         from '../keys.ts';
@@ -93,6 +93,12 @@ export class RoamingNetworkOperator {
 
         checkContext(json, CONTEXT_PREFIX + 'roamingNetwork/operator/v1', `the roaming network operator '${id}'`);
 
+        // Its texts and its contact, as RoamingNetworkOperator.TryParse of WWCP_POI3 reads them before its keys.
+        const texts = invalidOperatorTexts(json);
+
+        if (texts !== undefined)
+            throw new POIError(texts);
+
         if (get(json, 'signingKeys') !== undefined)
             throw new POIError('The signing keys of a roaming network operator are those of its signingKeyCertificates!');
 
@@ -109,6 +115,12 @@ export class RoamingNetworkOperator {
                                                throw new POIError('The signingKeyCertificates of a roaming network operator must be a nonempty array!');
                                            return certificatesJSON.map(certificate => SigningKeyCertificate.parse(asRead(certificate, 'signingKeyCertificates')));
                                        })();
+
+        // Its metadata, as WWCP_POI3 reads it after the certificates of its signing keys.
+        const metadata = invalidOperatorMetadata(json);
+
+        if (metadata !== undefined)
+            throw new POIError(metadata);
 
         // What the constructor of the operator refuses, as its TryParse names it (RoamingNetworkOperator of WWCP_POI3): a
         // certificate by the same identity key given twice; a signing key certified twice is one key, in different forms,
@@ -228,14 +240,11 @@ export class RoamingNetwork {
 
     /**
      * Reads a roaming network and refuses it unless it is a valid version: of its `@context`, with `eTags` that are those
-     * of its content, where it lists any, without keys of its own, with a valid roaming network operator, and naming no
-     * identification twice that WWCP_POI keeps unique within the roaming network (`duplicateIdentification`), nor a hardware
-     * revision, firmware version or serial number WWCP_POI refuses (`invalidVersionText`), nor a certificate WWCP_POI
-     * refuses to read (`invalidCertificates`), nor an EV Taler merchant or payment options it refuses (`invalidEVTaler`),
-     * nor keys of a party it refuses (`invalidPartyKeys`),
-     * nor what WWCP_POI takes and writes otherwise than the content holds it (`notWrittenAsHeld`),
-     * also the version a change set leads to. Its `eTags` may be left out: what binds a version is the commit whose ETags it
-     * has (`matchesCommitETags`).
+     * of its content, where it lists any, without keys of its own, with a valid roaming network operator, and nothing
+     * WWCP_POI3 refuses as it reads its parties (`invalidReading`), nor as it makes the roaming network of them, a reference
+     * it does not resolve or an identification it keeps unique given twice (`invalidReferences`), nor what WWCP_POI takes
+     * and writes otherwise than the content holds it (`notWrittenAsHeld`), also the version a change set leads to. Its
+     * `eTags` may be left out: what binds a version is the commit whose ETags it has (`matchesCommitETags`).
      */
     public static parse(value: JSONValue | undefined): RoamingNetwork {
         return RoamingNetwork.read(value, 'version');
@@ -244,22 +253,27 @@ export class RoamingNetwork {
     /**
      * Reads the version the given change set leads to, its content after the last change, and refuses it as `parse`
      * does, but in the words WWCP_POI3 names what it refuses of the network there (RoamingNetwork.ChangeSets.cs): its
-     * operator and the identifications it keeps unique within the roaming network bare, not as arguments of its
-     * constructor.
+     * operator, the identifications it keeps unique within the roaming network and the references bare, not as arguments of
+     * its constructor, in its order there; a reference the given version before resolves as what the change set withdrew
+     * while it is still named. The groups, offers and payment options of its charging station operators it checks after
+     * the last change (`invalidGroupOrOffer`, `invalidPaymentOption`), before what it reads.
      */
-    public static afterChangeSet(content: JSONObject): RoamingNetwork {
-        return RoamingNetwork.read(content, 'change set');
+    public static afterChangeSet(content: JSONObject, before?: JSONObject): RoamingNetwork {
+        return RoamingNetwork.read(content, 'change set', before);
     }
 
-    private static read(value: JSONValue | undefined, of: 'version' | 'change set'): RoamingNetwork {
+    private static read(value: JSONValue | undefined, of: 'version' | 'change set', before?: JSONObject): RoamingNetwork {
 
         const json = requireObject(value, 'A roaming network');
         const id   = mandatoryText(json, '@id', 'The identification of a roaming network');
 
         checkContext(json, ROAMING_NETWORK_CONTEXT, `the roaming network '${id}'`);
 
-        if (get(json, 'signingKeys') !== undefined || get(json, 'identityKeys') !== undefined)
-            throw new POIError(`The roaming network '${id}' names no keys of its own: those of its operator are its operator's!`);
+        // What it reads of itself, as RoamingNetwork.TryParse of WWCP_POI3 does before its tree hash algorithms.
+        const properties = invalidNetworkProperties(json);
+
+        if (properties !== undefined)
+            throw new POIError(properties);
 
         const content = without(json, 'eTags');
         set(content, '@context', ROAMING_NETWORK_CONTEXT);
@@ -281,20 +295,28 @@ export class RoamingNetwork {
             treeHashAlgorithms = treeHashAlgorithmsJSON as HashAlgorithm[];
         }
 
+        if (get(json, 'signingKeys') !== undefined || get(json, 'identityKeys') !== undefined)
+            throw new POIError("A roaming network has no keys of its own: they are the keys of its operator, 'operator'!");
+
+        // What the roaming network refuses of its operator as it makes itself of it, after it read every party.
+        let keyStatementError: string | undefined;
+
         const operatorJSON = get(json, 'operator');
-        const operator     = operatorJSON === undefined ? undefined : ((): RoamingNetworkOperator => {
+        const operator     = operatorJSON === undefined ? undefined : ((): RoamingNetworkOperator | undefined => {
                                  try {
                                      return RoamingNetworkOperator.parse(operatorJSON, id);
                                  }
                                  catch (e) {
-                                     throw e instanceof KeyStatementError && of === 'version' ? new POIError(inRoamingNetwork(e.message, 'Operator')) : e;
+                                     if (!(e instanceof KeyStatementError))
+                                         throw e;
+                                     keyStatementError = of === 'version' ? inRoamingNetwork(e.message, 'Operator') : e.message;
+                                     return undefined;
                                  }
                              })();
 
         // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them; then what
         // it takes and writes otherwise.
-        const refusal      = invalidIdentification(content) ?? invalidVersionText(content) ?? invalidCertificates(content) ??
-                             invalidEVTaler(content) ?? invalidPartyKeys(content) ?? duplicateIdentification(content, of) ??
+        const refusal      = invalidReading(content, of) ?? keyStatementError ?? invalidReferences(content, of, before) ??
                              notWrittenAsHeld(content);
 
         if (refusal !== undefined)

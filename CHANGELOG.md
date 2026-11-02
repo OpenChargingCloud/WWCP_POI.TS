@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+- A roaming network is read as WWCP_POI3 reads it (`RoamingNetwork.TryParse` and the TryParse of every entity) and
+  refused in its words and its order: JSON types, mandatory properties, values, identifications, names of enumerations,
+  currencies, URLs, timestamps, texts in languages, data licenses, and what the constructor of each entity refuses of
+  what it read (`src/network/reading.ts`, `poiJSON.ts`, `poiValues.ts`). Every kind of entity it reads: the roaming
+  network and its operator; charging station operators with their pools, stations, EVSEs, connectors, energy meters,
+  templates, groups, tariffs, tariff templates, groups and offers, brands and parking spaces; manufacturers of charging
+  stations and energy meters with their models, transparency software manufacturers with their releases, conformity
+  assessment bodies, e-mobility providers, grid operators with their grid connection points, parking operators.
+- The references the constructor of the roaming network checks, and the identifications it keeps unique among them,
+  interleaved in its order (`references.ts`): manufacturers, models, hardware revisions and firmware versions, releases,
+  certificates, grid connection points, charging stations, parking spaces and maintainers the network does not have, a
+  station or an energy meter contradicting its model, a key of two parties. After the last change of a change set, bare,
+  in the order of `RoamingNetwork.ChangeSets.cs`, a reference the version before resolves named as one the change set
+  withdrew. They replace the separate checks of identifications, versions, certificates, EV Taler and keys of parties.
+- 1268 versions probed against WWCP_POI3 at 89d2e02 are taken and refused alike, in the same words, but for nine agreed:
+  five identifications of the roaming network and its operator given as numbers, which keep the words of this library
+  for WWCP_POI3 to take, and four messages of the CBOR and COSE libraries.
+- Not yet, taken where WWCP_POI3 refuses them: overlapping offers, the checks of measurement public keys of
+  BouncyCastle, unknown three-letter countries, and values WWCP_POI3 writes otherwise (a number or a boolean given as
+  text, `24/7` false, a NUTS code in lower case, a country of an address not as its three letters). Other words:
+  decimals in messages invariant and line breaks `\n`, where WWCP_POI3 writes them in the culture of its machine and
+  `\r\n`; timestamps `DateTimeOffset` reads and the written form refuses, refused as invalid; an error of an entity
+  changed by a change set without the `Change N:` of WWCP_POI3.
+- `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
+- Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
+  EVSEs, where 0.2.0 took 0.4 s.
+
+
+### Migration
+
+- Versions WWCP_POI3 refuses and 0.2.0 took are refused now, in the words of WWCP_POI3; of the probed versions and the
+  test vectors, none WWCP_POI3 takes. Messages of refusals checked by their text change where 0.2.0 worded them on its
+  own, e.g. a roaming network with keys of its own.
+
 
 ## 0.2.0 (2026-11-02)
 

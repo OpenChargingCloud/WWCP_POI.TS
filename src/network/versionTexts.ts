@@ -16,7 +16,6 @@
  */
 
 import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
-import { energyMetersOf }                                           from './identifications.ts';
 
 
 // Hardware revisions, firmware versions and serial numbers as WWCP_POI reads them, as HardwareRevision, FirmwareVersion and
@@ -24,20 +23,12 @@ import { energyMetersOf }                                           from './iden
 // ending with whitespace, compared ordinally, case included. The models of charging stations and energy meters name each
 // of their hardware revisions and firmware versions once (`ModelVersions.Of`), and so do certificates and the energy
 // meters a certificate was issued with, which `certificates.ts` reads as WWCP_POI reads them. WWCP_POI refuses a version
-// naming another where it reads it; whether a station, a meter or a certificate names a revision or version of its model
-// it checks with the references, which this library leaves to WWCP_POI.
+// naming another where it reads it (`reading.ts`); whether a station, a meter or a certificate names a revision or version
+// of its model it checks with the references (`references.ts`).
 
 
 export const objectsOf = (value: JSONValue | undefined): JSONObject[] =>
     isArray(value) ? value.filter(isObject) : [];
-
-const textOf = (entity: JSONObject, property: string): string => {
-    const value = entity[property];
-    return typeof value === 'string' ? value : '';
-};
-
-const idOf = (entity: JSONObject): string =>
-    textOf(entity, '@id');
 
 /**
  * Whitespace as `Char.IsWhiteSpace` tells it, which `String.Trim` and `String.IsNullOrWhiteSpace` take: not quite what
@@ -54,29 +45,6 @@ export const isText = (value: JSONValue): boolean =>
 /** The given text as `String.Trim` gives it, as the identifications of WWCP_POI take it. */
 export const trimmed = (text: string): string =>
     text.replace(AT_EDGES, '');
-
-/** A value as `JToken.ToString` gives it in a message: a text as it is, anything else as JSON. */
-const shown = (value: JSONValue): string =>
-    typeof value === 'string' ? value : JSON.stringify(value);
-
-/**
- * The error, when the given entity names a hardware revision, firmware version or serial number `TryParseText` refuses,
- * in its words (`Invalid hardware revision ' 1.0'!`): of a charging station, an energy meter and their templates.
- */
-function invalidText(entity: JSONObject, properties: Readonly<Record<string, string>>): string | undefined {
-
-    for (const [property, description] of Object.entries(properties)) {
-        const value = get(entity, property);
-        if (value !== undefined && !isText(value))
-            return `Invalid ${description} '${shown(value)}'!`;
-    }
-
-    return undefined;
-
-}
-
-const DEVICE_TEXTS    = { serialNumber: 'serial number', hardwareRevision: 'hardware revision', firmwareVersion: 'firmware version' };
-const TEMPLATE_TEXTS  = { hardwareRevision: 'hardware revision', firmwareVersion: 'firmware version' };
 
 export const MODEL_VERSIONS = { hardwareRevisions: 'hardware revision', firmwareVersions: 'firmware version' };
 
@@ -98,59 +66,3 @@ export function versionTwice(holder: JSONObject, whose: string): string | undefi
 
 }
 
-/**
- * The error, when the given model names a hardware revision or firmware version `TryParseIds` refuses, or then one twice,
- * which `ModelVersions.Of` refuses as the constructor of the model, which its TryParse names: of a charging station
- * model or an energy meter model, `kind` with its article.
- */
-function invalidModelVersion(what: string, kind: string, model: JSONObject): string | undefined {
-
-    for (const [property, description] of Object.entries(MODEL_VERSIONS)) {
-
-        const versions = get(model, property);
-
-        if (versions === undefined)
-            continue;
-
-        if (!isArray(versions))
-            return `The ${description} must be a JSON array!`;
-
-        const invalid = versions.find(version => !isText(version));
-
-        if (invalid !== undefined)
-            return `Invalid ${description} '${shown(invalid)}'!`;
-
-    }
-
-    const twice = versionTwice(model, `the ${what} '${idOf(model)}'`);
-
-    return twice === undefined ? undefined : `The given JSON representation of ${kind} is invalid: ${twice}`;
-
-}
-
-/**
- * The error, when the given content names a hardware revision, firmware version or serial number WWCP_POI refuses where it
- * reads it, as WWCP_POI says it, after what names it; undefined for none. The charging stations and energy meters, their
- * templates and the models of their manufacturers name them; the certificates `invalidCertificates` reads.
- */
-export function invalidVersionText(content: JSONObject): string | undefined {
-
-    const operators      = objectsOf(get(content, 'chargingStationOperators'));
-    const gridOperators  = objectsOf(get(content, 'gridOperators'));
-    const stations       = operators.flatMap(operator => objectsOf(get(operator, 'chargingPools'))).
-                                     flatMap(pool     => objectsOf(get(pool,     'chargingStations')));
-
-    const children = (parties: readonly JSONObject[], property: string): JSONObject[] =>
-        parties.flatMap(party => objectsOf(get(party, property)));
-
-    const first = <T>(items: readonly T[], error: (item: T) => string | undefined): string | undefined =>
-        items.map(error).find(found => found !== undefined);
-
-    return first(stations,                                                                         station  => invalidText(station,  DEVICE_TEXTS))   ??
-           first(children(operators, 'chargingStationTemplates'),                                  template => invalidText(template, TEMPLATE_TEXTS)) ??
-           first(energyMetersOf(operators, gridOperators),                                         meter    => invalidText(meter,    DEVICE_TEXTS))   ??
-           first(children([ ...operators, ...gridOperators ], 'energyMeterTemplates'),             template => invalidText(template, TEMPLATE_TEXTS)) ??
-           first(children(objectsOf(get(content, 'chargingStationManufacturers')), 'chargingStationModels'), model => invalidModelVersion('charging station model', 'a charging station model', model)) ??
-           first(children(objectsOf(get(content, 'energyMeterManufacturers')),     'energyMeterModels'),     model => invalidModelVersion('energy meter model',     'an energy meter model',     model));
-
-}

@@ -24,8 +24,55 @@ const entity = (id: string, more: JSONObject = {}): JSONObject =>
 const network = (parties: JSONObject): JSONObject =>
     ({ '@context': ROAMING_NETWORK_CONTEXT, '@id': 'rn1', created: CREATED, lastChange: CREATED, ...parties });
 
+/**
+ * The given parties with the models their charging stations and energy meters name the versions of, GD-DC300 of GD and eHZ
+ * of EMH, each naming those versions, and the release certificates name: the roaming network resolves them as it makes itself
+ * of its parties, and refuses a version named without its model.
+ */
+function withModels(parties: JSONObject): JSONObject {
+
+    const result   = clone(parties);
+    const versions = { station: { hardwareRevisions: new Set<string>(), firmwareVersions: new Set<string>() },
+                       meter:   { hardwareRevisions: new Set<string>(), firmwareVersions: new Set<string>() } };
+
+    const name = (item: JSONObject, kind: 'station' | 'meter'): void => {
+        const hardware = item['hardwareRevision'];
+        const firmware = item['firmwareVersion'];
+        if (typeof hardware !== 'string' && typeof firmware !== 'string')
+            return;
+        item['manufacturerId'] ??= kind === 'station' ? 'GD' : 'EMH';
+        item['modelId']        ??= kind === 'station' ? 'GD-DC300' : 'eHZ';
+        if (typeof hardware === 'string') versions[kind].hardwareRevisions.add(hardware);
+        if (typeof firmware === 'string') versions[kind].firmwareVersions.add(firmware);
+    };
+
+    const objects = (value: JSONValue | undefined): JSONObject[] =>
+        Array.isArray(value) ? value.filter((item): item is JSONObject => typeof item === 'object' && item !== null && !Array.isArray(item)) : [];
+
+    for (const operator of objects(result['chargingStationOperators']))
+        for (const pool of objects(operator['chargingPools']))
+            for (const station of objects(pool['chargingStations'])) {
+                name(station, 'station');
+                for (const evse of objects(station['EVSEs']))
+                    if (typeof evse['energyMeter'] === 'object' && evse['energyMeter'] !== null && !Array.isArray(evse['energyMeter']))
+                        name(evse['energyMeter'] as JSONObject, 'meter');
+            }
+
+    const model = (id: string, kind: 'station' | 'meter'): JSONObject =>
+        ({ '@id': id, hardwareRevisions: [ ...versions[kind].hardwareRevisions ].sort(), firmwareVersions: [ ...versions[kind].firmwareVersions ].sort() });
+
+    if (versions.station.hardwareRevisions.size + versions.station.firmwareVersions.size > 0)
+        result['chargingStationManufacturers'] = [ entity('GD', { chargingStationModels: [ model('GD-DC300', 'station') ] }) ];
+
+    if (versions.meter.hardwareRevisions.size + versions.meter.firmwareVersions.size > 0)
+        result['energyMeterManufacturers'] = [ entity('EMH', { energyMeterModels: [ model('eHZ', 'meter') ] }) ];
+
+    return result;
+
+}
+
 const read = (parties: JSONObject): RoamingNetwork =>
-    RoamingNetwork.parse(network(parties));
+    RoamingNetwork.parse(network(withModels(parties)));
 
 /** The charging station operator DE*GEF with one station, its EVSE metered, and the given station and EVSE meter. */
 const gef = (station: JSONObject = {}, meter: JSONObject = {}, more: JSONObject = {}): JSONObject =>
@@ -42,7 +89,10 @@ const stationModel = (more: JSONObject): JSONObject =>
 
 /** A certificate WWCP_POI reads (`certificates.test.ts`), with the given properties. */
 const certificate = (more: JSONObject): JSONObject =>
-    ({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB-2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300',
+    ({ chargingStationManufacturers:       [ entity('GD', { chargingStationModels: [ { '@id': 'GD-DC300', hardwareRevisions: [ '1.0', 'A', 'a' ], firmwareVersions: [ '2.4.1' ] } ] }) ],
+       transparencySoftwareManufacturers:  [ entity('GraphDefined', { transparencySoftware: [ { '@id': 'chargy-1.5.0', name: { en: 'Chargy' }, version: '1.5.0', openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] } ] }) ],
+       energyMeterManufacturers:           [ entity('EMH', { energyMeterModels: [ { '@id': 'eHZ', hardwareRevisions: [ '1' ], firmwareVersions: [ '1' ] } ] }) ],
+       conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB-2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300',
                                                                        hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.4.1' ],
                                                                        verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more } ] }) ] });
 
@@ -63,7 +113,7 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
         expect(() => read({ chargingStationOperators: [ gef({}, { firmwareVersion: '1.2\n' }) ] }))
             .toThrow("Invalid firmware version '1.2\n'!");
 
-        expect(() => read({ chargingStationOperators: [ gef({}, {}, { chargingStationTemplates: [ entity('dc', { firmwareVersion: '   ' }) ] }) ] }))
+        expect(() => read({ chargingStationOperators: [ gef({}, {}, { chargingStationTemplates: [ entity('DE*GEF*ST_DC', { firmwareVersion: '   ' }) ] }) ] }))
             .toThrow("Invalid firmware version '   '!");
 
         expect(() => read({ gridOperators: [ entity('DE*NET', { energyMeterTemplates: [ entity('grid', { hardwareRevision: 3 }) ] }) ] }))

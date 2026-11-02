@@ -95,7 +95,38 @@ export interface HermodURL {
     readonly fragment:  boolean;
 }
 
-const DOMAIN_LABEL = /^[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?$/u;
+const DOMAIN_LABEL = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
+
+/** Whether the given text is an IPv6 address, as within the brackets of a host: groups of hex digits, one '::', an IPv4 address last. */
+function isIPv6(text: string): boolean {
+
+    const address = text.replace(/%[^%]+$/u, '');
+    const halves  = address.split('::');
+
+    if (halves.length > 2)
+        return false;
+
+    const groupsOf = (half: string): string[] | undefined => {
+        if (half === '')
+            return [];
+        const groups = half.split(':');
+        const last   = groups[groups.length - 1] ?? '';
+        const ipv4   = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/u.test(last);
+        if (ipv4)
+            groups.splice(groups.length - 1, 1, '0', '0');
+        return groups.every(group => /^[0-9A-Fa-f]{1,4}$/u.test(group)) ? groups : undefined;
+    };
+
+    const [ head = '', tail ] = halves;
+    const before = groupsOf(head);
+    const after  = tail === undefined ? [] : groupsOf(tail);
+
+    if (before === undefined || after === undefined)
+        return false;
+
+    return tail === undefined ? before.length === 8 : before.length + after.length <= 7;
+
+}
 
 export function hermodURL(given: string): HermodURL | undefined {
 
@@ -142,10 +173,10 @@ export function hermodURL(given: string): HermodURL | undefined {
     const port    = portAt >= 0 ? authority.slice(portAt + 1) : undefined;
 
     const hostOK  = host.startsWith('[')
-                        ? host.endsWith(']')
+                        ? host.endsWith(']') && isIPv6(host.slice(1, -1))
                         : host.length > 0 && host.length <= 253 && host.replace(/\.$/u, '').split('.').every(label => DOMAIN_LABEL.test(label));
 
-    if (!hostOK || (port !== undefined && (!/^\d{1,5}$/u.test(port) || Number(port) > 65535)))
+    if (!hostOK || (port !== undefined && port !== '' && (!/^\d+$/u.test(port) || Number(port) > 65535)))
         return undefined;
 
     return { text, scheme: scheme.toLowerCase(), user, query, fragment };
@@ -362,113 +393,6 @@ export function evTalerMerchantOf(value: JSONValue): EVTalerMerchant | string {
 /** Whether the given payment options, as `PaymentOptions` compares them without case, name EVTaler. */
 export const namesEVTaler = (paymentOptions: JSONValue | undefined): boolean =>
     isArray(paymentOptions) && paymentOptions.some(option => typeof option === 'string' && ignoringCase(trimmed(option)) === ignoringCase(EV_TALER_PAYMENT_OPTION));
-
-/**
- * The error, when the payment options of the given charging pool or charging pool template are none WWCP_POI reads: an
- * open set of names (`PaymentOptions.TryParse`), each a nonempty text, trimmed, none twice whatever its case.
- */
-function invalidPaymentOptions(entity: JSONObject, what: string): string | undefined {
-
-    const options = get(entity, 'paymentOptions');
-
-    if (options === undefined)
-        return undefined;
-
-    if (!isArray(options))
-        return 'The payment option must be a JSON array!';
-
-    const invalid = options.find(option => typeof option !== 'string' || trimmed(option).length === 0);
-
-    if (invalid !== undefined)
-        return `Invalid payment option '${tokenText(invalid)}'!`;
-
-    const names = options.map(option => ignoringCase(trimmed(option as string)));
-
-    if (new Set(names).size !== names.length)
-        return `The given JSON representation of a ${what} is invalid: A payment option of the ${what} '${tokenText(entity['@id'] ?? '')}' must not be given twice!`;
-
-    return undefined;
-
-}
-
-const objectsOf = (value: JSONValue | undefined): JSONObject[] =>
-    isArray(value) ? value.filter(isObject) : [];
-
-/**
- * The error, when a charging pool or charging pool template of the given charging station operator names the payment
- * option EVTaler while the operator has no EV Taler merchant (`ChargingStationOperator.InvalidPaymentOption`): its charging
- * pools first, then its templates, which give every effective charging pool their payment options.
- */
-function withoutMerchant(operator: JSONObject): string | undefined {
-
-    if (get(operator, 'evTaler') !== undefined)
-        return undefined;
-
-    const operatorId = tokenText(operator['@id'] ?? '');
-
-    for (const pool of objectsOf(get(operator, 'chargingPools')))
-        if (namesEVTaler(get(pool, 'paymentOptions')))
-            return `The charging pool '${tokenText(pool['@id'] ?? '')}' names the payment option '${EV_TALER_PAYMENT_OPTION}', but its operator '${operatorId}' has no EV Taler merchant!`;
-
-    for (const template of objectsOf(get(operator, 'chargingPoolTemplates')))
-        if (namesEVTaler(get(template, 'paymentOptions')))
-            return `The charging pool template '${tokenText(template['@id'] ?? '')}' names the payment option '${EV_TALER_PAYMENT_OPTION}', but its operator '${operatorId}' has no EV Taler merchant!`;
-
-    return undefined;
-
-}
-
-/**
- * The error, as WWCP_POI words it when it reads a version, when a charging station operator of the given content names an
- * EV Taler merchant it does not read, a charging pool or charging pool template of it payment options it does not read, or
- * the payment option EVTaler without a merchant; undefined for none. Each operator in its order, as WWCP_POI reads it: its
- * merchant, its charging pools, its charging pool templates, then the operator made of them.
- */
-export function invalidEVTaler(content: JSONObject): string | undefined {
-
-    for (const operator of objectsOf(get(content, 'chargingStationOperators'))) {
-
-        const merchant = get(operator, 'evTaler');
-
-        if (merchant !== undefined) {
-            const read = evTalerMerchantOf(merchant);
-            if (typeof read === 'string')
-                return read;
-        }
-
-        for (const pool of objectsOf(get(operator, 'chargingPools'))) {
-            const error = invalidPaymentOptions(pool, 'charging pool');
-            if (error !== undefined)
-                return error;
-        }
-
-        for (const template of objectsOf(get(operator, 'chargingPoolTemplates'))) {
-            const error = invalidPaymentOptions(template, 'charging pool template');
-            if (error !== undefined)
-                return error;
-        }
-
-        const error = withoutMerchant(operator);
-
-        if (error !== undefined)
-            return `The given JSON representation of a charging station operator is invalid: ${error} (Parameter 'EVTaler')`;
-
-    }
-
-    return undefined;
-
-}
-
-/**
- * The error, as WWCP_POI words it after the last change of a change set, when a charging station operator names the
- * payment option EVTaler without an EV Taler merchant: the operators in the ordinal order of their identifications, so
- * that a change set may add the merchant and the payment option in either order.
- */
-export const evTalerWithoutMerchant = (content: JSONObject): string | undefined =>
-    objectsOf(get(content, 'chargingStationOperators')).
-        sort((left, right) => ordinal(tokenText(left['@id'] ?? ''), tokenText(right['@id'] ?? ''))).
-        map(withoutMerchant).find(error => error !== undefined);
-
 
 /** The payment option as drivers see it at an EVSE whose EV Taler tariff is in its currency, in the languages of its name. */
 export const paymentOptionName = (exchange: EVTalerExchange): I18NText =>

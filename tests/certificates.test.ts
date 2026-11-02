@@ -23,10 +23,20 @@ const T0       = '2026-10-27T12:00:00.000Z';
 const entity = (id: string, more: JSONObject = {}): JSONObject =>
     ({ '@id': id, name: { en: id }, created: CREATED, lastChange: CREATED, ...more });
 
-/** The PTB with the given certificates, notified for the CRA and the MID, so that it may issue a certificate under both. */
+/** A release of Chargy, of the given version. */
+const release = (version: string): JSONObject =>
+    ({ '@id': `chargy-${version}`, name: { en: 'Chargy' }, version, openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] });
+
+/**
+ * The PTB with the given certificates, notified for the CRA and the MID, so that it may issue a certificate under both; with
+ * the models and the releases they name, which the roaming network resolves as it makes itself of them.
+ */
 const read = (certificates: readonly JSONObject[]): RoamingNetwork =>
     RoamingNetwork.parse({ '@context': ROAMING_NETWORK_CONTEXT, '@id': 'rn1', created: CREATED, lastChange: CREATED,
-                           conformityAssessmentBodies: [ entity('PTB', { notifiedFor: [ 'CRA', 'MID' ], certificates: [ ...certificates ] }) ] });
+                           chargingStationManufacturers:       [ entity('GD', { chargingStationModels: [ { '@id': 'GD-DC300', hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.5.0' ] } ] }) ],
+                           transparencySoftwareManufacturers:  [ entity('GraphDefined', { transparencySoftware: [ release('1.4.0'), release('1.5.0') ] }) ],
+                           conformityAssessmentBodies:         [ entity('PTB', { notifiedFor: [ 'CRA', 'MID' ], certificates: [ ...certificates ] }) ],
+                           energyMeterManufacturers:           [ entity('EMH', { energyMeterModels: [ { '@id': 'eHZ', hardwareRevisions: [ '1' ], firmwareVersions: [ '1.2' ] } ] }) ] });
 
 /** An energy meter a certificate was issued with, of the energy meter model eHZ of EMH. */
 const meter = (more: JSONObject = {}): JSONObject =>

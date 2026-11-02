@@ -23,6 +23,10 @@ const T0       = '2026-10-25T12:00:00.000Z';
 const entity = (id: string, more: JSONObject = {}): JSONObject =>
     ({ '@id': id, name: { en: id }, created: CREATED, lastChange: CREATED, ...more });
 
+/** A release of transparency software, as WWCP_POI reads one: with its name, its version and its open source license. */
+const release = (id: string): JSONObject =>
+    ({ '@id': id, name: { en: 'Chargy' }, version: '1.0', openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] });
+
 /** A roaming network of the given parties, without a roaming network operator, without ETags. */
 const network = (parties: JSONObject): JSONObject =>
     ({ '@context': ROAMING_NETWORK_CONTEXT, '@id': 'rn1', created: CREATED, lastChange: CREATED, ...parties });
@@ -88,8 +92,8 @@ describe('Identifications unique within the roaming network', () => {
             .toBe("The given JSON representation of a roaming network is invalid: The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network! (Parameter 'EMobilityProviders')");
 
         // The groups of providers before the releases, of a version; after them, after the last change of a change set.
-        const releases = { ...groups, transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ { '@id': 'chargy-1.0' } ] }),
-                                                                           entity('ZAP',  { transparencySoftware: [ { '@id': 'Chargy-1.0' } ] }) ] };
+        const releases = { ...groups, transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('chargy-1.0') ] }),
+                                                                           entity('ZAP',  { transparencySoftware: [ release('Chargy-1.0') ] }) ] };
 
         expect(refusalOf(() => read(releases)))
             .toBe("The given JSON representation of a roaming network is invalid: The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network! (Parameter 'EMobilityProviders')");
@@ -152,8 +156,8 @@ describe('Identifications unique within the roaming network', () => {
                                              entity('DE*NET', { gridConnectionPoints: [ { '@id': 'CONNECTION-1' } ] }) ] }))
             .toThrow("The grid connection point 'CONNECTION-1' of the grid operator 'DE*NET' must be unique within the roaming network, but the grid operator 'DE*NE1' has it too!");
 
-        expect(() => read({ transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ { '@id': 'chargy-1.0' } ] }),
-                                                                 entity('ZAP',  { transparencySoftware: [ { '@id': 'Chargy-1.0' } ] }) ] }))
+        expect(() => read({ transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('chargy-1.0') ] }),
+                                                                 entity('ZAP',  { transparencySoftware: [ release('Chargy-1.0') ] }) ] }))
             .toThrow("The transparency software release 'Chargy-1.0' of the manufacturer 'ZAP' is one of the manufacturer 'ACME' already!");
 
         // Certificates WWCP_POI reads, which it reads before it makes the network of them.
@@ -165,8 +169,8 @@ describe('Identifications unique within the roaming network', () => {
                                                           entity('VDE', { certificates: [ certificate('CERT-1') ] }) ] }))
             .toThrow("The certificate 'CERT-1' of the conformity assessment body 'VDE' is one of the conformity assessment body 'PTB' already!");
 
-        expect(() => read({ chargingStationOperators: [ entity('DE*GEF', { chargingTariffOffers: [ entity('offer-1') ] }) ],
-                            eMobilityProviders:       [ entity('DE-GDF', { chargingTariffOffers: [ entity('OFFER-1') ] }) ] }))
+        expect(() => read({ chargingStationOperators: [ entity('DE*GEF', { chargingTariffOffers: [ entity('offer-1', { discount: { percent: 10 }, chargingStationOperatorIds: [ 'DE*GEF' ] }) ] }) ],
+                            eMobilityProviders:       [ entity('DE-GDF', { chargingTariffOffers: [ entity('OFFER-1', { discount: { percent: 10 }, chargingStationOperatorIds: [ 'DE*GEF' ] }) ] }) ] }))
             .toThrow("The charging tariff offer 'OFFER-1' must not be given twice in the roaming network!");
 
         // A parking space of a charging station operator, where no parking operator defines it, has the identification of

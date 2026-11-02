@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { asText, get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
+import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { ordinal }       from '../json/canonical.ts';
 import { compactJSON }   from '../qidigital/json.ts';
 import { onlyProperties } from '../common.ts';
@@ -30,18 +30,6 @@ import { POIError }      from '../errors.ts';
 // it does not read, here; keys in another order than that of their identifications, none of a kind given as an empty
 // list, and a key naming a JSON-LD context, embedded in its party, with the content (`notWrittenAsHeld`).
 
-
-/** The parties of a roaming network in the order WWCP_POI3 reads them (RoamingNetwork.TryParse), as it names one. */
-const PARTIES: readonly (readonly [ property: string, kind: string, article: string ])[] = [
-    [ 'chargingStationManufacturers',       'charging station manufacturer',       'a'  ],
-    [ 'eMobilityProviders',                 'e-mobility provider',                 'an' ],
-    [ 'gridOperators',                      'grid operator',                       'a'  ],
-    [ 'parkingOperators',                   'parking operator',                    'a'  ],
-    [ 'transparencySoftwareManufacturers',  'transparency software manufacturer',  'a'  ],
-    [ 'conformityAssessmentBodies',         'conformity assessment body',          'a'  ],
-    [ 'energyMeterManufacturers',           'energy meter manufacturer',           'an' ],
-    [ 'chargingStationOperators',           'charging station operator',           'a'  ],
-];
 
 /** What a key names, as POIPublicKey.TryParse reads it; WWCP_POI3 takes another property and leaves it out. */
 const KEY_PROPERTIES = [ '@id', '@context', 'key', 'notBefore', 'notAfter', 'holder', 'usages' ];
@@ -81,6 +69,50 @@ function keysOf(party: JSONObject, property: string, description: string): POIPu
 
 }
 
+/** Reads the keys of the given party as `POIPartyKeys.TryParse` does: each key it does not read refused, in its words. */
+export function readPartyKeys(party: JSONObject): PartyKeys | string {
+
+    try {
+        return { signingKeys: keysOf(party, 'signingKeys', 'signing key'), identityKeys: keysOf(party, 'identityKeys', 'identity key') };
+    }
+    catch (e) {
+        if (e instanceof POIError)
+            return e.message;
+        throw e;
+    }
+
+}
+
+/**
+ * The error of the given keys of the given party, e.g. "the charging station operator 'DE*GEF'", as the constructor of the
+ * party refuses them (`POIPartyKeys.Check`): a key given twice, a key both a signing and an identity key, an identity key
+ * naming usages.
+ */
+export function checkPartyKeys(keys: PartyKeys, name: string): string | undefined {
+
+    // POIPublicKey.Ordered: without one given twice, in the order of their identifications.
+    for (const [ list, description ] of [ [ keys.signingKeys, 'signing key' ], [ keys.identityKeys, 'identity key' ] ] as const) {
+        const ids = list.map(key => key.id);
+        if (new Set(ids).size !== ids.length)
+            return `An ${description} of ${name} must not be given twice!`;
+    }
+
+    const signingIds  = keys.signingKeys.map(key => key.id).sort(ordinal);
+    const identities  = [ ...keys.identityKeys ].sort((a, b) => ordinal(a.id, b.id));
+
+    const both = signingIds.find(id => keys.identityKeys.some(key => key.id === id));
+    if (both !== undefined)
+        return `The key '${both}' of ${name} must not be both a signing and an identity key!`;
+
+    // Usages restrict what a signing key signs; an identity key signs changes of keys only.
+    const withUsages = identities.find(key => key.usages.length > 0);
+    if (withUsages !== undefined)
+        return `The identity key '${withUsages.id}' of ${name} names no usages: they are of signing keys!`;
+
+    return undefined;
+
+}
+
 /**
  * Reads the keys of the given party, e.g. "the charging station operator 'DE*GEF'", of the given kind, e.g. "a charging
  * station operator", and refuses them as WWCP_POI3 does, in its words: a key it does not read; then, as the constructor of
@@ -88,61 +120,17 @@ function keysOf(party: JSONObject, property: string, description: string): POIPu
  */
 export function partyKeysOf(party: JSONObject, name: string, kind: string): PartyKeys {
 
-    const signingKeys   = keysOf(party, 'signingKeys',  'signing key');
-    const identityKeys  = keysOf(party, 'identityKeys', 'identity key');
+    const keys = readPartyKeys(party);
 
-    const invalid       = (message: string): POIError =>
-        new POIError(`The given JSON representation of ${kind} is invalid: ${message}`);
+    if (typeof keys === 'string')
+        throw new POIError(keys);
 
-    // POIPublicKey.Ordered: without one given twice, in the order of their identifications.
-    for (const [ keys, description ] of [ [ signingKeys, 'signing key' ], [ identityKeys, 'identity key' ] ] as const) {
-        const ids = keys.map(key => key.id);
-        if (new Set(ids).size !== ids.length)
-            throw invalid(`An ${description} of ${name} must not be given twice!`);
-    }
+    const error = checkPartyKeys(keys, name);
 
-    const signingIds  = signingKeys.map(key => key.id).sort(ordinal);
-    const identities  = [ ...identityKeys ].sort((a, b) => ordinal(a.id, b.id));
+    if (error !== undefined)
+        throw new POIError(`The given JSON representation of ${kind} is invalid: ${error}`);
 
-    const both = signingIds.find(id => identityKeys.some(key => key.id === id));
-    if (both !== undefined)
-        throw invalid(`The key '${both}' of ${name} must not be both a signing and an identity key!`);
-
-    // Usages restrict what a signing key signs; an identity key signs changes of keys only.
-    const withUsages = identities.find(key => key.usages.length > 0);
-    if (withUsages !== undefined)
-        throw invalid(`The identity key '${withUsages.id}' of ${name} names no usages: they are of signing keys!`);
-
-    return { signingKeys, identityKeys };
+    return keys;
 
 }
 
-/**
- * The error, when a party of the given content has keys WWCP_POI3 refuses, as it says it, of the first party it reads;
- * undefined for none. The keys of the roaming network operator are read with it (`RoamingNetworkOperator.parse`).
- */
-export function invalidPartyKeys(content: JSONObject): string | undefined {
-
-    for (const [ property, kind, article ] of PARTIES) {
-
-        const parties = get(content, property);
-
-        if (!isArray(parties))
-            continue;
-
-        for (const party of parties.filter(isObject)) {
-            try {
-                partyKeysOf(party, `the ${kind} '${asText(party['@id'])}'`, `${article} ${kind}`);
-            }
-            catch (e) {
-                if (e instanceof POIError)
-                    return e.message;
-                throw e;
-            }
-        }
-
-    }
-
-    return undefined;
-
-}

@@ -39,9 +39,12 @@ const idOf = (entity: JSONObject): string =>
 export const inRoamingNetwork = (error: string, parameter: string): string =>
     `The given JSON representation of a roaming network is invalid: ${error} (Parameter '${parameter}')`;
 
+/** A text of ASCII characters alone, whose upper case is their simple upper case. */
+const ASCII = /^\p{ASCII}*$/u;
+
 /** A text as `StringComparison.OrdinalIgnoreCase` compares it: every character by its simple upper case. */
 export const ignoringCase = (text: string): string =>
-    Array.from(text, character => {
+    ASCII.test(text) ? text.toUpperCase() : Array.from(text, character => {
         const upper = character.toUpperCase();
         return upper.length === character.length ? upper : character;
     }).join('');
@@ -199,89 +202,6 @@ function duplicateNotifiedBodyNumber(bodies: readonly JSONObject[]): string | un
 
 }
 
-/** The lists of the parties of a roaming network, in the order WWCP_POI3 reads them (RoamingNetwork.TryParse). */
-const PARTIES_IN_ORDER = [ 'chargingStationManufacturers', 'eMobilityProviders', 'gridOperators', 'parkingOperators',
-                           'transparencySoftwareManufacturers', 'conformityAssessmentBodies', 'energyMeterManufacturers', 'chargingStationOperators' ];
-
-/**
- * The entities WWCP_POI3 reads by their identification, by the list or property holding them, as Styx refuses one naming
- * none (`ParseMandatory`: "Missing JSON property '@id'!"); and how it names the identification of those whose
- * identification of another JSON type it refuses in its words ("Invalid 'charging pool identification'!"). It takes a
- * number as the identification of the others, which it writes as a text (`notWrittenAsHeld`).
- */
-const IDENTIFIED: Readonly<Record<string, string | undefined>> = {
-    chargingStationManufacturers:       undefined,
-    chargingStationModels:              undefined,
-    transparencySoftwareManufacturers:  undefined,
-    conformityAssessmentBodies:         undefined,
-    energyMeterManufacturers:           undefined,
-    energyMeterModels:                  undefined,
-    chargingStationOperators:           'charging station operator',
-    chargingTariffs:                    'charging tariff',
-    chargingPools:                      'charging pool',
-    chargingStations:                   'charging station',
-    EVSEs:                              'EVSE',
-    energyMeter:                        undefined,
-    EVSETemplates:                      'EVSE template',
-    chargingConnectors:                 undefined,
-    chargingStationTemplates:           'charging station template',
-    energyMeterTemplates:               undefined,
-    EVSEGroups:                         'EVSE group',
-    chargingStationGroups:              'charging station group',
-};
-
-/**
- * The error, when an entity of the given content names no identification, or one of another JSON type WWCP_POI3 refuses,
- * as it says it; undefined for none. Its parties in the order it reads them, each before what it holds.
- */
-export function invalidIdentification(content: JSONObject): string | undefined {
-
-    const ofEntity = (entity: JSONObject, kind: string | undefined): string | undefined => {
-
-        const id = entity['@id'];
-
-        if (id === undefined)
-            return "Missing JSON property '@id'!";
-
-        if (typeof id !== 'string' && kind !== undefined)
-            return `Invalid '${kind} identification'!`;
-
-        return within(entity);
-
-    };
-
-    const within = (object: JSONObject): string | undefined => {
-
-        for (const [ property, value ] of Object.entries(object)) {
-
-            if (property === 'customData' || !(property in IDENTIFIED))
-                continue;
-
-            const kind = IDENTIFIED[property];
-
-            for (const entity of isArray(value) ? value.filter(isObject) : isObject(value) ? [ value ] : []) {
-                const error = ofEntity(entity, kind);
-                if (error !== undefined)
-                    return error;
-            }
-
-        }
-
-        return undefined;
-
-    };
-
-    for (const property of PARTIES_IN_ORDER)
-        for (const party of objectsOf(get(content, property))) {
-            const error = ofEntity(party, IDENTIFIED[property]);
-            if (error !== undefined)
-                return error;
-        }
-
-    return undefined;
-
-}
-
 /**
  * The error, when the given content names an identification twice that WWCP_POI keeps unique within the roaming network,
  * as WWCP_POI says it of a version, or after the last change of a change set; undefined for none. Of a version, it refuses
@@ -289,7 +209,7 @@ export function invalidIdentification(content: JSONObject): string | undefined {
  * TryParse names: "The given JSON representation of a roaming network is invalid: … (Parameter 'GridOperators')". After the
  * last change of a change set, it names them bare, in the order it checks them there (RoamingNetwork.ChangeSets.cs).
  */
-export function duplicateIdentification(content: JSONObject, of: 'version' | 'change set'): string | undefined {
+export function duplicateIdentification(content: JSONObject, of: 'version' | 'change set', kind?: string): string | undefined {
 
     const operators              = objectsOf(get(content, 'chargingStationOperators'));
     const providers              = objectsOf(get(content, 'eMobilityProviders'));
@@ -316,6 +236,14 @@ export function duplicateIdentification(content: JSONObject, of: 'version' | 'ch
                                                            givenTwice('charging pool group',     childrenOf(groupOwners, 'chargingPoolGroups'),     groupId('PG'));
     const tariffOffer          = (): string | undefined => givenTwice('charging tariff offer',   childrenOf(groupOwners, 'chargingTariffOffers'),   ignoringCase);
     const energyMeterTemplate  = (): string | undefined => givenTwice('energy meter template',   childrenOf(meterOwners, 'energyMeterTemplates'),   ignoringCase);
+
+    // One kind of them, bare: of a grid connection point, an energy meter, … (`references.ts` orders them).
+    const kinds: Readonly<Record<string, () => string | undefined>> = {
+        gridConnectionPoint, energyMeter, parking, release, certificate, number, energyMeterGroup, providerGroup, tariffOffer, energyMeterTemplate,
+    };
+
+    if (kind !== undefined)
+        return kinds[kind]?.();
 
     if (of === 'change set')
         return gridConnectionPoint() ?? energyMeter() ?? parking() ?? release() ?? certificate() ?? number() ?? energyMeterGroup() ??

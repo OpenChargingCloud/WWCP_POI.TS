@@ -26,11 +26,11 @@ import { isText, objectsOf, trimmed, versionTwice, MODEL_VERSIONS } from './vers
 // of each), its documentURL, its validity and its legislation -, then what its constructor checks: for exactly one model,
 // with its manufacturer; its versions each once, at least one of each; a legislation not empty; notBefore not after
 // notAfter; its releases each once, at least one, none both verified and compatible; energy meters of a charging station
-// model only, each model once. Whether its model, its versions, its releases and its legislation are those of the network
-// WWCP_POI checks with the references, which this library leaves to WWCP_POI; an unknown property it refuses of a
-// certificate as of every entity (StrictJSON.OnlyProperties), which this library does not. The conformity assessment
-// bodies issuing them as ConformityAssessmentBody reads and constructs them: a notified body number of four digits, the
-// legislations they are notified for neither empty nor twice, in their ordinal order, a certificate only under one of them.
+// model only, each model once; a property it does not read (StrictJSON.OnlyProperties). Whether its model, its versions
+// and its releases are those of the network WWCP_POI checks with the references (`references.ts`). The conformity
+// assessment bodies issuing them as ConformityAssessmentBody reads and constructs them (`reading.ts` with this module): a
+// notified body number of four digits, the legislations they are notified for neither empty nor twice, in their ordinal
+// order, each certificate once, a certificate only under one of them.
 
 
 const MODEL_PROPERTIES  = [ 'chargingStationManufacturerId', 'chargingStationModel', 'energyMeterManufacturerId', 'energyMeterModel' ];
@@ -105,7 +105,7 @@ function instantOf(text: string): readonly [ number, number ] | undefined {
 }
 
 /** The error, when the given timestamp is given, but none `StrictJSON.Date` reads. */
-const invalidInstant = (json: JSONObject, property: string): string | undefined => {
+export const invalidInstant = (json: JSONObject, property: string): string | undefined => {
     const value = get(json, property);
     return given(json, property) && (typeof value !== 'string' || instantOf(value) === undefined)
                ? `${property}: invalid timestamp.`
@@ -368,7 +368,7 @@ const NOTIFIED_BODY_NUMBER = /^[0-9]{4}$/u;
  * them so, and another order, written again, would be another text than the one hashed. A legislation given twice its
  * constructor refuses.
  */
-function invalidNotifiedTexts(body: JSONObject): string | undefined {
+export function invalidNotifiedTexts(body: JSONObject): string | undefined {
 
     const number      = get(body, 'notifiedBodyNumber');
     const notifiedFor = get(body, 'notifiedFor');
@@ -395,7 +395,7 @@ function invalidNotifiedTexts(body: JSONObject): string | undefined {
  * of their identifications. Legislations notified for in another order WWCP_POI writes in their ordinal order; they are
  * taken here as given.
  */
-function invalidBody(body: JSONObject): string | undefined {
+export function invalidBody(body: JSONObject): string | undefined {
 
     const id       = typeof body['@id'] === 'string' ? body['@id'] : '';
     const invalid  = (message: string, parameter: string): string =>
@@ -414,6 +414,16 @@ function invalidBody(body: JSONObject): string | undefined {
     if (new Set(notifiedFor).size !== notifiedFor.length)
         return invalid(`A legislation the conformity assessment body '${id}' is notified for must not be given twice!`, 'NotifiedFor');
 
+    // Each certificate once, compared as ConformityCertificate_Id compares them, without case, once trimmed (POICollection).
+    const seen = new Set<string>();
+
+    for (const certificate of objectsOf(get(body, 'certificates'))) {
+        const certificateId = idAt(certificate, '@id');
+        if (seen.has(idKey(certificateId)))
+            return invalid(`The certificate '${certificateId}' of the conformity assessment body '${id}' must not be given twice!`, 'Children');
+        seen.add(idKey(certificateId));
+    }
+
     // A certificate issued under a legislation is one of a notified body for it.
     const notNotified = objectsOf(get(body, 'certificates'))
                             .sort((left, right) => ordinal(idAt(left, '@id'), idAt(right, '@id')))
@@ -426,24 +436,3 @@ function invalidBody(body: JSONObject): string | undefined {
 
 }
 
-/**
- * The error, when the given content names a certificate WWCP_POI refuses to read, or a conformity assessment body naming
- * them it refuses, as WWCP_POI says it; undefined for none. Body by body, as WWCP_POI reads them: what it reads of the
- * body, its certificates, then what its constructor checks.
- */
-export function invalidCertificates(content: JSONObject): string | undefined {
-
-    for (const body of objectsOf(get(content, 'conformityAssessmentBodies'))) {
-
-        const error = invalidNotifiedTexts(body) ??
-                      objectsOf(get(body, 'certificates')).map(invalidCertificate).find(certificateError => certificateError !== undefined) ??
-                      invalidBody(body);
-
-        if (error !== undefined)
-            return error;
-
-    }
-
-    return undefined;
-
-}
