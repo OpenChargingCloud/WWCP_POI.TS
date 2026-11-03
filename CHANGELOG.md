@@ -46,6 +46,11 @@
   trust policy identifications, digests of key statements, offer hashes and publication receipts, against the POI
   fixtures of ChargyWebApp at `fc513cd`, vendored as `tests/vectors/chargy-fc513cd`. Run in `tests/conformance.test.ts`
   as WWCPPOIConformanceTests runs them against this library: a refusal after its control, by its reason; none deviates.
+- `poi-refusals.json` of WWCPPOIConformanceTests `586a339` vendored, of 142 vectors: 13 price statements whose price
+  status is none WWCP_POI3 reads (without one; its prices not an array; the prices of a tariff not an object; a property
+  or a JSON-LD context besides, of the status or of the prices of a tariff; a tariff not named `{operatorId}*T{suffix}`
+  or named twice, also in another spelling; its elements empty, one not an object or without price components),
+  refused as both read them, in the words both give. None deviates.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
   EVSEs, where 0.2.0 took 0.4 s.
