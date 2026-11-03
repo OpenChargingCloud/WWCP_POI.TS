@@ -18,9 +18,10 @@
 import { Decimal }                from '../json/decimal.ts';
 import { canonicalJSON }          from '../json/canonical.ts';
 import { asText, get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
-import { evseGroupId, evseId, evseTemplateId, freeId, idOf, idsOf, operatorId, optionalDecimal, poolGroupId, poolId,
+import { evseGroupId, evseId, evseTemplateId, freeId, idOf, idsOf, operatorId, operatorOf, optionalDecimal, poolGroupId, poolId,
          poolTemplateId, providerId, stationGroupId, stationId, stationTemplateId, tariffGroupId, tariffId, tariffTemplateId,
          thrown, Thrown, timestampOf, type Checked, type Id } from './poiJSON.ts';
+import { firstOverlap, offerOf, sessionsOverlap, timeZoneNamed, UTC, type TimeZone } from './offers.ts';
 import { EV_TALER_PAYMENT_OPTION, namesEVTaler } from './evTaler.ts';
 import { duplicateIdentification, ignoringCase, inRoamingNetwork } from './identifications.ts';
 import { readPartyKeys }          from './partyKeys.ts';
@@ -116,9 +117,13 @@ let TEMPLATES = new WeakMap<JSONObject, Map<string, Map<string, JSONObject>>>();
 /** The effective charging stations of an operator, once per operator while the network or an operator is checked. */
 let EFFECTIVE = new WeakMap<JSONObject, readonly EffectiveStation[]>();
 
+/** The members, groups and time zones of an operator its offers cover, once per operator while it is checked. */
+let MEMBERS = new WeakMap<JSONObject, Members>();
+
 const fresh = (): void => {
     TEMPLATES = new WeakMap();
     EFFECTIVE = new WeakMap();
+    MEMBERS   = new WeakMap();
 };
 
 function templateIndex(owner: JSONObject, property: string, parser: (text: string) => Id | undefined): Map<string, JSONObject> {
@@ -387,8 +392,8 @@ function powerSum(station: JSONObject, evses: readonly JSONObject[], id: string)
 /**
  * The error, as WWCP_POI3 words it after the last change of a change set, when a group of a charging station operator
  * names a member it does not have, or an offer a group it does not have (`InvalidGroupOrOffer`), or a charging pool or a
- * charging pool template of it the payment option EVTaler without an EV Taler merchant (`InvalidPaymentOption`); the
- * offers overlapping at an EVSE this library does not tell.
+ * charging pool template of it the payment option EVTaler without an EV Taler merchant (`InvalidPaymentOption`), or two of
+ * its charging tariff offers overlap at an EVSE (`OverlappingOffers`).
  */
 export function invalidGroupOrOffer(operator: JSONObject): string | undefined {
 
@@ -424,6 +429,300 @@ export function invalidGroupOrOffer(operator: JSONObject): string | undefined {
             for (const groupId of ordered(idsOf(get(offer, property), parser)))
                 if (!known.has(groupId.key))
                     return `The ${what} '${groupId.text}' of the charging tariff offer '${textOf(offer)}' is unknown at the operator '${id}'!`;
+
+    return overlappingOffers(operator, id);
+
+}
+
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Charging tariff offers that must not overlap (ChargingStationOperator.Offers.cs, RoamingNetwork.Offers.cs)
+
+/** The EVSEs, charging stations, charging pools and groups of an operator by their keys, and the time zones of its EVSEs. */
+interface Members {
+    /** Its EVSEs, of its pools, stations and EVSEs ordinally, with their texts (`EVSEs`). */
+    readonly evses:          ReadonlyMap<string, string>;
+    readonly stations:       ReadonlyMap<string, JSONObject>;
+    readonly pools:          ReadonlyMap<string, JSONObject>;
+    readonly evseGroups:     ReadonlyMap<string, JSONObject>;
+    readonly stationGroups:  ReadonlyMap<string, JSONObject>;
+    readonly poolGroups:     ReadonlyMap<string, JSONObject>;
+    /** The time zones of the EVSEs whose charging pool, with what its templates give it, names one (`TimeZoneOf`). */
+    readonly timeZones:      ReadonlyMap<string, TimeZone>;
+}
+
+/** The entities of the given property of a party by their keys, the first of each. */
+function indexAt(json: JSONObject, property: string, parser: (text: string) => Id | undefined): Map<string, JSONObject> {
+    const index = new Map<string, JSONObject>();
+    for (const entity of sortedAt(json, property, parser))
+        if (!index.has(keyOf(entity, parser)))
+            index.set(keyOf(entity, parser), entity);
+    return index;
+}
+
+function membersOf(operator: JSONObject): Members {
+
+    const known = MEMBERS.get(operator);
+
+    if (known !== undefined)
+        return known;
+
+    const evses     = new Map<string, string>();
+    const timeZones = new Map<string, TimeZone>();
+
+    for (const pool of poolsOf(operator)) {
+
+        const timeZone = [ pool, ...templatesOf(pool, operator, 'chargingPoolTemplates', poolTemplateId) ].
+                             map(entity => trimmedAt(entity, 'timeZone')).
+                             find(name => name !== undefined);
+
+        for (const station of stationsOf(pool))
+            for (const evse of evsesOf(station)) {
+                evses.set(keyOf(evse, evseId), textOf(evse, evseId));
+                if (timeZone !== undefined && timeZoneNamed(timeZone) !== UTC)
+                    timeZones.set(keyOf(evse, evseId), timeZoneNamed(timeZone));
+            }
+
+    }
+
+    const members: Members = {
+        evses,
+        stations:       new Map(poolsOf(operator).flatMap(pool => stationsOf(pool)).map(station => [ keyOf(station, stationId), station ])),
+        pools:          indexAt(operator, 'chargingPools', poolId),
+        evseGroups:     indexAt(operator, 'EVSEGroups', evseGroupId),
+        stationGroups:  indexAt(operator, 'chargingStationGroups', stationGroupId),
+        poolGroups:     indexAt(operator, 'chargingPoolGroups', poolGroupId),
+        timeZones,
+    };
+
+    MEMBERS.set(operator, members);
+
+    return members;
+
+}
+
+/** The EVSEs of a charging station or of the charging stations of a charging pool, by their keys, with their texts. */
+const evsesIn = (station: JSONObject): [ string, string ][] =>
+    evsesOf(station).map(evse => [ keyOf(evse, evseId), textOf(evse, evseId) ]);
+
+/** The EVSEs the given offer covers, by their keys, each with its text as first named, as a `HashSet` unites them. */
+type Covered = Map<string, string>;
+
+const unite = (covered: Covered, evses: Iterable<readonly [ string, string ]>): void => {
+    for (const [ key, text ] of evses)
+        if (!covered.has(key))
+            covered.set(key, text);
+};
+
+/**
+ * The EVSEs of an operator a charging tariff offer of it covers (`CoveredEVSEs`): all of them, if it names the operator;
+ * else those that, or whose charging station or charging pool, are members of one of its groups the offer names.
+ */
+function coveredByOwnOffer(operator: JSONObject, offer: JSONObject): Covered {
+
+    const members = membersOf(operator);
+
+    if (idsOf(get(offer, 'chargingStationOperatorIds'), operatorId).some(id => id.key === keyOf(operator, operatorId)))
+        return new Map(members.evses);
+
+    const covered: Covered = new Map();
+
+    for (const groupId of ordered(idsOf(get(offer, 'EVSEGroupIds'), evseGroupId))) {
+        const group = members.evseGroups.get(groupId.key);
+        if (group !== undefined)
+            unite(covered, ordered(idsOf(get(group, 'EVSEIds'), evseId)).filter(id => members.evses.has(id.key)).map(id => [ id.key, id.text ] as const));
+    }
+
+    for (const groupId of ordered(idsOf(get(offer, 'chargingStationGroupIds'), stationGroupId))) {
+        const group = members.stationGroups.get(groupId.key);
+        for (const id of group === undefined ? [] : ordered(idsOf(get(group, 'chargingStationIds'), stationId))) {
+            const station = members.stations.get(id.key);
+            if (station !== undefined)
+                unite(covered, evsesIn(station));
+        }
+    }
+
+    for (const groupId of ordered(idsOf(get(offer, 'chargingPoolGroupIds'), poolGroupId))) {
+        const group = members.poolGroups.get(groupId.key);
+        for (const id of group === undefined ? [] : ordered(idsOf(get(group, 'chargingPoolIds'), poolId))) {
+            const pool = members.pools.get(id.key);
+            for (const station of pool === undefined ? [] : stationsOf(pool))
+                unite(covered, evsesIn(station));
+        }
+    }
+
+    return covered;
+
+}
+
+/** The EVSEs both sets hold, with the texts of the first, in its order (`Enumerable.Intersect`). */
+const bothCover = (first: Covered, second: Covered): Covered =>
+    new Map([ ...first ].filter(([ key ]) => second.has(key)));
+
+/** Two offers of one owner that overlap, at the first EVSE they overlap at, by their keys. */
+interface Overlap {
+    readonly first:   string;
+    readonly second:  string;
+    readonly evse:    string;
+}
+
+/**
+ * The pairs of the given offers that overlap: they cover the same EVSE, for some of the same sessions, at some of the same
+ * times in the time zone of the EVSE; each pair in the ordinal order of the offers, with the first such EVSE.
+ */
+function overlapsOf(offers: readonly JSONObject[], coveredBy: (offer: JSONObject) => Covered, timeZoneOf: (key: string) => TimeZone): Map<string, Overlap> {
+
+    const read     = offers.map(offerOf);
+    const covered  = new Map<number, Covered>();
+    const overlaps = new Map<string, Overlap>();
+
+    const coveredAt = (index: number): Covered => {
+        let evses = covered.get(index);
+        if (evses === undefined) {
+            evses = coveredBy(offers[index] ?? {});
+            covered.set(index, evses);
+        }
+        return evses;
+    };
+
+    for (let i = 0; i < read.length; i++)
+        for (let j = i + 1; j < read.length; j++) {
+
+            const [ offer1, offer2 ] = [ read[i], read[j] ];
+
+            if (offer1 === undefined || offer2 === undefined || !sessionsOverlap(offer1, offer2))
+                continue;
+
+            const evse = firstOverlap(offer1, offer2, bothCover(coveredAt(i), coveredAt(j)), timeZoneOf);
+
+            if (evse !== undefined && !overlaps.has(`${offer1.key}\n${offer2.key}`))
+                overlaps.set(`${offer1.key}\n${offer2.key}`, { first: offer1.id, second: offer2.id, evse });
+
+        }
+
+    return overlaps;
+
+}
+
+/**
+ * The error, when two charging tariff offers of an operator overlap (`OverlappingOffers`): they cover the same EVSE, for
+ * some of the same sessions, at some of the same times in the time zone of the EVSE.
+ */
+function overlappingOffers(operator: JSONObject, id: string): string | undefined {
+
+    const offers = sortedAt(operator, 'chargingTariffOffers', freeId);
+
+    if (offers.length < 2)
+        return undefined;
+
+    const timeZones = membersOf(operator).timeZones;
+
+    for (const overlap of overlapsOf(offers, offer => coveredByOwnOffer(operator, offer), key => timeZones.get(key) ?? UTC).values())
+        return `The charging tariff offers '${overlap.first}' and '${overlap.second}' of the operator '${id}' overlap at the EVSE '${overlap.evse}': they must not cover the same EVSE for the same sessions at the same times!`;
+
+    return undefined;
+
+}
+
+/**
+ * The EVSEs of the given operators a charging tariff offer of an e-mobility provider covers (`CoveredEVSEs` of the roaming
+ * network): all of the operators it names, and those that, or whose charging station or charging pool, are members of one
+ * of the groups it names, a group of the operator its identification names, else of the first provider having it.
+ */
+function coveredByProviderOffer(offer: JSONObject, operators: ReadonlyMap<string, JSONObject>, providers: readonly JSONObject[]): Covered {
+
+    const covered: Covered = new Map();
+    const membersAt = (id: Id): Members | undefined => {
+        const operator = operators.get(operatorOf(id));
+        return operator === undefined ? undefined : membersOf(operator);
+    };
+
+    // A group of the operator of its identification, else of the first provider having one of it.
+    const groupOf = (groupId: Id, property: 'EVSEGroups' | 'chargingStationGroups' | 'chargingPoolGroups', parser: (text: string) => Id | undefined): JSONObject | undefined => {
+        const members = membersAt(groupId);
+        const ofOperator = members === undefined ? undefined
+                         : property === 'EVSEGroups' ? members.evseGroups.get(groupId.key)
+                         : property === 'chargingStationGroups' ? members.stationGroups.get(groupId.key)
+                         : members.poolGroups.get(groupId.key);
+        return ofOperator ?? providers.map(provider => indexAt(provider, property, parser).get(groupId.key)).find(group => group !== undefined);
+    };
+
+    for (const id of ordered(idsOf(get(offer, 'chargingStationOperatorIds'), operatorId))) {
+        const operator = operators.get(id.key);
+        if (operator !== undefined)
+            unite(covered, membersOf(operator).evses);
+    }
+
+    for (const groupId of ordered(idsOf(get(offer, 'EVSEGroupIds'), evseGroupId))) {
+        const group = groupOf(groupId, 'EVSEGroups', evseGroupId);
+        for (const id of group === undefined ? [] : ordered(idsOf(get(group, 'EVSEIds'), evseId)))
+            if (membersAt(id)?.evses.has(id.key) === true)
+                unite(covered, [ [ id.key, id.text ] ]);
+    }
+
+    for (const groupId of ordered(idsOf(get(offer, 'chargingStationGroupIds'), stationGroupId))) {
+        const group = groupOf(groupId, 'chargingStationGroups', stationGroupId);
+        for (const id of group === undefined ? [] : ordered(idsOf(get(group, 'chargingStationIds'), stationId))) {
+            const station = membersAt(id)?.stations.get(id.key);
+            if (station !== undefined)
+                unite(covered, evsesIn(station));
+        }
+    }
+
+    for (const groupId of ordered(idsOf(get(offer, 'chargingPoolGroupIds'), poolGroupId))) {
+        const group = groupOf(groupId, 'chargingPoolGroups', poolGroupId);
+        for (const id of group === undefined ? [] : ordered(idsOf(get(group, 'chargingPoolIds'), poolId))) {
+            const pool = membersAt(id)?.pools.get(id.key);
+            for (const station of pool === undefined ? [] : stationsOf(pool))
+                unite(covered, evsesIn(station));
+        }
+    }
+
+    return covered;
+
+}
+
+/** The pairs of charging tariff offers of an e-mobility provider that overlap at EVSEs of the given operators. */
+function providerOverlaps(provider: JSONObject, operators: readonly JSONObject[], providers: readonly JSONObject[]): Map<string, Overlap> {
+
+    const byKey = new Map(operators.map(operator => [ keyOf(operator, operatorId), operator ]));
+
+    const timeZoneOf = (key: string): TimeZone => {
+        const operator = byKey.get(key.slice(0, 6));
+        return operator === undefined ? UTC : membersOf(operator).timeZones.get(key) ?? UTC;
+    };
+
+    return overlapsOf(sortedAt(provider, 'chargingTariffOffers', freeId), offer => coveredByProviderOffer(offer, byKey, providers), timeZoneOf);
+
+}
+
+/**
+ * The error, when a change set makes two charging tariff offers of an e-mobility provider it changed overlap which did not
+ * overlap in the version before (`NewProviderOfferOverlap`): they may come to overlap by the changes of others only.
+ */
+function newProviderOfferOverlap(network: Network, before: JSONObject | undefined): string | undefined {
+
+    const previous = before === undefined ? undefined : networkOf(before);
+
+    for (const provider of network.providers) {
+
+        const earlier = previous?.providers.find(party => keyOf(party, providerId) === keyOf(provider, providerId));
+
+        if (earlier !== undefined && canonicalJSON(earlier) === canonicalJSON(provider))
+            continue;
+
+        if (objectsAt(provider, 'chargingTariffOffers').length < 2)
+            continue;
+
+        const overlapsBefore = earlier === undefined || previous === undefined
+                                   ? new Map<string, Overlap>()
+                                   : providerOverlaps(earlier, previous.operators, previous.providers);
+
+        for (const [ pair, overlap ] of providerOverlaps(provider, network.operators, network.providers))
+            if (!overlapsBefore.has(pair))
+                return `The charging tariff offers '${overlap.first}' and '${overlap.second}' of the e-mobility provider '${textOf(provider, providerId)}' must not overlap: they cover the EVSE '${overlap.evse}' for the same sessions at the same times!`;
+
+    }
 
     return undefined;
 
@@ -1279,7 +1578,8 @@ export function invalidReferences(content: JSONObject, of: 'version' | 'change s
                       unknownMaintainer(network, named) ?? duplicate('energyMeter') ?? duplicate('parking') ?? unknownChargingStation(network, named) ??
                       unknownParkingSpace(network, named) ?? duplicate('release') ?? duplicate('certificate') ?? duplicate('number') ??
                       unknownCertificateReference(network, named) ?? duplicate('energyMeterGroup') ?? duplicate('providerGroup') ??
-                      duplicate('tariffOffer') ?? duplicate('energyMeterTemplate') ?? unknownMeterTemplateReference(network, named) ??
+                      duplicate('tariffOffer') ?? newProviderOfferOverlap(network, before) ?? duplicate('energyMeterTemplate') ??
+                      unknownMeterTemplateReference(network, named) ??
                       unknownMeterManufacturer(network, named);
 
         if (error !== undefined)

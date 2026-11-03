@@ -30,10 +30,32 @@
   alpha-2 or alpha-3 code in any case, its numeric code, its calling code or one of its names, and refused where it
   names none. Of 164 more versions probed against WWCP_POI3 at 89d2e02, 163 are taken and refused alike, in the same
   words; the one left gives a number with an exponent, which the probe writes otherwise before WWCP_POI3 reads it.
-- Not yet, taken where WWCP_POI3 refuses them: overlapping offers, the checks of measurement public keys of
-  BouncyCastle. Other words: decimals in messages invariant and line breaks `\n`, where WWCP_POI3 writes them in the
-  culture of its machine and `\r\n`; timestamps `DateTimeOffset` reads and the written form refuses, refused as invalid;
-  an error of an entity changed by a change set without the `Change N:` of WWCP_POI3.
+- Two charging tariff offers of an operator must not overlap (`offers.ts`, `OverlappingOffers` of WWCP_POI3, SPECIFICATION.md
+  9.4): covering one EVSE, for some of the same sessions (ad hoc, or contracts of a provider both name, or one names
+  none), at some of the same times within their `notBefore` and `notAfter`, both inclusive, and their opening times in the
+  time zone of the EVSE's charging pool, with what its templates give it: an IANA or a Windows name of a time zone, as
+  `TimeZoneInfo` finds it (`timeZones.ts`), else UTC; local times as `TimeZoneInfo` converts them, one a change to
+  daylight saving time skips the first after it, one it gives twice the one of standard time; exceptional closings
+  close, exceptional openings open. Refused in its words, at the first EVSE in the ordinal order, as the constructor of
+  the operator refuses it, also after a change set. After a change set also two offers of an e-mobility provider the
+  change set changed that overlap and did not in the version before (`NewProviderOfferOverlap`); by the changes of
+  others they may. Of 64 versions probed against WWCP_POI3 at 89d2e02, 63 are taken and refused alike, in the same
+  words; the one left names its time zone `CET`, which .NET on Windows does not find, on Linux does, as this library.
+- A measurement public key is a key as BouncyCastle 2.7.0 makes one, as WWCP_POI3 checks it (`measurementPublicKey.ts`,
+  `MeasurementPublicKey.TryCheck`), refused in its words and those of BouncyCastle: a SubjectPublicKeyInfo of DER
+  (`ber.ts`), of RSA, also of PSS and OAEP, its modulus odd, of no prime factor up to 743, of 16384 bits at most and no
+  prime, its exponent odd (`rsa.ts`); of EC on the 84 named curves BouncyCastle knows (`curves.ts`, taken from it), a point
+  it decodes, compressed, uncompressed or hybrid, on its curve and of its order (`ecc.ts`); of Ed25519 and Ed448 a point
+  of no small order; of X25519, X448, ML-DSA, ML-KEM and SLH-DSA of their lengths; of DSA in its group. Its certificates
+  DER, as X509CertificateParser reads them, the first of the key, each one issued by the next one, its signature of
+  ECDSA, DSA, RSA of PKCS #1 v1.5 or PSS, Ed25519, Ed448 or ML-DSA verified with the key of the next one
+  (`certificates.ts`). Of 242 keys and chains of BouncyCastle and variants of them probed against WWCP_POI3 at 89d2e02,
+  237 are taken and refused alike, in the same words; taken as given, where WWCP_POI3 checks them: points on curves over
+  binary fields, explicit curve parameters, keys of Diffie-Hellman, ElGamal, GOST and DSTU. Not verified, so refused: a
+  certificate signed with GOST, SM2 or SLH-DSA.
+- Other words: decimals in messages invariant and line breaks `\n`, where WWCP_POI3 writes them in the culture of its
+  machine and `\r\n`; timestamps `DateTimeOffset` reads and the written form refuses, refused as invalid; an error of an
+  entity changed by a change set without the `Change N:` of WWCP_POI3.
 - A price statement reads its price status as WWCP_POI3 reads it (`ChargingPrices.TryParse`), in its words and order,
   under its "Invalid price status of the price statement:": the prices of each charging tariff once, the tariff named
   by its identification `{operatorId}*T{suffix}` (SPECIFICATION.md 2, 12.1, D16 of the conformance tests), their
@@ -53,7 +75,9 @@
   refused as both read them, in the words both give. None deviates.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
-  EVSEs, where 0.2.0 took 0.4 s.
+  EVSEs, where 0.2.0 took 0.4 s. The checks of measurement public keys add about 20 µs a key of P-256, 0.3 s of the
+  12816 of these EVSEs; a key of RSA takes about as long as one exponentiation with its modulus, a certificate of ECDSA
+  a few milliseconds.
 
 
 ### Migration

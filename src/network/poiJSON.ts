@@ -570,6 +570,25 @@ export function timestampOf(given: string): number | undefined {
 
 }
 
+/**
+ * A point in time as `timestampOf` reads it, in ticks of 100 ns since 1970, as a `DateTimeOffset` holds it: its fraction
+ * of a second rounded to seven digits.
+ */
+export function ticksOf(given: string): bigint | undefined {
+
+    const time = timestampOf(given);
+
+    if (time === undefined)
+        return undefined;
+
+    const fraction = TIMESTAMP.exec(given.replace(/^[\s\0]+|[\s\0]+$/gu, ''))?.[7] ?? '';
+    const ms       = Number(fraction.padEnd(3, '0').slice(0, 3));
+    const ticks    = BigInt(fraction.padEnd(7, '0').slice(0, 7)) + ((fraction[7] ?? '0') >= '5' ? 1n : 0n);
+
+    return BigInt(time - ms) * 10_000n + ticks;
+
+}
+
 /** The earliest and the latest point in time a `DateTimeOffset` holds, in UTC, to the millisecond. */
 const MIN_TIME = -62135596800000;
 const MAX_TIME = 253402300799999;

@@ -22,6 +22,7 @@ import { fromBase64, toBase64, toHex } from '../encoding/text.ts';
 import { hash }                   from '../crypto/hash.ts';
 import { LANGUAGES }              from '../qidigital/json.ts';
 import { countryOf }              from './countries.ts';
+import { measurementKeyError }    from './measurementPublicKey.ts';
 import { caught, children, context, contextOf, eMailAddressError, entityContext, errorOf, freeId, i18n,
          interpolated, languagesOf, mandatoryId, nonEmpty, phoneNumber, Refused, styxText, text,
          textError, texts, Thrown, timestampOf, url, valueText, withoutTimestamps, type Checked } from './poiJSON.ts';
@@ -747,13 +748,21 @@ export function measurementPublicKey(json: JSONObject): Checked {
     if (bytes instanceof Refused)
         return bytes.error;
 
-    const chain = texts(json, 'certificateChain', 'certificate chain');
+    const chain        = texts(json, 'certificateChain', 'certificate chain');
+    const certificates: Uint8Array[] = [];
 
     for (const certificate of chain instanceof Refused ? [] : chain) {
         const certificateBytes = base64(certificate, 'certificate');
         if (certificateBytes instanceof Refused)
             return certificateBytes.error;
+        certificates.push(certificateBytes);
     }
+
+    // What BouncyCastle refuses of the key and its certificates (`TryCheck`).
+    const keyError = measurementKeyError(bytes, certificates);
+
+    if (keyError !== undefined)
+        return keyError;
 
     const computed = toHex(hash('sha256', bytes));
 
