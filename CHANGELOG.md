@@ -34,6 +34,12 @@
   BouncyCastle. Other words: decimals in messages invariant and line breaks `\n`, where WWCP_POI3 writes them in the
   culture of its machine and `\r\n`; timestamps `DateTimeOffset` reads and the written form refuses, refused as invalid;
   an error of an entity changed by a change set without the `Change N:` of WWCP_POI3.
+- A price statement reads its price status as WWCP_POI3 reads it (`ChargingPrices.TryParse`), in its words and order,
+  under its "Invalid price status of the price statement:": the prices of each charging tariff once, the tariff named
+  by its identification `{operatorId}*T{suffix}` (SPECIFICATION.md 2, 12.1, D16 of the conformance tests), their
+  elements, at least one, as a tariff has them, no property or JSON-LD context besides. A statement naming another text
+  is no price statement: the price evidence of a session holding one has invalid signatures, as WWCP_POI3 gives it
+  (`sessionPrice-foreign-tariff`), not valid ones of a tariff outside the references of its EVSE.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
   EVSEs, where 0.2.0 took 0.4 s.
@@ -44,6 +50,8 @@
 - Versions WWCP_POI3 refuses and 0.2.0 took are refused now, in the words of WWCP_POI3; of the probed versions and the
   test vectors, none WWCP_POI3 takes. Messages of refusals checked by their text change where 0.2.0 worded them on its
   own, e.g. a roaming network with keys of its own.
+- A price statement whose price status 0.2.0 took and WWCP_POI3 refuses, e.g. naming the charging tariff
+  `DE*POI*FOREIGN`, is refused before its signature is looked at.
 
 
 ## 0.2.0 (2026-11-02)

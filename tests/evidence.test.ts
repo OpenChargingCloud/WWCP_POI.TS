@@ -130,6 +130,73 @@ describe('Example A10: the evidence of a charging session, months later', () => 
 });
 
 
+describe('The price status of a price statement (SPECIFICATION.md 2, 12.1)', () => {
+
+    /** The price statement of A10, its price status, or its prices of DE*GEF*T_DC, changed. */
+    const statement = (change: (priceStatus: JSONObject, prices: JSONObject) => void): JSONObject => {
+        const given        = clone(defined(evidence.priceStatements[0]) as JSONObject);
+        const priceStatus  = given['priceStatus'] as JSONObject;
+        change(priceStatus, defined((priceStatus['prices'] as JSONObject[])[0]));
+        return given;
+    };
+
+    const invalid = (error: string): string =>
+        `Invalid price status of the price statement: ${error}`;
+
+    it('names each charging tariff by its identification, {operatorId}*T{suffix}, as WWCP_POI3 reads it', () => {
+
+        expect(PriceStatement.parse(statement(() => undefined)).prices.length).toBe(1);
+
+        // A tariff of the pattern the EVSE does not name is read, and refused where its references are checked.
+        expect(() => PriceStatement.parse(statement((_, prices) => { prices['chargingTariffId'] = 'DE*GEF*T2'; }))).not.toThrow();
+
+        for (const chargingTariffId of [ 'DE*GEF*AC', 'DE*POI*FOREIGN', 'T_DC', 5 ])
+            expect(() => PriceStatement.parse(statement((_, prices) => { prices['chargingTariffId'] = chargingTariffId; })))
+                .toThrow(invalid("The prices of a charging tariff need a valid 'chargingTariffId'!"));
+
+    });
+
+    it('is refused as WWCP_POI3 refuses it, in its words and order', () => {
+
+        const refusal = (change: (priceStatus: JSONObject, prices: JSONObject) => void): string => {
+            try {
+                PriceStatement.parse(statement(change));
+            }
+            catch (e) {
+                return e instanceof Error ? e.message : String(e);
+            }
+            return 'taken';
+        };
+
+        expect(refusal(priceStatus => { priceStatus['prices'] = {}; }))
+            .toBe(invalid('A price status must be a JSON object { prices: [ { chargingTariffId, elements }, … ] }!'));
+        expect(refusal(priceStatus => { priceStatus['x'] = 1; })).toBe(invalid("Unknown property 'x' of a price status!"));
+        expect(refusal(priceStatus => { priceStatus['@context'] = 'x'; }))
+            .toBe(invalid("The JSON-LD context of a price status must be 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/chargingPrices/v1'!"));
+        expect(refusal(priceStatus => { priceStatus['prices'] = [ 5 ]; }))
+            .toBe(invalid('The prices of a charging tariff must be a JSON object { chargingTariffId, elements }!'));
+        expect(refusal((_, prices) => { prices['x'] = 1; })).toBe(invalid("Unknown property 'x' of the prices of a charging tariff!"));
+        expect(refusal((_, prices) => { prices['@context'] = 'x'; }))
+            .toBe(invalid("The JSON-LD context of the prices of a charging tariff must be 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/chargingTariffPrices/v1'!"));
+        expect(refusal((_, prices) => { prices['elements'] = []; }))
+            .toBe(invalid("The prices of the charging tariff 'DE*GEF*T_DC' need their elements as a JSON array, at least one!"));
+        expect(refusal((_, prices) => { prices['elements'] = [ 5 ]; })).toBe(invalid('A charging tariff element must be a JSON object!'));
+        expect(refusal((_, prices) => { prices['elements'] = [ { priceComponents: [] } ]; }))
+            .toBe(invalid('A charging tariff element needs at least one price component!'));
+        expect(refusal(priceStatus => { priceStatus['prices'] = [ ...(priceStatus['prices'] as JSONObject[]), ...(priceStatus['prices'] as JSONObject[]) ]; }))
+            .toBe(invalid("A price status must name the charging tariff 'DE*GEF*T_DC' only once!"));
+
+        // What WWCP_POI3 throws reading it, as its TryParse gives it: bare.
+        expect(refusal((_, prices) => { prices['elements'] = [ { priceComponents: [ { type: 'ENERGY', price: [] } ] } ]; }))
+            .toBe('Cannot cast Newtonsoft.Json.Linq.JArray to Newtonsoft.Json.Linq.JToken.');
+
+        expect(() => PriceStatement.parse({ ...statement(() => undefined), priceStatus: [] })).toThrow('A price statement needs its price status!');
+
+    });
+
+});
+
+
 describe('ECDSA twins of price statements', () => {
 
     it('finds the twin (r, n − s) of a statement valid and of the same digest: the same statement', () => {

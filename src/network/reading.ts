@@ -991,7 +991,7 @@ function restrictions(json: JSONObject): Checked {
 }
 
 /** An element of a tariff as `ChargingTariffElement.TryParse` reads it: price components, at least one, and restrictions. */
-function tariffElement(json: JSONObject): Checked {
+export function tariffElement(json: JSONObject): Checked {
 
     const error = context(json, contextOf('chargingTariffElement'), `The JSON-LD context of the charging tariff element must be '${contextOf('chargingTariffElement')}'!`);
 

@@ -25,6 +25,8 @@ import { leafHash, merkleRootOfLeafHashes, parseAuditPath, rootFromAuditPath } f
 import { KeyUsages, type POIPublicKey } from '../keys.ts';
 import type { Checkpoint }           from '../history/checkpoint.ts';
 import { ignoringCase }              from '../network/identifications.ts';
+import { context, tariffId, Thrown, type Id } from '../network/poiJSON.ts';
+import { tariffElement }             from '../network/reading.ts';
 import { trimmed }                   from '../network/versionTexts.ts';
 import { POIError }                  from '../errors.ts';
 
@@ -45,6 +47,91 @@ export const MAX_PRICE_STATEMENT_SEQUENCE = Number.MAX_SAFE_INTEGER;
  */
 export const priceStatementChainOf = (entityType: string, entityId: string): string =>
     `${entityType}:${ignoringCase(trimmed(entityId).replaceAll('*', ''))}`;
+
+const PRICE_STATUS_CONTEXT   = CONTEXT_PREFIX + 'roamingNetwork/chargingPrices/v1';
+const TARIFF_PRICES_CONTEXT  = CONTEXT_PREFIX + 'roamingNetwork/chargingTariffPrices/v1';
+
+/**
+ * The prices of a charging tariff in a price status as WWCP_POI3 reads them (`ChargingTariffPrices.TryParse`): the
+ * tariff by its identification, `{operatorId}*T{suffix}` (SPECIFICATION.md 2, 12.1), and its elements, at least one, as
+ * a tariff has them; the identification of the tariff, or the error.
+ */
+function tariffPrices(value: JSONValue): Id | string {
+
+    if (!isObject(value))
+        return 'The prices of a charging tariff must be a JSON object { chargingTariffId, elements }!';
+
+    const unknown = Object.keys(value).find(key => ![ '@context', 'chargingTariffId', 'elements' ].includes(key));
+
+    if (unknown !== undefined)
+        return `Unknown property '${unknown}' of the prices of a charging tariff!`;
+
+    const contextError = context(value, TARIFF_PRICES_CONTEXT, `The JSON-LD context of the prices of a charging tariff must be '${TARIFF_PRICES_CONTEXT}'!`);
+
+    if (contextError !== undefined)
+        return contextError;
+
+    const given = get(value, 'chargingTariffId');
+    const id    = typeof given === 'string' ? tariffId(given) : undefined;
+
+    if (id === undefined)
+        return "The prices of a charging tariff need a valid 'chargingTariffId'!";
+
+    const elements = get(value, 'elements');
+
+    if (!isArray(elements) || elements.length === 0)
+        return `The prices of the charging tariff '${id.text}' need their elements as a JSON array, at least one!`;
+
+    for (const element of elements) {
+        const error = isObject(element) ? tariffElement(element) : 'A charging tariff element must be a JSON object!';
+        if (error !== undefined)
+            return error;
+    }
+
+    return id;
+
+}
+
+/**
+ * The error of a price status as WWCP_POI3 reads it (`ChargingPrices.TryParse`): its prices, of each charging tariff
+ * once; undefined where it reads it.
+ */
+function priceStatusError(json: JSONObject): string | undefined {
+
+    const prices = get(json, 'prices');
+
+    if (!isArray(prices))
+        return 'A price status must be a JSON object { prices: [ { chargingTariffId, elements }, … ] }!';
+
+    const unknown = Object.keys(json).find(key => key !== '@context' && key !== 'prices');
+
+    if (unknown !== undefined)
+        return `Unknown property '${unknown}' of a price status!`;
+
+    const contextError = context(json, PRICE_STATUS_CONTEXT, `The JSON-LD context of a price status must be '${PRICE_STATUS_CONTEXT}'!`);
+
+    if (contextError !== undefined)
+        return contextError;
+
+    const named: Id[] = [];
+
+    for (const price of prices) {
+
+        const id = tariffPrices(price);
+
+        if (typeof id === 'string')
+            return id;
+
+        if (named.some(known => known.key === id.key))
+            return `A price status must name the charging tariff '${id.text}' only once!`;
+
+        named.push(id);
+
+    }
+
+    return undefined;
+
+}
 
 
 /**
@@ -89,11 +176,25 @@ export class PriceStatement {
         if (!(PRICE_STATEMENT_ENTITY_TYPES as readonly string[]).includes(entityType))
             throw new POIError(`A price statement is one of a ChargingPool, a ChargingStation or an EVSE, not of a '${entityType}'!`);
 
-        const priceStatus = requireObject(get(json, 'priceStatus'), 'The price status of a price statement');
-        const prices      = get(priceStatus, 'prices');
+        // The price status as WWCP_POI3 reads it, in its words; what it throws reading it, bare, as its TryParse gives it.
+        const priceStatus = get(json, 'priceStatus');
 
-        if (!isArray(prices) || !prices.every(price => isObject(price) && typeof price['chargingTariffId'] === 'string' && isArray(price['elements'])))
-            throw new POIError('The price status of a price statement is {"prices": [{"chargingTariffId", "elements"}, …]}!');
+        if (!isObject(priceStatus))
+            throw new POIError('A price statement needs its price status!');
+
+        let priceStatusInvalid: string | undefined;
+
+        try {
+            priceStatusInvalid = priceStatusError(priceStatus);
+        }
+        catch (e) {
+            if (e instanceof Thrown)
+                throw new POIError(e.message);
+            throw e;
+        }
+
+        if (priceStatusInvalid !== undefined)
+            throw new POIError(`Invalid price status of the price statement: ${priceStatusInvalid}`);
 
         const signedAt    = requireTimestamp (json, 'signedAt',   'The signedAt of a price statement');
         const validFrom   = requireTimestamp (json, 'validFrom',  'The validFrom of a price statement');
