@@ -40,6 +40,12 @@
   elements, at least one, as a tariff has them, no property or JSON-LD context besides. A statement naming another text
   is no price statement: the price evidence of a session holding one has invalid signatures, as WWCP_POI3 gives it
   (`sessionPrice-foreign-tariff`), not valid ones of a tariff outside the references of its EVSE.
+- The nine vectors of WWCPPOIConformanceTests `fde40c9` vendored, `poi-refusals.json` of 129 vectors (a version naming a
+  charging tariff not as `{operatorId}*T{suffix}`), and `poi-verifier.json`, new here: 106 checks of the verifier
+  extensions, meter keys, historical meter evidence, session prices, trust transitions, keys of charging documents,
+  trust policy identifications, digests of key statements, offer hashes and publication receipts, against the POI
+  fixtures of ChargyWebApp at `fc513cd`, vendored as `tests/vectors/chargy-fc513cd`. Run in `tests/conformance.test.ts`
+  as WWCPPOIConformanceTests runs them against this library: a refusal after its control, by its reason; none deviates.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
   EVSEs, where 0.2.0 took 0.4 s.

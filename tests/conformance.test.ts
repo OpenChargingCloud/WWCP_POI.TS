@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    applies, canonical, deviates, encodings, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
-    refusals, runDocument, runText, specification, trust, type AnchoredSnapshotCase, type DocumentStep, type QIDigitalCase,
-    type QIDigitalVector, type RefusalVector, type ReplayStep,
+    applies, canonical, chargyDocument, deviates, encodings, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
+    refusals, runDocument, runText, specification, trust, verifier, type AnchoredSnapshotCase, type DocumentRef, type DocumentStep,
+    type QIDigitalCase, type QIDigitalVector, type RefusalVector, type ReplayStep, type TrustCase, type VerifierCase, type VerifierPolicy,
+    type VerifierVector,
 } from './conformance.ts';
 
 import { parseJSON, parseJSONObject }       from '../src/json/parse.ts';
 import { canonicalJSON, canonicalJSONBytes } from '../src/json/canonical.ts';
-import { isArray, isObject, type JSONObject, type JSONValue } from '../src/json/value.ts';
+import { asText, isArray, isObject, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { deterministicCbor }                from '../src/encoding/cbor.ts';
 import { fromBase45, fromBase64, fromHex, toBase45, toHex } from '../src/encoding/text.ts';
 import { hash, type HashAlgorithm }         from '../src/crypto/hash.ts';
@@ -28,6 +29,9 @@ import { DigitalCalibrationCertificate }    from '../src/qidigital/calibrationCe
 import { DigitalCertificateOfConformity }   from '../src/qidigital/certificateOfConformity.ts';
 import { DigitalDeclarationOfConformity }   from '../src/qidigital/declarationOfConformity.ts';
 import { QIDigitalItem }                    from '../src/qidigital/parts.ts';
+import { HistoricalTrustContext, initialTrustEpoch, KeyStatement, parseTrustedWitnesses, parseWitnessPublicationPolicy, pricePublicationOfferHashes,
+         PricePublicationReceipt, TrustContext, TrustTransition, trustPolicyId, trustStatementDigest, verifyChargingDocumentKeys, verifyHistoricalMeterEvidence,
+         verifyMeterKey, verifySessionPriceEvidence, VerifiedTrustTransition, type HistoricalMeterPolicy, type WitnessPublicationPolicy } from '../src/index.ts';
 
 
 // The golden vectors of WWCPPOIConformanceTests (tests/conformance.ts says where they come from): what this library and
@@ -538,6 +542,140 @@ describe('Golden vectors: the QI-Digital documents of example A14, checked as WW
                 expect(() => { check(vector, vector); }).toThrow();
             else
                 expect(() => { check(vector, vector); }).toThrow(vector.reason);
+
+        });
+
+});
+
+describe('Golden vectors: the verifier extensions, of the fixtures of ChargyWebApp', () => {
+
+    const time  = (iso: string | undefined): number => { if (iso === undefined) throw new Error('The vector names no time'); return Date.parse(iso); };
+    const given = <T>(value: T | undefined, what: string): T => { if (value === undefined) throw new Error(`The vector names no ${what}`); return value; };
+    const text  = (ref: DocumentRef): string => { const value = chargyDocument(ref); if (typeof value !== 'string') throw new Error(`${ref.file}#${ref.pointer} is no text`); return value; };
+
+    /** The local trust of a case: every identity key of its trust anchor trusted. */
+    function trustOf(trust: TrustCase | undefined): TrustContext | HistoricalTrustContext {
+        const { anchor, keyStatement, at, context } = given(trust, 'trust');
+        const trustAnchor  = TrustAnchor.parse(text(anchor));
+        const statement    = KeyStatement.parse(chargyDocument(keyStatement));
+        return context === 'historical'
+                   ? HistoricalTrustContext.create(trustAnchor, statement, { trustedIdentityKeyIds: trustAnchor.keys, now: time(at) })
+                   : TrustContext.create(trustAnchor, statement, { trustedIdentityKeyIds: trustAnchor.keys, at: time(at) });
+    }
+
+    const policyOf = (policy: VerifierPolicy | undefined): HistoricalMeterPolicy & { readonly publicationPolicy?: WitnessPublicationPolicy } => ({
+        ...(policy?.witnesses          === undefined ? {} : { witnesses: parseTrustedWitnesses(chargyDocument(policy.witnesses)) }),
+        ...(policy?.requiredWitnesses  === undefined ? {} : { requiredWitnesses: policy.requiredWitnesses }),
+        ...(policy?.requirePublication === undefined ? {} : { requirePublication: policy.requirePublication }),
+        ...(policy?.publicationPolicy  === undefined ? {} : { publicationPolicy: parseWitnessPublicationPolicy(chargyDocument(policy.publicationPolicy)) }),
+    });
+
+    /**
+     * A case checked as the vector says, and what both implementations give of it, normalized: identifications, the words
+     * of the verdicts, counts, times in ISO 8601. A refusal throws.
+     */
+    function results(kind: VerifierVector['kind'], check: VerifierCase): JSONObject {
+
+        const request = check.request ?? {};
+
+        switch (kind) {
+
+            case 'meterKey': {
+                const current = trustOf(check.trust);
+                if (!(current instanceof TrustContext))
+                    throw new Error('A meter key is bound with a current trust context');
+                const binding = verifyMeterKey(current, chargyDocument(given(check.proof, 'proof')), {
+                                    evseId: given(request.evseId, 'EVSE'), meterSerialNumber: given(request.meterSerialNumber, 'serial number'), keyFormat: given(request.keyFormat, 'key format'),
+                                    ...(request.meterId === undefined ? {} : { meterId: request.meterId }), ...(request.keyId === undefined ? {} : { keyId: request.keyId }) });
+                return { evseId: binding.evseId, chargingStationId: binding.chargingStationId, meterId: binding.meterId, meterSerialNumber: binding.meterSerialNumber,
+                         keyId: binding.key.id, keyIdScheme: binding.key.idScheme, canonicalKeyId: binding.key.canonicalId, association: binding.evidence.association };
+            }
+
+            case 'historicalMeterEvidence': {
+                const result = verifyHistoricalMeterEvidence(trustOf(check.trust), chargyDocument(given(check.evidence, 'evidence')), {
+                                   evseId: given(request.evseId, 'EVSE'), meterSerialNumber: given(request.meterSerialNumber, 'serial number'),
+                                   measurementTimes: given(request.measurementTimes, 'measurement times').map(item => time(item)), keyFormat: given(request.keyFormat, 'key format') },
+                                   policyOf(check.policy));
+                return { bindings:        result.bindings.map(binding => ({ meterId: binding.meterId, keyId: binding.key.id, association: binding.evidence.association })),
+                         publications:    result.versions.map(version => version.publication),
+                         independentTime: result.independentTime };
+            }
+
+            case 'sessionPrice': {
+                const result = verifySessionPriceEvidence(trustOf(check.trust), chargyDocument(given(check.evidence, 'evidence')), {
+                                   evseId: given(request.evseId, 'EVSE'), meterSerialNumber: given(request.meterSerialNumber, 'serial number'),
+                                   chargingStarted: time(request.chargingStarted), startDocumentSHA256: given(request.startDocumentSHA256, 'start document') },
+                                   policyOf(check.policy));
+                return { signatures: result.signatures, agreement: result.agreement, applicability: result.applicability, publication: result.publication,
+                         publicationBeforeStart: result.publicationBeforeStart, customerConsent: result.customerConsent, witnessedBy: [ ...result.witnessedBy ],
+                         selected: result.selected === undefined ? null : { digest: result.selected.digest, algorithm: asText(result.selected.statement['algorithm']),
+                                                                             energyPerKWh: result.selected.rates?.energyPerKWh ?? null },
+                         organizations: result.publicationWitnesses === undefined ? null : [ ...result.publicationWitnesses.organizations ] };
+            }
+
+            case 'trustTransition': {
+                const basis = trustOf(check.trust);
+                if (!(basis instanceof TrustContext))
+                    throw new Error('A trust transition continues a current trust context');
+                const verified = VerifiedTrustTransition.verify(basis, chargyDocument(given(check.operator, 'operator')), TrustTransition.parse(chargyDocument(given(check.transition, 'transition'))),
+                                                                { acceptedAt: time(check.acceptedAt), epoch: initialTrustEpoch(), sequence: given(check.sequence, 'sequence') });
+                return { requiredConsensus: verified.context.requiredConsensus, signedByOld: verified.signedBy.old.length, signedByNext: verified.signedBy.next.length,
+                         policyId: trustPolicyId(verified.context.anchor), epoch: verified.epoch.number };
+            }
+
+            case 'chargingDocumentKeys': {
+                const keys = verifyChargingDocumentKeys(trustOf(check.trust), chargyDocument(given(check.proof, 'proof')),
+                                                        { evseId: given(request.evseId, 'EVSE'), operatorId: given(request.operatorId, 'operator'), at: time(request.at) });
+                return { chargingStationId: keys.chargingStationId, keys: keys.keys.map(key => ({ id: key.id, algorithm: key.algorithm })) };
+            }
+
+            case 'trustPolicyId':
+                return { policyId: trustPolicyId(TrustAnchor.parse(text(given(check.trustAnchor, 'trust anchor')))) };
+
+            case 'keyStatementDigest':
+                return { digest: trustStatementDigest(KeyStatement.parse(chargyDocument(given(check.keyStatement, 'key statement')))) };
+
+            case 'offerHashes': {
+                const tariff = chargyDocument(given(check.tariff, 'tariff'));
+                if (!isObject(tariff))
+                    throw new Error('The tariff is no object');
+                const hashes = pricePublicationOfferHashes(PriceStatement.parse(chargyDocument(given(check.priceStatement, 'price statement'))), tariff);
+                return { priceStatementSHA256: hashes.priceStatementSHA256, tariffSHA256: hashes.tariffSHA256 };
+            }
+
+            case 'publicationReceipt':
+                return { digest: PricePublicationReceipt.parse(chargyDocument(given(check.receipt, 'receipt'))).digest() };
+
+            default:
+                throw new Error(`A verifier vector of the kind '${String(kind)}' is not known to these tests: the vector files are newer than the tests!`);
+
+        }
+
+    }
+
+    for (const vector of verifier.vectors.filter(applies))
+        it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
+
+            if (vector.expected === 'accepted') {
+
+                if (deviates(vector))
+                    expect(results(vector.kind, vector)).not.toEqual(vector.result);
+                else
+                    expect(results(vector.kind, vector)).toEqual(vector.result);
+
+                return;
+
+            }
+
+            // The control: the same check, of what the vector is about given otherwise, taken.
+            results(vector.kind, given(vector.control, 'control'));
+
+            if (deviates(vector))
+                results(vector.kind, vector);
+            else if (vector.reason === undefined)
+                expect(() => results(vector.kind, vector)).toThrow();
+            else
+                expect(() => results(vector.kind, vector)).toThrow(vector.reason);
 
         });
 

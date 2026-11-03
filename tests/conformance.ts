@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join }         from 'node:path';
 
 import { parseJSON }     from '../src/json/parse.ts';
-import { clone, isArray, isObject, type JSONValue } from '../src/json/value.ts';
+import { clone, isArray, isObject, type JSONObject, type JSONValue } from '../src/json/value.ts';
 
 
 // The golden vectors of WWCPPOIConformanceTests (https://github.com/OpenChargingCloud/WWCPPOIConformanceTests), vendored
@@ -12,6 +12,7 @@ import { clone, isArray, isObject, type JSONValue } from '../src/json/value.ts';
 //     node tools/generate-test-vectors.mjs --mirror libs/WWCP_POI.TS/tests/vectors
 //
 // The frozen run they name (runs/<VECTORS_RUN> there, tests/at.ts) is vendored next to them, as tests/vectors/<VECTORS_RUN>.
+// So are the fixtures of ChargyWebApp poi-verifier.json names (runs/chargy-fc513cd there, tests/vectors/chargy-fc513cd).
 
 
 /** The name this library is known by within the vector files ("knownDeviations", "notApplicable"). */
@@ -294,5 +295,95 @@ export function patched(ref: DocumentRef & { readonly patch: readonly PatchOpera
     }
 
     return document;
+
+}
+
+// ---- poi-verifier.json: the verifier extensions, of the fixtures of ChargyWebApp ----------------------------------
+
+/** The local trust a verification starts from: every identity key of the trust anchor, at a time. */
+export interface TrustCase {
+    /** The QR code of the trust anchor. */
+    readonly anchor:        DocumentRef;
+    /** The key statement of the roaming network operator. */
+    readonly keyStatement:  DocumentRef;
+    readonly at:            string;
+    /** A context of now, or a historical one of a key statement saved before (HistoricalTrustContext). */
+    readonly context:       'current' | 'historical';
+}
+
+export interface VerifierRequest {
+    readonly evseId?:               string;
+    readonly meterSerialNumber?:    string;
+    readonly meterId?:              string;
+    readonly keyId?:                string;
+    readonly keyFormat?:            'spki-der' | 'cose-key';
+    readonly measurementTimes?:     readonly string[];
+    readonly chargingStarted?:      string;
+    readonly startDocumentSHA256?:  string;
+    readonly operatorId?:           string;
+    readonly at?:                   string;
+}
+
+export interface VerifierPolicy {
+    readonly witnesses?:          DocumentRef;
+    readonly requiredWitnesses?:  number;
+    readonly requirePublication?: boolean;
+    readonly publicationPolicy?:  DocumentRef;
+}
+
+/** A check of a verifier vector: its inputs as documents of the fixtures. */
+export interface VerifierCase {
+    readonly trust?:           TrustCase;
+    readonly proof?:           DocumentRef;
+    readonly evidence?:        DocumentRef;
+    readonly request?:         VerifierRequest;
+    readonly policy?:          VerifierPolicy;
+    readonly operator?:        DocumentRef;
+    readonly transition?:      DocumentRef;
+    readonly acceptedAt?:      string;
+    readonly sequence?:        number;
+    readonly trustAnchor?:     DocumentRef;
+    readonly keyStatement?:    DocumentRef;
+    readonly priceStatement?:  DocumentRef;
+    readonly tariff?:          DocumentRef;
+    readonly receipt?:         DocumentRef;
+}
+
+export interface VerifierVector extends Vector, VerifierCase {
+    readonly kind:         'meterKey' | 'historicalMeterEvidence' | 'sessionPrice' | 'trustTransition' | 'chargingDocumentKeys' | 'trustPolicyId' | 'keyStatementDigest' | 'offerHashes'
+                         | 'publicationReceipt';
+    readonly basis:        string;
+    readonly expected:     'accepted' | 'refused';
+    /** Of an accepted vector: what both implementations give, normalized. */
+    readonly result?:      JSONObject;
+    /** Of a refusal: the same check, of what the vector is about given otherwise, taken. */
+    readonly control?:     VerifierCase;
+    /** What the refusal names, as both implementations word it. */
+    readonly reason?:      string;
+}
+
+export const verifier = load('poi-verifier.json') as { readonly run: string, readonly vectors: readonly VerifierVector[] };
+
+/** The vendored fixtures of ChargyWebApp: next to the vector files, by their name. */
+const CHARGY_RUN = join(VECTORS, verifier.run.split('/').pop() ?? verifier.run);
+
+const chargyTexts = new Map<string, string>();
+
+/**
+ * A document of the fixtures, read as POI reads JSON: a pointer on into a string reads the string as a JSON document, and
+ * so does one ending at a string of a JSON object.
+ */
+export function chargyDocument(ref: DocumentRef): JSONValue {
+
+    let text = chargyTexts.get(ref.file);
+
+    if (text === undefined) {
+        text = readFileSync(join(CHARGY_RUN, ref.file), 'utf8');
+        chargyTexts.set(ref.file, text);
+    }
+
+    const value = tokens(ref.pointer).reduce((value, token) => step(typeof value === 'string' ? parseJSON(value) : value, token, ref.file), parseJSON(text));
+
+    return typeof value === 'string' && value.startsWith('{') ? parseJSON(value) : clone(value);
 
 }
