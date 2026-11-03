@@ -19,12 +19,21 @@
 - 1268 versions probed against WWCP_POI3 at 89d2e02 are taken and refused alike, in the same words, but for nine agreed:
   five identifications of the roaming network and its operator given as numbers, which keep the words of this library
   for WWCP_POI3 to take, and four messages of the CBOR and COSE libraries.
+- Values WWCP_POI3 writes otherwise than given are refused in the words of its written form (`writtenForm.ts`): a
+  number, a boolean or a text given as another JSON type it reads it of (`"0.390"` as 0.390, `"TRUE"` as true, 5 as
+  `"5"`), coordinates of texts and booleans, durations in seconds in whole ticks of 100 ns without trailing zeros (1.50
+  as 1.5), the width and height of an image; opening times as Styx writes them, `24/7` always, hours `HH:mm`, periods
+  UTC, empty lists and free texts left out; NUTS codes in upper case, a list written otherwise compared element by
+  element with the one WWCP_POI3 writes; addresses with their countries by their alpha-3 codes, their street, postal
+  code and time zone trimmed, their other texts as given and left out where empty, their languages in lower case,
+  nothing else. A country is read as `Country.TryParse` of Styx reads it, of its 251 countries (`countries.ts`): by its
+  alpha-2 or alpha-3 code in any case, its numeric code, its calling code or one of its names, and refused where it
+  names none. Of 164 more versions probed against WWCP_POI3 at 89d2e02, 163 are taken and refused alike, in the same
+  words; the one left gives a number with an exponent, which the probe writes otherwise before WWCP_POI3 reads it.
 - Not yet, taken where WWCP_POI3 refuses them: overlapping offers, the checks of measurement public keys of
-  BouncyCastle, unknown three-letter countries, and values WWCP_POI3 writes otherwise (a number or a boolean given as
-  text, `24/7` false, a NUTS code in lower case, a country of an address not as its three letters). Other words:
-  decimals in messages invariant and line breaks `\n`, where WWCP_POI3 writes them in the culture of its machine and
-  `\r\n`; timestamps `DateTimeOffset` reads and the written form refuses, refused as invalid; an error of an entity
-  changed by a change set without the `Change N:` of WWCP_POI3.
+  BouncyCastle. Other words: decimals in messages invariant and line breaks `\n`, where WWCP_POI3 writes them in the
+  culture of its machine and `\r\n`; timestamps `DateTimeOffset` reads and the written form refuses, refused as invalid;
+  an error of an entity changed by a change set without the `Change N:` of WWCP_POI3.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
   EVSEs, where 0.2.0 took 0.4 s.

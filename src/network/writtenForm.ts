@@ -16,11 +16,15 @@
  */
 
 import { canonicalJSON, ordinal } from '../json/canonical.ts';
-import { asText, isArray, isObject, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
+import { Decimal }    from '../json/decimal.ts';
+import { asText, isArray, isNumber, isObject, toDecimal, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { LANGUAGES }  from '../qidigital/json.ts';
+import { countryOf }  from './countries.ts';
 import { hermodURL }  from './evTaler.ts';
+import { ignoringCase } from './identifications.ts';
 import { trimmed }    from './versionTexts.ts';
-import { operatorId, providerId } from './poiJSON.ts';
+import { decimalOfText, operatorId, providerId, timestampOf, valueText } from './poiJSON.ts';
+import { doubleOf, hhmm, hourMin } from './poiValues.ts';
 
 
 // The written form of the content (SPECIFICATION.md 2, Written forms): a value as WWCP_POI writes it again once it has read
@@ -71,8 +75,22 @@ const LEFT_OUT_WHEN_EMPTY = new Set([
     'parkingSensors', 'parkingSpaceGroups', 'parkingSpaceIds', 'parkingSpaceTemplates', 'parkingSpaces', 'paymentBrands',
     'paymentMeans', 'paymentOptions', 'publicKeys', 'relatedLocations', 'services', 'signatureMethods', 'signingKeys',
     'standards', 'templateIds', 'transparencySoftware', 'transparencySoftwareManufacturers', 'transparencySoftwareStatus',
-    'uiFeatures', 'usages', 'vehicleTypes',
+    'uiFeatures', 'usages', 'vehicleTypes', 'regularOpenings', 'exceptionalOpenings', 'exceptionalClosings',
 ]);
+
+/**
+ * The texts WWCP_POI writes only where they are not empty, by the kind of object holding them: of an address but its
+ * street and postal code (Styx `Address.ToJSON`), the free text of opening times, the data source of a roaming network
+ * and of a charging station operator; the data source of other entities it writes also empty.
+ */
+const LEFT_OUT_WHEN_EMPTY_TEXT: Readonly<Record<string, readonly string[]>> = {
+    '':                        [ 'dataSource' ],
+    chargingStationOperators:  [ 'dataSource' ],
+    openingTimes:              [ 'freeText' ],
+    address:                   [ 'houseNumber', 'floorLevel', 'region', 'postalCodeSub' ],
+    entranceAddress:           [ 'houseNumber', 'floorLevel', 'region', 'postalCodeSub' ],
+    exitAddress:               [ 'houseNumber', 'floorLevel', 'region', 'postalCodeSub' ],
+};
 
 /**
  * The texts in languages of the content, as Styx reads them (`ImmutableI18NString.TryParse`): every text of a language,
@@ -305,9 +323,20 @@ const MORE_PROPERTIES: Readonly<Record<string, readonly string[]>> = {
     chargingTariff:         [ '@context', 'currency', 'elements', 'energyMix', 'maxPrice', 'minPrice', 'paymentBrands', 'paymentMeans', 'tariffURL' ],
 };
 
+/** The properties of an address, as Styx writes it (`Address.ToJSON`). */
+const ADDRESS_PROPERTIES = [ '@context', 'street', 'postalCode', 'city', 'country', 'houseNumber', 'floorLevel', 'region', 'postalCodeSub',
+                             'timeZone', 'officialLanguages', 'comment', 'customData' ];
+
+/** The days of a week, as opening times name their regular hours. */
+const WEEKDAYS = [ 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday' ];
+
 export const PROPERTIES_OF: Readonly<Record<string, readonly string[]>> = {
     ...ENTITY_PROPERTIES,
     ...MORE_PROPERTIES,
+    ...Object.fromEntries(WEEKDAYS.map(day => [ day, [ 'begin', 'end' ] ])),
+    address:                 ADDRESS_PROPERTIES,
+    entranceAddress:         ADDRESS_PROPERTIES,
+    exitAddress:             ADDRESS_PROPERTIES,
     geoLocation:             [ '@context', 'lat', 'lng', 'alt', 'projection' ],
     priceComponents:         [ '@context', 'type', 'price', 'stepSize', 'vat' ],
     publicKeys:              [ '@context', '@id', 'key', 'certificateChain' ],
@@ -328,8 +357,122 @@ export const PROPERTIES_OF: Readonly<Record<string, readonly string[]>> = {
 const TRIMMED = new Set([
     '@id', 'currency', 'chargingTariffId', 'manufacturerId', 'modelId', 'transparencySoftwareId', 'version', 'vulnerabilityContact',
     'energyMeterManufacturerId', 'energyMeterModel', 'roamingNetworkId', 'roamingNetworkOperatorId', 'sourceCodeRepository',
-    'declarationOfConformity', 'softwareBillOfMaterials', 'documentURL',
+    'declarationOfConformity', 'softwareBillOfMaterials', 'documentURL', 'street', 'postalCode', 'timeZone',
 ]);
+
+/**
+ * The numbers WWCP_POI reads as decimals, also of texts (`Decimal.TryParse(…, NumberStyles.Any, …)`), and writes as the
+ * decimals it read (`POIJSON.Number`): `"0.390"` as 0.390, `" 1,000.5"` as 1000.5, `"22000"` as 22000. The width of an
+ * image is not among them, the width of a parking space is.
+ */
+const DECIMALS = new Set([
+    'price', 'stepSize', 'vat', 'includingVAT', 'excludingVAT', 'maxPower', 'maxVoltage', 'maxCurrent', 'minPower', 'minCurrent',
+    'minEnergy', 'maxEnergy', 'minDuration', 'maxDuration', 'nominalVoltage', 'nominalFrequency', 'cableLength', 'cableWeight',
+    'maxVehicleWeight', 'maxVehicleHeight', 'maxVehicleLength', 'maxVehicleWidth', 'length', 'width', 'reachDistance',
+    'contractedImportPower', 'contractedExportPower', 'contractedImportApparentPower', 'contractedExportApparentPower',
+]);
+
+/**
+ * The durations WWCP_POI reads in seconds, as decimals, also of texts, and writes in whole ticks of 100 ns
+ * (`POIJSON.Seconds`): 1.50 as 1.5, 0.123456789 as 0.1234567; also the minimum duration of a parking product, not the one
+ * of a tariff restriction.
+ */
+const SECONDS = new Set([ 'operationTimeout', 'maxReservationDuration', 'stopParkingAfterTime', 'timeLimit' ]);
+
+/** The booleans WWCP_POI reads also of numbers and of texts `Boolean.Parse` takes: `"TRUE"` and 1 as true. */
+const BOOLEANS = new Set([
+    'lockable', 'cableManagementSystem', 'extendedOperationTimeout', 'chargingWhenClosed', 'restrictedToVehicleTypes',
+    'driveThrough', 'reservationRequired', 'roofed', 'illuminated', 'refrigerationOutlet', 'dangerousGoodsAllowed', 'protectedArea',
+]);
+
+/**
+ * The texts WWCP_POI reads also of numbers and booleans (Styx `ParseOptional(…, out String?)`), as `JToken.Value<String>()`
+ * gives them: 5 as `"5"`, 1.50 as `"1.50"`, true as `"True"`.
+ */
+const TEXTS = new Set([ 'dataSource', 'houseNumber', 'floorLevel', 'region', 'postalCodeSub' ]);
+
+/** The objects of the content that are addresses (Styx `Address`). */
+const ADDRESSES = new Set([ 'address', 'entranceAddress', 'exitAddress' ]);
+
+/** A decimal as WWCP_POI writes a duration in seconds of it (`POIJSON.Seconds`): truncated to whole ticks, without trailing zeros. */
+function inTicks(seconds: Decimal): Decimal {
+
+    let mantissa  = seconds.mantissa * 10n ** 7n / 10n ** BigInt(seconds.scale);
+    let scale     = 7;
+
+    while (scale > 0 && mantissa % 10n === 0n) {
+        mantissa /= 10n;
+        scale    -= 1;
+    }
+
+    return new Decimal(mantissa, scale);
+
+}
+
+/** A boolean as Styx reads it of a number or a text (`Boolean.Parse`, trailing NULs aside); undefined for none. */
+function booleanOf(value: JSONValue): boolean | undefined {
+
+    if (value instanceof Decimal)
+        return value.mantissa !== 0n;
+
+    if (typeof value === 'number')
+        return value !== 0;
+
+    const text = typeof value === 'string' ? trimmed(value).replace(/\0+$/u, '').toLowerCase() : '';
+
+    return text === 'true' ? true : text === 'false' ? false : undefined;
+
+}
+
+/** An exceptional period of opening times as Styx writes it (`ExceptionalPeriod.ToString`): both timestamps UTC to the millisecond. */
+function periodOf(text: string): string | undefined {
+
+    const [ begin, end, ...more ] = text.split(' -> ').map(part => timestampOf(part));
+
+    return begin === undefined || end === undefined || more.length > 0
+               ? undefined
+               : `${new Date(Math.floor(begin)).toISOString()} -> ${new Date(Math.floor(end)).toISOString()}`;
+
+}
+
+/**
+ * The text WWCP_POI writes of the given text of a list held by the given property: trimmed, a NUTS code in upper case, a
+ * named value as it names it, a language by its name in lower case, an exceptional period of opening times UTC.
+ */
+function writtenText(property: string, text: string): string {
+
+    if (property === 'nutsCodes')
+        return ignoringCase(trimmed(text));
+
+    if (property === 'officialLanguages')
+        return LANGUAGES.has(text.toLowerCase()) ? text.toLowerCase() : text;
+
+    if (property === 'exceptionalOpenings' || property === 'exceptionalClosings')
+        return periodOf(text) ?? text;
+
+    const names = NAMED_VALUES[property];
+
+    return names?.find(name => name.toLowerCase() === trimmed(text).toLowerCase()) ?? trimmed(text);
+
+}
+
+/**
+ * The texts WWCP_POI writes of the given list of texts held by the given property, where one of them is written otherwise
+ * than trimmed: ordered as WWCP_POI orders the list (`POIJSON.OrderedIds`), if it does; undefined where every text is
+ * written trimmed or as given.
+ */
+function writtenTexts(items: JSONArray, property: string): string[] | undefined {
+
+    const texts = items.map(item => typeof item === 'string' ? writtenText(property, item) : undefined);
+
+    if (texts.some(text => text === undefined) || texts.every((text, index) => text === trimmed(asText(items[index]))))
+        return undefined;
+
+    const written = texts as string[];
+
+    return ORDERED_TEXTS.has(property) ? [ ...written ].sort(ordinal) : written;
+
+}
 
 /** The URLs WWCP_POI reads as Hermod does (`URL.TryParse`): trimmed, with the scheme https unless they name one. */
 const URLS = new Set([ 'homepage', 'datasheetURL', 'vulnerabilityReporting', 'vulnerabilityDisclosurePolicy', 'securityAdvisories', 'merchantBaseURL', 'baseURL' ]);
@@ -425,11 +568,44 @@ function writtenValueOf(property: string, value: JSONValue, holder: string | und
 
     }
 
-    // A coordinate as the double WWCP_POI holds it: without trailing zeros, nor a decimal point of an integer.
-    if (holder === 'geoLocation' && (property === 'lat' || property === 'lng') && (typeof value === 'number' || typeof value === 'object') && value !== null && !isArray(value)) {
-        const number = Number(canonicalJSON(value));
-        return Number.isFinite(number) ? number : undefined;
+    // A coordinate as the double WWCP_POI holds it: without trailing zeros, nor a decimal point of an integer; of a text or
+    // a boolean as `JToken.Value<Double>()` reads it.
+    if (holder === 'geoLocation' && (property === 'lat' || property === 'lng' || property === 'alt')) {
+        const number = isNumber(value) ? Number(canonicalJSON(value)) : typeof value === 'string' || typeof value === 'boolean' ? doubleOf(value) : undefined;
+        return typeof number === 'number' && Number.isFinite(number) ? number : undefined;
     }
+
+    // The country of an address by its alpha-3 code, the hours of opening times as hours and minutes of two digits each.
+    if (property === 'country' && holder !== undefined && ADDRESSES.has(holder)) {
+        const text = valueText(value);
+        return text === null ? undefined : countryOf(trimmed(text))?.alpha3;
+    }
+
+    if ((property === 'begin' || property === 'end') && holder !== undefined && WEEKDAYS.includes(holder) && typeof value === 'string') {
+        const hours = hourMin(value);
+        return hours === undefined ? undefined : hhmm(hours);
+    }
+
+    // The width and height of an image as the integers WWCP_POI reads of texts (`UInt16.TryParse`).
+    if ((property === 'width' || property === 'height') && holder === 'images')
+        return typeof value === 'string' && /^\s*(?:\+?\d+|-0+)\s*$/u.test(value) ? Number(trimmed(value)) : undefined;
+
+    // A duration in seconds in whole ticks, a decimal of a text, a boolean of a number or a text, a text of a number or a boolean.
+    if (SECONDS.has(property) || (property === 'minDuration' && holder === 'parkingProducts')) {
+        const seconds = typeof value === 'string' ? decimalOfText(value) : isNumber(value) ? toDecimal(value) : undefined;
+        return seconds instanceof Decimal ? inTicks(seconds) : undefined;
+    }
+
+    if (DECIMALS.has(property) && typeof value === 'string') {
+        const decimal = decimalOfText(value);
+        return decimal instanceof Decimal ? decimal : undefined;
+    }
+
+    if (BOOLEANS.has(property) && (typeof value === 'string' || isNumber(value)))
+        return booleanOf(value);
+
+    if (TEXTS.has(property) && (typeof value === 'boolean' || isNumber(value)))
+        return valueText(value) ?? undefined;
 
     return undefined;
 
@@ -493,6 +669,13 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
         if (key === 'dataLicenseIds')
             return 'the content leaves it out';
 
+        if (element === '' && kind !== undefined && LEFT_OUT_WHEN_EMPTY_TEXT[kind]?.includes(key) === true)
+            return 'the content leaves it out';
+
+        // A language of the city of an address, which Styx writes by its name in lower case.
+        if (kind === 'city' && key !== key.toLowerCase())
+            return 'the content leaves it out';
+
         const known = kind === undefined ? undefined : PROPERTIES_OF[kind];
 
         if (known !== undefined && !known.includes(key))
@@ -509,6 +692,14 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
 
         if (isArray(item)) {
 
+            // A text written otherwise than trimmed, e.g. a NUTS code in lower case: the list is compared element by element
+            // with the one WWCP_POI writes.
+            const written = name === undefined ? undefined : writtenTexts(item, name);
+            const differs = written?.findIndex((text, index) => text !== item[index]) ?? -1;
+
+            if (written !== undefined && differs >= 0)
+                return holdsAs(`${at}[${String(differs)}]`, written[differs] ?? '');
+
             if (name !== undefined && ORDERED_TEXTS.has(name) && item.some(element => typeof element === 'string' && trimmed(element) !== element))
                 return { path: at, reason: 'the texts of its elements are trimmed' };
 
@@ -521,14 +712,7 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
             for (const [ index, element ] of item.entries()) {
 
                 const elementAt = `${at}[${String(index)}]`;
-
-                if (typeof element === 'string' && name !== undefined && NAMED_VALUES[name] !== undefined) {
-                    const written = writtenValueOf(name, element, holder);
-                    if (written !== undefined && written !== element)
-                        return holdsAs(elementAt, written);
-                }
-
-                const found = check(element, undefined, name, elementAt);
+                const found     = check(element, undefined, name, elementAt);
                 if (found !== undefined)
                     return found;
 
@@ -579,7 +763,8 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
             }
 
             // What the content holds of it that it leaves out: the name WWCP_POI makes up of a party, a list it writes also
-            // empty, the lastChange of a version, which it writes as its created.
+            // empty, the lastChange of a version, which it writes as its created, whether opening times are 24/7, which
+            // they are without regular openings.
             if (party !== undefined && !('name' in item))
                 return holdsAs(join(at, 'name'), { en: `${party} '${asText(writtenValueOf('@id', item['@id'] ?? '', holder) ?? item['@id'])}'` });
 
@@ -589,6 +774,11 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
 
             if (!eachOnce && typeof item['created'] === 'string' && !('lastChange' in item))
                 return holdsAs(join(at, 'lastChange'), item['created']);
+
+            if (kind === 'openingTimes' && !('24/7' in item)) {
+                const regular = item['regularOpenings'];
+                return holdsAs(join(at, '24/7'), !(isArray(regular) && regular.length > 0));
+            }
 
         }
 

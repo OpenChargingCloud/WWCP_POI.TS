@@ -18,6 +18,7 @@
 import { Decimal }                 from '../json/decimal.ts';
 import { get, isArray, isNumber, isObject, toDecimal, type JSONObject, type JSONValue } from '../json/value.ts';
 import { compactJSON, LANGUAGES, tokenText } from '../qidigital/json.ts';
+import { COUNTRIES }               from './countries.ts';
 import { hermodURL, type HermodURL } from './evTaler.ts';
 import { ignoringCase }            from './identifications.ts';
 import { trimmed }                 from './versionTexts.ts';
@@ -670,14 +671,6 @@ export const nonEmpty = (text: string): string | undefined =>
 /** A text not empty, without whitespace around it, as it is: HardwareRevision, FirmwareVersion, SerialNumber. */
 export const exactText = (text: string): string | undefined =>
     trimmed(text) === '' || trimmed(text) !== text ? undefined : text;
-
-/** The ISO 3166 alpha-2 codes of the countries of Styx (`Country.TryParseAlpha2Code`), with AN, CP, UK and YY. */
-export const COUNTRIES = new Set(`AD AE AF AG AI AL AM AN AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BR BS BT BV
-    BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CP CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE
-    GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ
-    LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ
-    OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SY SZ TC TD TF TG TH
-    TJ TK TL TM TN TO TR TT TV TW TZ UA UG UK UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT YY ZA ZM ZW`.trim().split(/\s+/u));
 
 /** The ISO 4217 codes of the currencies of Styx, as `Currency.TryParseISO` takes them, trimmed, with case. */
 export const CURRENCIES = new Set(`EUR CHF USD CZK GBP HRK PLN RON RSD RUB SEK AED AFN ALL AMD AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF

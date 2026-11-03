@@ -21,7 +21,8 @@ import { get, isArray, isNumber, isObject, type JSONObject, type JSONValue } fro
 import { fromBase64, toBase64, toHex } from '../encoding/text.ts';
 import { hash }                   from '../crypto/hash.ts';
 import { LANGUAGES }              from '../qidigital/json.ts';
-import { caught, children, context, COUNTRIES, contextOf, eMailAddressError, entityContext, errorOf, freeId, i18n,
+import { countryOf }              from './countries.ts';
+import { caught, children, context, contextOf, eMailAddressError, entityContext, errorOf, freeId, i18n,
          interpolated, languagesOf, mandatoryId, nonEmpty, phoneNumber, Refused, styxText, text,
          textError, texts, Thrown, timestampOf, url, valueText, withoutTimestamps, type Checked } from './poiJSON.ts';
 import { trimmed }                from './versionTexts.ts';
@@ -128,7 +129,6 @@ function officialLanguages(json: JSONObject): Checked {
 
 /**
  * An address as `Address.TryParse` of Styx reads it: a street, a country, a postal code and a city, then what it may name.
- * The countries it takes by their names and numbers this library does not know: it takes every country named.
  */
 const address = (json: JSONObject): Checked =>
     caught('an address', () => {
@@ -137,7 +137,7 @@ const address = (json: JSONObject): Checked =>
             return 'The given JSON object must not be null or empty!';
 
         return mandatoryText(json, 'street', 'street') ??
-               errorOf(mandatoryId(json, 'country', 'country', country)) ??
+               errorOf(mandatoryId(json, 'country', 'country', countryOf)) ??
                mandatoryText(json, 'postalCode', 'postal code') ??
                mandatoryI18N(json, 'city', 'city') ??
                styxText(json, 'houseNumber',   'house number') ??
@@ -149,13 +149,6 @@ const address = (json: JSONObject): Checked =>
                officialLanguages(json);
 
     });
-
-/**
- * A country as `Country.TryParse` of Styx reads it: by its alpha-2 or alpha-3 code, its number, its telephone code or its
- * name. This library knows the codes of two letters only, and takes every other text WWCP_POI3 may take.
- */
-const country = (given: string): string | undefined =>
-    /^[A-Za-z]{2}$/u.test(given) && !COUNTRIES.has(given.toUpperCase()) ? undefined : given;
 
 /** The time zone of an address, as `Time_Zone.TryParse` takes it: a text not empty, also of a value given otherwise. */
 function timeZone(json: JSONObject): Checked {
@@ -184,7 +177,7 @@ export function addressError(json: JSONObject, property: string, description: st
  * A number of a geo location as `JToken.Value<Double>()` reads it: a number, a boolean, or a text `Double.Parse` takes,
  * thousands separated by commas; its error otherwise, as .NET words it.
  */
-function doubleOf(value: JSONValue): number | Refused {
+export function doubleOf(value: JSONValue): number | Refused {
 
     if (value === null)
         return new Refused('Null object cannot be converted to a value type.');
@@ -481,7 +474,7 @@ export const image = (json: JSONObject): Checked =>
 const WEEKDAYS = [ 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday' ];
 
 /** An hour and a minute as `HourMin.TryParse` of Styx reads them, e.g. `08:00`; [ hour, minute ] or undefined. */
-function hourMin(given: string): readonly [ number, number ] | undefined {
+export function hourMin(given: string): readonly [ number, number ] | undefined {
 
     const parts = given.split(':');
 
@@ -494,7 +487,7 @@ function hourMin(given: string): readonly [ number, number ] | undefined {
 
 }
 
-const hhmm = ([ hour, minute ]: readonly [ number, number ]): string =>
+export const hhmm = ([ hour, minute ]: readonly [ number, number ]): string =>
     `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
 /** Opening times as `OpeningTimes.TryParse` of Styx reads them; what its constructors throw named by it once more. */

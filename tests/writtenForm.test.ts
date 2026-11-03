@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { defined, readJSON, readText, VECTORS } from './helpers.ts';
+import { firstOf, rich } from './richNetwork.ts';
 
 import { isArray, isObject, without, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { parseJSON } from '../src/json/parse.ts';
@@ -262,6 +263,132 @@ describe('The content, as WWCP_POI writes it (SPECIFICATION.md 2, Written forms)
         // The name WWCP_POI makes up of an e-mobility provider naming none.
         expect(refusal(qa(network => { network['eMobilityProviders'] = [ { '@id': 'DE-GDF', created: '2026-01-01T00:00:00.000Z', lastChange: '2026-01-01T00:00:00.000Z' } ]; })))
             .toBe(notWritten('eMobilityProviders[0].name', 'the content holds it as \'{"en":"E-Mobility Provider \'DE-GDF\'"}\''));
+
+    });
+
+    it('refuses a number, a boolean or a text given as another JSON type WWCP_POI3 reads, which it writes as its own', () => {
+
+        const pool       = 'chargingStationOperators[0].chargingPools[0]';
+        const component  = (gef: JSONObject): JSONObject => firstOf(firstOf(firstOf(gef, 'chargingTariffs'), 'elements'), 'priceComponents');
+
+        // A decimal of a text as WWCP_POI reads it (`NumberStyles.Any`), with its decimal places.
+        expect(refusal(rich(({ gef }) => { component(gef)['price'] = '0.390'; })))
+            .toBe(notWritten('chargingStationOperators[0].chargingTariffs[0].elements[0].priceComponents[0].price', "the content holds it as '0.390'"));
+        expect(refusal(rich(({ gef }) => { component(gef)['price'] = '1,000.5'; })))
+            .toBe(notWritten('chargingStationOperators[0].chargingTariffs[0].elements[0].priceComponents[0].price', "the content holds it as '1000.5'"));
+        expect(refusal(rich(({ evse }) => { evse['maxPower'] = ' 150000 '; })))
+            .toBe(notWritten(`${pool}.chargingStations[0].EVSEs[0].maxPower`, "the content holds it as '150000'"));
+        expect(refusal(rich(({ network }) => { firstOf(firstOf(network, 'gridOperators'), 'gridConnectionPoints')['nominalVoltage'] = '400'; })))
+            .toBe(notWritten('gridOperators[0].gridConnectionPoints[0].nominalVoltage', "the content holds it as '400'"));
+
+        // A coordinate of a text or a boolean as `JToken.Value<Double>()` reads it, thousands separated by commas.
+        expect(refusal(rich(({ pool: given }) => { (given['geoLocation'] as JSONObject)['lat'] = '5,1'; })))
+            .toBe(notWritten(`${pool}.geoLocation.lat`, "the content holds it as '51'"));
+        expect(refusal(rich(({ pool: given }) => { (given['geoLocation'] as JSONObject)['alt'] = true; })))
+            .toBe(notWritten(`${pool}.geoLocation.alt`, "the content holds it as '1'"));
+
+        // A boolean of a number or a text `Boolean.Parse` takes.
+        expect(refusal(rich(({ pool: given }) => { given['chargingWhenClosed'] = 'TRUE'; })))
+            .toBe(notWritten(`${pool}.chargingWhenClosed`, "the content holds it as 'true'"));
+        expect(refusal(rich(({ gef }) => { firstOf(firstOf(gef, 'EVSETemplates'), 'chargingConnectors')['lockable'] = 0; })))
+            .toBe(notWritten('chargingStationOperators[0].EVSETemplates[0].chargingConnectors[0].lockable', "the content holds it as 'false'"));
+
+        // A text of a number or a boolean as `JToken.Value<String>()` gives it, where Styx reads one so.
+        expect(refusal(rich(({ network }) => { network['dataSource'] = 5; }))).toBe(notWritten('dataSource', 'the content holds it as \'"5"\''));
+        expect(refusal(rich(({ network }) => { network['dataSource'] = true; }))).toBe(notWritten('dataSource', 'the content holds it as \'"True"\''));
+        expect(refusal(rich(({ pool: given }) => { given['dataSource'] = 5; }))).toBe('The data source must be a text!');
+
+        // The width and height of an image as the integers WWCP_POI reads of texts.
+        expect(refusal(rich(({ pool: given }) => { given['images'] = [ { url: 'https://example.com/a.png', category: 'photo', type: 'image/png', height: '+5' } ]; })))
+            .toBe(notWritten(`${pool}.images[0].height`, "the content holds it as '5'"));
+
+    });
+
+    it('refuses a duration in seconds not in whole ticks of 100 ns without trailing zeros, as WWCP_POI3 writes it', () => {
+
+        const evse = 'chargingStationOperators[0].chargingPools[0].chargingStations[0].EVSEs[0]';
+
+        expect(refusal(rich(({ evse: given }) => { given['operationTimeout'] = parseJSON('1.50'); })))
+            .toBe(notWritten(`${evse}.operationTimeout`, "the content holds it as '1.5'"));
+        expect(refusal(rich(({ evse: given }) => { given['operationTimeout'] = parseJSON('0.123456789'); })))
+            .toBe(notWritten(`${evse}.operationTimeout`, "the content holds it as '0.1234567'"));
+        expect(refusal(rich(({ evse: given }) => { given['maxReservationDuration'] = '600.0'; })))
+            .toBe(notWritten(`${evse}.maxReservationDuration`, "the content holds it as '600'"));
+        expect(refusal(rich(({ network }) => { firstOf(firstOf(network, 'parkingOperators'), 'parkingProducts')['minDuration'] = parseJSON('1.50'); })))
+            .toBe(notWritten('parkingOperators[0].parkingProducts[0].minDuration', "the content holds it as '1.5'"));
+
+        // The minimum duration of a tariff restriction is a decimal.
+        expect(refusal(rich(({ gef }) => { firstOf(firstOf(gef, 'chargingTariffs'), 'elements')['restrictions'] = { minDuration: '1.50' }; })))
+            .toBe(notWritten('chargingStationOperators[0].chargingTariffs[0].elements[0].restrictions.minDuration', "the content holds it as '1.50'"));
+        expect(refusal(rich(({ evse: given }) => { given['operationTimeout'] = parseJSON('1.5'); }))).toBe('taken');
+
+    });
+
+    it('refuses opening times not written as Styx writes them: 24/7 always, hours of two digits, periods UTC', () => {
+
+        const at = 'chargingStationOperators[0].chargingPools[0].openingTimes';
+        const opening = (openingTimes: JSONObject): string => refusal(rich(({ pool }) => { pool['openingTimes'] = openingTimes; }));
+        const monday  = (begin: string): JSONObject[] => [ { monday: [ { begin, end: '20:00' } ] } ];
+
+        expect(opening({ regularOpenings: monday('08:00') })).toBe(notWritten(`${at}.24/7`, "the content holds it as 'false'"));
+        expect(opening({})).toBe(notWritten(`${at}.24/7`, "the content holds it as 'true'"));
+        expect(opening({ '24/7': true, freeText: '' })).toBe(notWritten(`${at}.freeText`, 'the content leaves it out'));
+        expect(opening({ '24/7': true, regularOpenings: [] })).toBe(notWritten(`${at}.regularOpenings`, 'a list without elements is left out'));
+        expect(opening({ '24/7': false, regularOpenings: monday('8:00') })).toBe(notWritten(`${at}.regularOpenings[0].monday[0].begin`, 'the content holds it as \'"08:00"\''));
+        expect(opening({ '24/7': true, exceptionalClosings: [ '2026-12-24T00:00:00+01:00 -> 2026-12-25T00:00:00.000Z' ] }))
+            .toBe(notWritten(`${at}.exceptionalClosings[0]`, 'the content holds it as \'"2026-12-23T23:00:00.000Z -> 2026-12-25T00:00:00.000Z"\''));
+
+        expect(opening({ regularOpenings: monday('08:00'), '24/7': false })).toBe('taken');
+        expect(opening({ '24/7': true, freeText: 'x' })).toBe('taken');
+
+    });
+
+    it('refuses NUTS codes not in upper case, compared one by one with the list WWCP_POI3 writes', () => {
+
+        const at = 'chargingStationOperators[0].chargingPools[0].nutsCodes';
+        const nuts = (codes: string[]): string => refusal(rich(({ pool }) => { pool['nutsCodes'] = codes; }));
+
+        expect(nuts([ 'de1' ])).toBe(notWritten(`${at}[0]`, 'the content holds it as \'"DE1"\''));
+        expect(nuts([ 'de2', 'AT1' ])).toBe(notWritten(`${at}[0]`, 'the content holds it as \'"AT1"\''));
+        expect(nuts([ 'DE1 ', 'at1' ])).toBe(notWritten(`${at}[0]`, 'the content holds it as \'"AT1"\''));
+        expect(nuts([ ' DE1' ])).toBe(notWritten(at, 'the texts of its elements are trimmed'));
+        expect(nuts([ 'DE1', 'AT1' ])).toBe(notWritten(at, 'its elements are in the order the content holds them in'));
+        expect(nuts([ 'AT1', 'DE1' ])).toBe('taken');
+
+    });
+
+    it('refuses an address not written as Styx writes it: its country by its alpha-3 code', () => {
+
+        const at = 'chargingStationOperators[0].chargingPools[0].address';
+        const address = (more: JSONObject): string =>
+            refusal(rich(({ pool }) => { pool['address'] = { street: 'Main', postalCode: '07745', city: { en: 'Jena' }, country: 'DEU', ...more }; }));
+
+        // A country by its alpha-2 or alpha-3 code in any case, its numeric code, its calling code (1 Canada's, the first
+        // declared of it) or one of its names as written.
+        for (const [ country, alpha3 ] of [ [ 'DE', 'DEU' ], [ 'deu', 'DEU' ], [ 'Deutschland', 'DEU' ], [ 276, 'DEU' ], [ '+49', 'DEU' ],
+                                            [ '44', 'BHS' ], [ '1', 'CAN' ], [ '0', 'CPT' ], [ 'UK', 'UKI' ], [ 'United Kingdom', 'GBR' ] ] as const)
+            expect(address({ country })).toBe(notWritten(`${at}.country`, `the content holds it as '"${alpha3}"'`));
+
+        for (const country of [ 'XYZ', 'XX', 'germany', 'Kosovo', '' ])
+            expect(address({ country })).toBe("Invalid address: Invalid 'country'!");
+
+        expect(address({ country: 'DEU' })).toBe('taken');
+        expect(address({ country: 'ANT' })).toBe('taken');
+
+        // Its street, postal code and time zone trimmed, its other texts as given and left out where empty, its languages in
+        // lower case, nothing else.
+        expect(address({ street: ' Main ' })).toBe(notWritten(`${at}.street`, 'the content holds it as \'"Main"\''));
+        expect(address({ timeZone: ' Europe/Berlin ' })).toBe(notWritten(`${at}.timeZone`, 'the content holds it as \'"Europe/Berlin"\''));
+        expect(address({ houseNumber: ' 12 ' })).toBe('taken');
+        expect(address({ houseNumber: 12 })).toBe(notWritten(`${at}.houseNumber`, 'the content holds it as \'"12"\''));
+        expect(address({ region: '' })).toBe(notWritten(`${at}.region`, 'the content leaves it out'));
+        expect(address({ officialLanguages: [ 'DE' ] })).toBe(notWritten(`${at}.officialLanguages[0]`, 'the content holds it as \'"de"\''));
+        expect(address({ officialLanguages: [ 'en', 'de' ] })).toBe('taken');
+        expect(address({ city: { DE: 'Jena' } })).toBe(notWritten(`${at}.city.DE`, 'the content leaves it out'));
+        expect(address({ x: 1 })).toBe(notWritten(`${at}.x`, 'the content leaves it out'));
+
+        // The data source of a roaming network left out where it is empty, of a charging pool written also empty.
+        expect(refusal(rich(({ network }) => { network['dataSource'] = ''; }))).toBe(notWritten('dataSource', 'the content leaves it out'));
 
     });
 
