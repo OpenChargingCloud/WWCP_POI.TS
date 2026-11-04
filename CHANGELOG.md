@@ -73,6 +73,10 @@
   tariff not an object; a property or a JSON-LD context besides, of the status or of the prices of a tariff; a tariff
   not named `{operatorId}*T{suffix}` or named twice, also in another spelling; its elements empty, one not an object or
   without price components), refused as both read them, in the words both give. None deviates.
+- `poi-refusals.json` of WWCPPOIConformanceTests `ed91741` vendored, of 273 vectors: 131 versions built from the tests
+  of this library and read as WWCP_POI3 reads them, 59 of reading, 18 of references, 33 of written forms, 11 of offers,
+  10 of measurement public keys, refused in the words both give. None deviates. Two of them, offers of `Europe/Berlin`,
+  WWCP_POI3 takes where .NET runs without ICU, as it then finds no IANA time zone and compares them in UTC (O5 there).
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
