@@ -1,8 +1,11 @@
+import { generateKeyPairSync } from 'node:crypto';
+
+import { CoseKey } from '@vanaheimr/cose';
 import { describe, expect, it } from 'vitest';
 
 import { defined, readJSON } from './helpers.ts';
 
-import { clone, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
+import { asText, clone, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
 import { POIPublicKey, PUBLIC_KEY_CONTEXT } from '../src/keys.ts';
 import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 
@@ -202,6 +205,25 @@ describe('A key, in the words and order of POIPublicKey.TryParse of WWCP_POI3', 
         };
         expect(refused(keyOf(withPrivatePart, true))).toBe('A public key must not contain private parts!');
         expect(refused(keyOf(json => { withPrivatePart(json); json['@id'] = '0'.repeat(64); }, true))).toBe('A public key must not contain private parts!');
+
+    });
+
+    it('reads an RSA key as Styx reads it, identified by its thumbprint over n and e, a party key as WWCP_POI3 takes one', () => {
+
+        // Refused before @vanaheimr/cose 0.13, which read label -1 as the curve of a key: "The curve of a COSE key must be
+        // an integer!". WWCP_POI3 at 89d2e02 takes the same versions, as a signing and as an identity key.
+        const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+        const jwk  = publicKey.export({ format: 'jwk' });
+        const rsa  = CoseKey.fromRsaPublicKey(Buffer.from(String(jwk.n), 'base64url'), Buffer.from(String(jwk.e), 'base64url'));
+        const json = { '@id': Buffer.from(rsa.thumbprint('sha256')).toString('hex'), key: Buffer.from(rsa.toBytes()).toString('base64') };
+
+        expect(refused({ ...json, usages: [ 'priceStatements', 'tariffs' ] })).toBe('taken');
+
+        for (const property of [ 'signingKeys', 'identityKeys' ] as const)
+            expect(refusal(qa(n => {
+                const given = property === 'signingKeys' ? { ...json, usages: [ 'priceStatements', 'tariffs' ] } : json;
+                gef(n)[property] = [ ...keys(gef(n), property), given ].sort((left, right) => asText(left['@id']) < asText(right['@id']) ? -1 : 1);
+            }))).toBe('taken');
 
     });
 

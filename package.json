@@ -69,7 +69,7 @@
     },
     "dependencies": {
         "@noble/hashes": "^2.4.0",
-        "@vanaheimr/cose": "^0.12.0",
+        "@vanaheimr/cose": "^0.14.0",
         "@vanaheimr/metrological-cbor": "^0.12.0"
     },
     "devDependencies": {

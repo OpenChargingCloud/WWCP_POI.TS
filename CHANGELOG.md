@@ -77,6 +77,10 @@
   of this library and read as WWCP_POI3 reads them, 59 of reading, 18 of references, 33 of written forms, 11 of offers,
   10 of measurement public keys, refused in the words both give. None deviates. Two of them, offers of `Europe/Berlin`,
   WWCP_POI3 takes where .NET runs without ICU, as it then finds no IANA time zone and compares them in UTC (O5 there).
+- `@vanaheimr/cose` 0.14.0, the codec still `@vanaheimr/metrological-cbor` 0.12: a key of a party of key type RSA (3) is
+  read as Styx reads it, identified by its RFC 9679 thumbprint over n and e, and taken as WWCP_POI3 takes it; 0.12.0
+  refused it, "Invalid COSE key: The curve of a COSE key must be an integer!". POI names no signature algorithm of RSA
+  (SPECIFICATION.md 4), so such a key signs nothing this library verifies, as before.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
