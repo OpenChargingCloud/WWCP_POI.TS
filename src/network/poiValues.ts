@@ -18,7 +18,7 @@
 import { Decimal }                from '../json/decimal.ts';
 import { parseJSON }              from '../json/parse.ts';
 import { get, isArray, isNumber, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
-import { fromBase64, toBase64, toHex } from '../encoding/text.ts';
+import { fromBase64, toHex } from '../encoding/text.ts';
 import { hash }                   from '../crypto/hash.ts';
 import { LANGUAGES }              from '../qidigital/json.ts';
 import { countryOf }              from './countries.ts';
@@ -713,14 +713,17 @@ function base64(given: string, what: string): Uint8Array | Refused {
 
     let bytes: Uint8Array;
 
+    const text = given.replace(/[ \t\r\n]/gu, '');
+
     try {
-        bytes = fromBase64(given.replace(/[ \t\r\n]/gu, ''));
+        bytes = fromBase64(text);
     }
     catch {
         return new Refused(`The ${what} of a measurement public key must be given as Base64!`);
     }
 
-    return toBase64(bytes) === given ? bytes : new Refused(`The ${what} of a measurement public key must be given as canonical Base64!`);
+    // Canonical Base64 as `fromBase64` takes it alone, so it is the text given exactly where that has no whitespace.
+    return text === given ? bytes : new Refused(`The ${what} of a measurement public key must be given as canonical Base64!`);
 
 }
 
@@ -743,15 +746,47 @@ export function measurementPublicKey(json: JSONObject): Checked {
     if (error !== undefined || typeof id !== 'string' || typeof key !== 'string')
         return error;
 
+    const chain = texts(json, 'certificateChain', 'certificate chain');
+
+    return checkedKey(id, key, chain instanceof Refused ? [] : chain);
+
+}
+
+/** How many keys `checkedKey` remembers at most, before it forgets them all. */
+const KEYS_REMEMBERED = 1 << 16;
+
+/** What `keyError` gave of the last keys: a history names most keys again in each of its versions. */
+const CHECKED_KEYS = new Map<string, Checked>();
+
+function checkedKey(id: string, key: string, chain: readonly string[]): Checked {
+
+    const entry = JSON.stringify([ id, key, chain ]);
+
+    if (CHECKED_KEYS.has(entry))
+        return CHECKED_KEYS.get(entry);
+
+    if (CHECKED_KEYS.size >= KEYS_REMEMBERED)
+        CHECKED_KEYS.clear();
+
+    const error = keyError(id, key, chain);
+
+    CHECKED_KEYS.set(entry, error);
+
+    return error;
+
+}
+
+/** What WWCP_POI3 refuses of a measurement public key of the given texts, its identification, key and certificate chain. */
+function keyError(id: string, key: string, chain: readonly string[]): Checked {
+
     const bytes = base64(key, 'public key');
 
     if (bytes instanceof Refused)
         return bytes.error;
 
-    const chain        = texts(json, 'certificateChain', 'certificate chain');
     const certificates: Uint8Array[] = [];
 
-    for (const certificate of chain instanceof Refused ? [] : chain) {
+    for (const certificate of chain) {
         const certificateBytes = base64(certificate, 'certificate');
         if (certificateBytes instanceof Refused)
             return certificateBytes.error;

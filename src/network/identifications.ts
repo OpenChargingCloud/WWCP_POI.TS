@@ -39,12 +39,17 @@ const idOf = (entity: JSONObject): string =>
 export const inRoamingNetwork = (error: string, parameter: string): string =>
     `The given JSON representation of a roaming network is invalid: ${error} (Parameter '${parameter}')`;
 
-/** A text of ASCII characters alone, whose upper case is their simple upper case. */
-const ASCII = /^\p{ASCII}*$/u;
+/** Whether a text is of ASCII characters alone, whose upper case is their simple upper case. */
+function isASCII(text: string): boolean {
+    for (let index = 0; index < text.length; index++)
+        if (text.charCodeAt(index) > 0x7F)
+            return false;
+    return true;
+}
 
 /** A text as `StringComparison.OrdinalIgnoreCase` compares it: every character by its simple upper case. */
 export const ignoringCase = (text: string): string =>
-    ASCII.test(text) ? text.toUpperCase() : Array.from(text, character => {
+    isASCII(text) ? text.toUpperCase() : Array.from(text, character => {
         const upper = character.toUpperCase();
         return upper.length === character.length ? upper : character;
     }).join('');

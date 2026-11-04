@@ -534,6 +534,38 @@ const DAYS = [ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
 
 const TIMESTAMP = /^(\d{4})-(\d{2})(?:-(\d{2})(?:[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d+))?)?)?)?\s*(?:([Zz])|([+-])(\d{2})(?::?(\d{2}))?)?$/u;
 
+/** The number of the given decimal digits of a text; NaN where one is none. */
+function digitsAt(text: string, start: number, length: number): number {
+    let value = 0;
+    for (let index = start; index < start + length; index++) {
+        const digit = text.charCodeAt(index) - 0x30;
+        if (digit < 0 || digit > 9)
+            return NaN;
+        value = value * 10 + digit;
+    }
+    return value;
+}
+
+/**
+ * A point in time written as WWCP_POI writes it, `yyyy-MM-ddTHH:mm:ss.fffZ`, as `timestampOf` reads it, without its
+ * regular expressions; undefined for every other text, also one of a year before 100, which `Date.UTC` takes as of 1900.
+ */
+function writtenTimestampOf(given: string): number | undefined {
+
+    if (given.length !== 24 || given[4] !== '-' || given[7] !== '-' || given[10] !== 'T' || given[13] !== ':' || given[16] !== ':' || given[19] !== '.' || given[23] !== 'Z')
+        return undefined;
+
+    const y = digitsAt(given, 0, 4), m = digitsAt(given, 5, 2), d = digitsAt(given, 8, 2), h = digitsAt(given, 11, 2), min = digitsAt(given, 14, 2), s = digitsAt(given, 17, 2), ms = digitsAt(given, 20, 3);
+    const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+    // A character no digit is NaN, which fails its comparison.
+    if (!(y >= 100 && m >= 1 && m <= 12 && d >= 1 && d <= (m === 2 && leap ? 29 : DAYS[m - 1] ?? 0) && h <= 23 && min <= 59 && s <= 59 && ms >= 0))
+        return undefined;
+
+    return Date.UTC(y, m - 1, d, h, min, s, ms);
+
+}
+
 /**
  * A point in time as `DateTimeOffset.TryParse(…, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal)` reads it, as
  * far as this library tells it: a date, a date and a time in the forms of ISO 8601 with a T, a space or a lower case t, an
@@ -541,6 +573,11 @@ const TIMESTAMP = /^(\d{4})-(\d{2})(?:-(\d{2})(?:[Tt ](\d{2}):(\d{2})(?::(\d{2})
  * .NET takes more, e.g. `10/27/2026` or `27 Oct 2026`, which this library refuses: the written form refuses them anyway.
  */
 export function timestampOf(given: string): number | undefined {
+
+    const written = writtenTimestampOf(given);
+
+    if (written !== undefined)
+        return written;
 
     const match = TIMESTAMP.exec(given.replace(/^[\s\0]+|[\s\0]+$/gu, ''));
 
@@ -712,20 +749,48 @@ export interface Id {
     readonly key:   string;
 }
 
+/** How many texts a parser of identifications remembers at most, before it forgets them all. */
+const REMEMBERED = 1 << 16;
+
+/**
+ * The given parser of identifications, remembering what it read of a text: a version names most identifications more than
+ * once, and a check reads them again of each collection holding or naming them. Each its own copy, as the parser gives it.
+ */
+function remembering(parser: (given: string) => Id | undefined): (given: string) => Id | undefined {
+
+    const read = new Map<string, Id | undefined>();
+
+    return (given: string): Id | undefined => {
+
+        let id = read.get(given);
+
+        if (id === undefined && !read.has(given)) {
+            if (read.size >= REMEMBERED)
+                read.clear();
+            id = parser(given);
+            read.set(given, id);
+        }
+
+        return id === undefined ? undefined : { text: id.text, key: id.key };
+
+    };
+
+}
+
 /** An identification of a free text: trimmed, compared without case, e.g. `EnergyMeter_Id`. */
-export const freeId = (given: string): Id | undefined => {
+export const freeId = remembering((given: string): Id | undefined => {
     const id = nonEmpty(given);
     return id === undefined ? undefined : { text: id, key: ignoringCase(id) };
-};
+});
 
 /** An identification of a free text compared with case, e.g. `ParkingProduct_Id`. */
-export const caseId = (given: string): Id | undefined => {
+export const caseId = remembering((given: string): Id | undefined => {
     const id = nonEmpty(given);
     return id === undefined ? undefined : { text: id, key: id };
-};
+});
 
 /** The identification of a charging station operator (`ChargingStationOperator_Id`), e.g. `DE*GEF`. */
-export function operatorId(given: string): Id | undefined {
+export const operatorId = remembering((given: string): Id | undefined => {
 
     const match = /^([A-Z]{2})\*?([A-Z0-9]{3})$/u.exec(trimmed(given).toUpperCase());
 
@@ -736,10 +801,10 @@ export function operatorId(given: string): Id | undefined {
 
     return { text, key: text };
 
-}
+});
 
 /** The identification of an e-mobility provider (`EMobilityProvider_Id`): its separator kept, compared without it. */
-export function providerId(given: string): Id | undefined {
+export const providerId = remembering((given: string): Id | undefined => {
 
     const match = /^([A-Z]{2})([*-]?)([A-Z0-9]{3})$/u.exec(trimmed(given).toUpperCase());
 
@@ -748,7 +813,7 @@ export function providerId(given: string): Id | undefined {
 
     return { text: `${match[1] ?? ''}${match[2] ?? ''}${match[3] ?? ''}`, key: `${match[1] ?? ''}*${match[3] ?? ''}` };
 
-}
+});
 
 /** The identification of a grid operator (`GridOperator_Id`), as one of a charging station operator. */
 export const gridOperatorId = operatorId;
@@ -757,11 +822,11 @@ export const gridOperatorId = operatorId;
  * The identification of a member of a charging station operator: a charging pool (`P`), a charging station (`S`), an EVSE
  * (`E`), with its operator, compared without case and without the stars of its suffix.
  */
-const memberId = (letter: string) => {
+const memberId = (letter: string): ((given: string) => Id | undefined) => {
 
     const pattern = new RegExp(`^([a-zA-Z]{2}\\*?[a-zA-Z0-9]{3})\\*?${letter}([a-zA-Z0-9][a-zA-Z0-9*]{0,29})$`, 'u');
 
-    return (given: string): Id | undefined => {
+    return remembering((given: string): Id | undefined => {
 
         const match = pattern.exec(trimmed(given));
         const op    = match === null ? undefined : operatorId(match[1] ?? '');
@@ -771,7 +836,7 @@ const memberId = (letter: string) => {
 
         return { text: `${op.text}*${letter}${match[2] ?? ''}`, key: `${op.key}*${letter}${ignoringCase((match[2] ?? '').replace(/\*/gu, ''))}` };
 
-    };
+    });
 
 };
 
@@ -783,7 +848,7 @@ const SUFFIX     = '([a-zA-Z0-9_][a-zA-Z0-9_*\\-.€$]{0,49})';
 const TARIFF_ID  = new RegExp(`^([a-zA-Z]{2}\\*?[a-zA-Z0-9]{3})\\*?T${SUFFIX}$`, 'u');
 
 /** The identification of a charging tariff (`ChargingTariff_Id`): trimmed, compared without case and the stars of its suffix. */
-export function tariffId(given: string): Id | undefined {
+export const tariffId = remembering((given: string): Id | undefined => {
 
     const match = TARIFF_ID.exec(trimmed(given));
     const op    = match === null ? undefined : operatorId(match[1] ?? '');
@@ -793,17 +858,17 @@ export function tariffId(given: string): Id | undefined {
 
     return { text: `${op.text}*T${match[2] ?? ''}`, key: `${op.key}*T${ignoringCase((match[2] ?? '').replace(/\*/gu, ''))}` };
 
-}
+});
 
 /**
  * The identification of a template or a group of a charging station operator, e.g. `ST` of a charging station template:
  * untrimmed, compared without case; a group may separate its operator with a dash.
  */
-const ownedId = (letters: string, dash = false) => {
+const ownedId = (letters: string, dash = false): ((given: string) => Id | undefined) => {
 
     const pattern = new RegExp(`^([A-Za-z]{2}${dash ? '[*\\-]' : '\\*'}?[A-Za-z0-9]{3})\\*?${letters}${SUFFIX}$`, 'u');
 
-    return (given: string): Id | undefined => {
+    return remembering((given: string): Id | undefined => {
 
         if (trimmed(given) === '')
             return undefined;
@@ -816,7 +881,7 @@ const ownedId = (letters: string, dash = false) => {
 
         return { text: `${op.text}*${letters}${match[2] ?? ''}`, key: `${op.key}*${letters}${ignoringCase(match[2] ?? '')}` };
 
-    };
+    });
 
 };
 

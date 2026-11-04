@@ -24,7 +24,7 @@ import { ignoringCase, inRoamingNetwork } from './identifications.ts';
 import { trimmed }                   from './versionTexts.ts';
 import { partyKeysOf }               from './partyKeys.ts';
 import { invalidNetworkProperties, invalidOperatorMetadata, invalidOperatorTexts, invalidReading } from './reading.ts';
-import { invalidReferences }         from './references.ts';
+import { invalidReferences, whileChecking } from './references.ts';
 import { asRead, notWrittenAsHeld }  from './writtenForm.ts';
 import { effectiveTreeETag }         from './tree.ts';
 import type { POIPublicKey }         from '../keys.ts';
@@ -315,9 +315,10 @@ export class RoamingNetwork {
                              })();
 
         // What WWCP_POI refuses of an entity as it reads it, then what it refuses of the network it makes of them; then what
-        // it takes and writes otherwise.
-        const refusal      = invalidReading(content, of) ?? keyStatementError ?? invalidReferences(content, of, before) ??
-                             notWrittenAsHeld(content);
+        // it takes and writes otherwise. In one check, as the content is not changed in between: the effective charging
+        // stations an operator is made of are those the references of the network are resolved with.
+        const refusal      = whileChecking(() => invalidReading(content, of) ?? keyStatementError ?? invalidReferences(content, of, before) ??
+                                                 notWrittenAsHeld(content));
 
         if (refusal !== undefined)
             throw new POIError(refusal);

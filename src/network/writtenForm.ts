@@ -350,6 +350,9 @@ export const PROPERTIES_OF: Readonly<Record<string, readonly string[]>> = {
     exchanges:               [ '@context', 'masterPublicKey', 'baseURL', 'currency', 'name' ],
 };
 
+/** `PROPERTIES_OF` as sets, by the kinds of objects, as the written form looks them up for every property. */
+const PROPERTY_SETS = new Map(Object.entries(PROPERTIES_OF).map(([ kind, properties ]) => [ kind, new Set(properties) ]));
+
 /**
  * The texts WWCP_POI reads by their types, which write them trimmed: identifications and references, currencies,
  * versions, an e-mail address, the URLs of a release and a certificate (refused without a scheme).
@@ -676,9 +679,9 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
         if (kind === 'city' && key !== key.toLowerCase())
             return 'the content leaves it out';
 
-        const known = kind === undefined ? undefined : PROPERTIES_OF[kind];
+        const known = kind === undefined ? undefined : PROPERTY_SETS.get(kind);
 
-        if (known !== undefined && !known.includes(key))
+        if (known !== undefined && !known.has(key))
             return 'the content leaves it out';
 
         return undefined;
@@ -753,7 +756,8 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
 
                 const written = key === 'customData' ? undefined : writtenValueOf(key, element, kind);
 
-                if (written !== undefined && contentText(written) !== contentText(element))
+                // Two texts are written alike exactly where they are alike.
+                if (written !== undefined && (typeof written === 'string' && typeof element === 'string' ? written !== element : contentText(written) !== contentText(element)))
                     return holdsAs(elementAt, written);
 
                 const found = check(element, key, kind, elementAt);

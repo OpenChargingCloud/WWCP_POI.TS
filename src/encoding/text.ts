@@ -64,7 +64,9 @@ function positionsOf(alphabet: string): Map<string, number> {
 
 
 const BASE64     = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-const BASE64_MAP = positionsOf(BASE64);
+
+/** The positions of the characters of Base64 by their ASCII codes, -1 for every other character. */
+const BASE64_POSITIONS = Int8Array.from({ length: 128 }, (_, code) => BASE64.indexOf(String.fromCharCode(code)));
 
 /** Standard Base64 with padding. */
 export function toBase64(bytes: Uint8Array): string {
@@ -102,17 +104,21 @@ export function fromBase64(text: string): Uint8Array {
 
     for (let index = 0; index < text.length; index += 4) {
 
-        const [ v0 = 0, v1 = 0, v2 = 0, v3 = 0 ] = [0, 1, 2, 3].map(position => {
-            const character = text.charAt(index + position);
-            if (character === '=' && index + 4 === text.length && position >= 4 - padding)
-                return 0;
-            const value = BASE64_MAP.get(character);
-            if (value === undefined)
-                throw new POIError(`Not canonical Base64: the character '${character}'!`);
-            return value;
-        });
+        let triple = 0;
 
-        const triple = (v0 << 18) | (v1 << 12) | (v2 << 6) | v3;
+        for (let position = 0; position < 4; position++) {
+
+            const code  = text.charCodeAt(index + position);
+            const value = code === 0x3D && index + 4 === text.length && position >= 4 - padding
+                              ? 0
+                              : code < 128 ? BASE64_POSITIONS[code] ?? -1 : -1;
+
+            if (value < 0)
+                throw new POIError(`Not canonical Base64: the character '${text.charAt(index + position)}'!`);
+
+            triple = (triple << 6) | value;
+
+        }
 
         full[index / 4 * 3]     = (triple >> 16) & 0xFF;
         full[index / 4 * 3 + 1] = (triple >>  8) & 0xFF;

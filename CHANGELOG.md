@@ -68,16 +68,19 @@
   trust policy identifications, digests of key statements, offer hashes and publication receipts, against the POI
   fixtures of ChargyWebApp at `fc513cd`, vendored as `tests/vectors/chargy-fc513cd`. Run in `tests/conformance.test.ts`
   as WWCPPOIConformanceTests runs them against this library: a refusal after its control, by its reason; none deviates.
-- `poi-refusals.json` of WWCPPOIConformanceTests `586a339` vendored, of 142 vectors: 13 price statements whose price
-  status is none WWCP_POI3 reads (without one; its prices not an array; the prices of a tariff not an object; a property
-  or a JSON-LD context besides, of the status or of the prices of a tariff; a tariff not named `{operatorId}*T{suffix}`
-  or named twice, also in another spelling; its elements empty, one not an object or without price components),
-  refused as both read them, in the words both give. None deviates.
+- `poi-refusals.json` of WWCPPOIConformanceTests `7d43d4b` vendored (`586a339` before a rebase there), of 142 vectors:
+  13 price statements whose price status is none WWCP_POI3 reads (without one; its prices not an array; the prices of a
+  tariff not an object; a property or a JSON-LD context besides, of the status or of the prices of a tariff; a tariff
+  not named `{operatorId}*T{suffix}` or named twice, also in another spelling; its elements empty, one not an object or
+  without price components), refused as both read them, in the words both give. None deviates.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
-- Reading a version takes about four to six times as long as with 0.2.0, e.g. 1.8 s for 3204 charging pools of 12816
-  EVSEs, where 0.2.0 took 0.4 s. The checks of measurement public keys add about 20 µs a key of P-256, 0.3 s of the
-  12816 of these EVSEs; a key of RSA takes about as long as one exponentiation with its modulus, a certificate of ECDSA
-  a few milliseconds.
+- Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
+  12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
+  members of the operators in their order, their effective charging stations and energy meters and the charging stations
+  parking spaces name once (`whileChecking`); the identifications read of texts and the measurement public keys checked,
+  the last 65536 of each, are remembered for the next version too, as a history names most of them again. A key of P-256
+  takes about 20 µs, a key of RSA about as long as one exponentiation with its modulus, a certificate of ECDSA a few
+  milliseconds.
 
 
 ### Migration

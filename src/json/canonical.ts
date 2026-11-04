@@ -41,15 +41,32 @@ const SHORT_ESCAPES: Record<number, string> = {
 const hex4 = (codeUnit: number): string =>
     '\\u' + codeUnit.toString(16).toUpperCase().padStart(4, '0');
 
+/** Whether a code unit is a printable ASCII character written as it is: neither escaped, nor a quote, nor a backslash. */
+const isPlain = (codeUnit: number): boolean =>
+    codeUnit >= 0x20 && codeUnit < 0x7F && codeUnit !== 0x22 && codeUnit !== 0x5C;
+
 
 /** A string as canonical JSON writes it, in double quotes. */
 export function canonicalString(text: string): string {
 
-    let result = '"';
+    let plain = 0;
 
-    for (let index = 0; index < text.length; index++) {
+    while (plain < text.length && isPlain(text.charCodeAt(plain)))
+        plain++;
+
+    if (plain === text.length)
+        return `"${text}"`;
+
+    let result = '"' + text.slice(0, plain);
+
+    for (let index = plain; index < text.length; index++) {
 
         const codeUnit = text.charCodeAt(index);
+
+        if (isPlain(codeUnit)) {
+            result += text.charAt(index);
+            continue;
+        }
 
         // A character beyond the Basic Multilingual Plane is always written as its escaped surrogate pair; an unpaired
         // surrogate as U+FFFD, as .NET does.

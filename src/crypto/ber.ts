@@ -323,25 +323,27 @@ export function oidOf(record: BER): string {
     if (content.length === 0 || ((content.at(-1) ?? 0) & 0x80) !== 0)
         throw new BERError('invalid OID contents');
 
-    const arcs: bigint[] = [];
-    let   arc  = 0n;
+    // An arc as a number while it is a safe integer, of any length as a bigint.
+    const arcs: (number | bigint)[] = [];
+    let   arc: number | bigint = 0;
     let   fresh = true;
 
     for (const octet of content) {
         if (fresh && octet === 0x80)
             throw new BERError('invalid OID contents');
-        arc   = (arc << 7n) | BigInt(octet & 0x7f);
+        arc   = typeof arc === 'number' && arc < 2 ** 45 ? arc * 128 + (octet & 0x7f) : (BigInt(arc) << 7n) | BigInt(octet & 0x7f);
         fresh = (octet & 0x80) === 0;
         if (fresh) {
             arcs.push(arc);
-            arc = 0n;
+            arc = 0;
         }
     }
 
-    const [ head = 0n, ...rest ] = arcs;
-    const first = head < 40n ? 0n : head < 80n ? 1n : 2n;
+    const [ head = 0, ...rest ] = arcs;
+    const big   = BigInt(head);
+    const first = big < 40n ? 0n : big < 80n ? 1n : 2n;
 
-    return [ first, head - first * 40n, ...rest ].join('.');
+    return [ first, big - first * 40n, ...rest ].join('.');
 
 }
 

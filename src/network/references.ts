@@ -50,12 +50,30 @@ const objectsAt = (json: JSONObject, property: string): JSONObject[] => {
 const ordinalText = (left: string, right: string): number =>
     left < right ? -1 : left > right ? 1 : 0;
 
-/** The entities of the given property in the ordinal order of their identifications, as their POICollection holds them. */
-function sortedAt(json: JSONObject, property: string, parser: (text: string) => Id | undefined): JSONObject[] {
-    return objectsAt(json, property).
-               map(entity => ({ entity, id: idOf(entity, parser)?.text ?? '' })).
-               sort((left, right) => ordinalText(left.id, right.id)).
-               map(item => item.entity);
+/**
+ * The entities of the given property in the ordinal order of their identifications, as their POICollection holds them;
+ * once per holder, property and parser while the network or an operator is checked.
+ */
+function sortedAt(json: JSONObject, property: string, parser: (text: string) => Id | undefined): readonly JSONObject[] {
+
+    const ofHolder = SORTED.get(json) ?? new Map<(text: string) => Id | undefined, Map<string, readonly JSONObject[]>>();
+    const ofParser = ofHolder.get(parser) ?? new Map<string, readonly JSONObject[]>();
+    const known    = ofParser.get(property);
+
+    if (known !== undefined)
+        return known;
+
+    const sorted = objectsAt(json, property).
+                       map(entity => ({ entity, id: idOf(entity, parser)?.text ?? '' })).
+                       sort((left, right) => ordinalText(left.id, right.id)).
+                       map(item => item.entity);
+
+    ofParser.set(property, sorted);
+    ofHolder.set(parser, ofParser);
+    SORTED.set(json, ofHolder);
+
+    return sorted;
+
 }
 
 /** The identification of an entity of the given kind, as its type reads it. */
@@ -110,7 +128,7 @@ const isGiven = (value: JSONValue | undefined): value is JSONValue =>
 
 /**
  * The templates of a party of the given property by their identifications, the first of each, once per party and property
- * while the network or an operator is checked (`fresh`): the content may be changed between two checks.
+ * while the network or an operator is checked (`whileChecking`): the content may be changed between two checks.
  */
 let TEMPLATES = new WeakMap<JSONObject, Map<string, Map<string, JSONObject>>>();
 
@@ -120,16 +138,63 @@ let EFFECTIVE = new WeakMap<JSONObject, readonly EffectiveStation[]>();
 /** The members, groups and time zones of an operator its offers cover, once per operator while it is checked. */
 let MEMBERS = new WeakMap<JSONObject, Members>();
 
+/** The entities of a holder, by the parser and the property `sortedAt` sorts them by, while it is checked. */
+let SORTED = new WeakMap<JSONObject, Map<(text: string) => Id | undefined, Map<string, readonly JSONObject[]>>>();
+
+/** The energy meters of an operator, and every meter of a network, effective or not, while it is checked. */
+let METERS            = new WeakMap<JSONObject, readonly JSONObject[]>();
+let ALL_METERS        = new WeakMap<Network, readonly { meter: JSONObject, owner: JSONObject }[]>();
+let EFFECTIVE_METERS  = new WeakMap<Network, readonly JSONObject[]>();
+let EFFECTIVE_METER   = new WeakMap<JSONObject, Map<JSONObject, JSONObject>>();
+
+/** The keys of the charging stations of an operator, as parking spaces and others name them, while it is checked. */
+let STATIONS          = new WeakMap<JSONObject, ReadonlySet<string>>();
+
+/** How deep the checks of the network or of an operator are nested: they remember what they found while it is above 0. */
+let checking = 0;
+
 const fresh = (): void => {
-    TEMPLATES = new WeakMap();
-    EFFECTIVE = new WeakMap();
-    MEMBERS   = new WeakMap();
+    TEMPLATES         = new WeakMap();
+    EFFECTIVE         = new WeakMap();
+    MEMBERS           = new WeakMap();
+    SORTED            = new WeakMap();
+    METERS            = new WeakMap();
+    ALL_METERS        = new WeakMap();
+    EFFECTIVE_METERS  = new WeakMap();
+    EFFECTIVE_METER   = new WeakMap();
+    STATIONS          = new WeakMap();
 };
+
+/**
+ * The given check of the network or of an operator, remembering what it found within it: nothing of a check before, as the
+ * content may be changed between two checks, e.g. by a change set, and nothing after it.
+ */
+export function whileChecking<T>(check: () => T): T {
+
+    if (checking === 0)
+        fresh();
+
+    checking++;
+
+    try {
+        return check();
+    }
+    finally {
+        checking--;
+        if (checking === 0)
+            fresh();
+    }
+
+}
 
 function templateIndex(owner: JSONObject, property: string, parser: (text: string) => Id | undefined): Map<string, JSONObject> {
 
-    const ofOwner = TEMPLATES.get(owner) ?? new Map<string, Map<string, JSONObject>>();
-    TEMPLATES.set(owner, ofOwner);
+    let ofOwner = TEMPLATES.get(owner);
+
+    if (ofOwner === undefined) {
+        ofOwner = new Map<string, Map<string, JSONObject>>();
+        TEMPLATES.set(owner, ofOwner);
+    }
 
     let index = ofOwner.get(property);
 
@@ -164,14 +229,23 @@ function withTemplates(member: JSONObject, templates: readonly JSONObject[], sin
 
     const effective: JSONObject = { ...member };
 
+    // The value of the first template giving one.
     for (const property of singles)
-        if (!isGiven(get(member, property))) {
-            const given = templates.map(template => get(template, property)).find(isGiven);
-            if (given !== undefined)
-                effective[property] = given;
-        }
+        if (!isGiven(get(member, property)))
+            for (const template of templates) {
+                const given = get(template, property);
+                if (isGiven(given)) {
+                    effective[property] = given;
+                    break;
+                }
+            }
 
     for (const [ property, key ] of Object.entries(unions)) {
+
+        // No template adds to the list: it is the own one, as it is.
+        if (!templates.some(template => isArray(get(template, property))))
+            continue;
+
         const own   = get(member, property);
         const items = isArray(own) ? [ ...own ] : [];
         const taken = new Set(items.map(key));
@@ -203,9 +277,23 @@ const STATION_UNIONS  = { transparencySoftwareStatus: byRelease, vehicleTypes: b
 const EVSE_SINGLES    = [ 'physicalReference', 'maxVoltage', 'maxCurrent', 'maxPower', 'geoLocation', 'maxReservationDuration', 'reachDistance',
                           'operationTimeout', 'extendedOperationTimeout', 'floorLevel' ];
 
-/** An energy meter with what the templates of its owner give it (`EnergyMeterTemplate.Effective`). */
-const effectiveMeter = (meter: JSONObject, owner: JSONObject): JSONObject =>
-    withTemplates(meter, templatesOf(meter, owner, 'energyMeterTemplates', freeId), METER_SINGLES, METER_UNIONS);
+/** An energy meter with what the templates of its owner give it (`EnergyMeterTemplate.Effective`), once while it is checked. */
+function effectiveMeter(meter: JSONObject, owner: JSONObject): JSONObject {
+
+    const ofMeter = EFFECTIVE_METER.get(meter) ?? new Map<JSONObject, JSONObject>();
+    const known   = ofMeter.get(owner);
+
+    if (known !== undefined)
+        return known;
+
+    const effective = withTemplates(meter, templatesOf(meter, owner, 'energyMeterTemplates', freeId), METER_SINGLES, METER_UNIONS);
+
+    ofMeter.set(owner, effective);
+    EFFECTIVE_METER.set(meter, ofMeter);
+
+    return effective;
+
+}
 
 /** A charging station of an operator as at runtime, with its effective EVSEs (`EffectiveChargingStations`). */
 interface EffectiveStation {
@@ -226,13 +314,13 @@ const withNames = (templates: readonly JSONObject[], parser: (text: string) => I
         : `with the properties of its templates ${templates.map(template => `'${textOf(template, parser)}'`).join(', ')}`;
 
 /** The charging pools of an operator, ordinally, and their charging stations, ordinally. */
-const poolsOf = (operator: JSONObject): JSONObject[] =>
+const poolsOf = (operator: JSONObject): readonly JSONObject[] =>
     sortedAt(operator, 'chargingPools', poolId);
 
-const stationsOf = (pool: JSONObject): JSONObject[] =>
+const stationsOf = (pool: JSONObject): readonly JSONObject[] =>
     sortedAt(pool, 'chargingStations', stationId);
 
-const evsesOf = (station: JSONObject): JSONObject[] =>
+const evsesOf = (station: JSONObject): readonly JSONObject[] =>
     sortedAt(station, 'EVSEs', evseId);
 
 /** The effective charging stations of an operator, pools and stations ordinally. */
@@ -278,14 +366,25 @@ function effectiveStations(operator: JSONObject): readonly EffectiveStation[] {
 }
 
 /** The energy meters of an operator (`EnergyMeters`): per pool its own, then per station its own and those of its EVSEs. */
-function metersOfOperator(operator: JSONObject): JSONObject[] {
-    return poolsOf(operator).flatMap(pool => [
+function metersOfOperator(operator: JSONObject): readonly JSONObject[] {
+
+    const known = METERS.get(operator);
+
+    if (known !== undefined)
+        return known;
+
+    const meters = poolsOf(operator).flatMap(pool => [
         ...sortedAt(pool, 'energyMeters', freeId),
         ...stationsOf(pool).flatMap(station => [
             ...sortedAt(station, 'energyMeters', freeId),
             ...evsesOf(station).flatMap(evse => isObject(evse['energyMeter']) ? [ evse['energyMeter'] ] : []),
         ]),
     ]);
+
+    METERS.set(operator, meters);
+
+    return meters;
+
 }
 
 /** The energy meters of a grid operator: of its grid connection points, ordinally. */
@@ -293,14 +392,39 @@ const metersOfGridOperator = (gridOperator: JSONObject): JSONObject[] =>
     sortedAt(gridOperator, 'gridConnectionPoints', freeId).flatMap(point => isObject(point['energyMeter']) ? [ point['energyMeter'] ] : []);
 
 /** Every energy meter of the network with its owner (`AllEnergyMeters`): of the operators, then of the grid operators. */
-const allMeters = (network: Network): { meter: JSONObject, owner: JSONObject }[] => [
-    ...network.operators.flatMap(operator => metersOfOperator(operator).map(meter => ({ meter, owner: operator }))),
-    ...network.gridOperators.flatMap(gridOperator => metersOfGridOperator(gridOperator).map(meter => ({ meter, owner: gridOperator }))),
-];
+function allMeters(network: Network): readonly { meter: JSONObject, owner: JSONObject }[] {
+
+    const known = ALL_METERS.get(network);
+
+    if (known !== undefined)
+        return known;
+
+    const meters = [
+        ...network.operators.flatMap(operator => metersOfOperator(operator).map(meter => ({ meter, owner: operator }))),
+        ...network.gridOperators.flatMap(gridOperator => metersOfGridOperator(gridOperator).map(meter => ({ meter, owner: gridOperator }))),
+    ];
+
+    ALL_METERS.set(network, meters);
+
+    return meters;
+
+}
 
 /** Every energy meter of the network as at runtime (`AllEffectiveEnergyMeters`). */
-const allEffectiveMeters = (network: Network): JSONObject[] =>
-    allMeters(network).map(({ meter, owner }) => effectiveMeter(meter, owner));
+function allEffectiveMeters(network: Network): readonly JSONObject[] {
+
+    const known = EFFECTIVE_METERS.get(network);
+
+    if (known !== undefined)
+        return known;
+
+    const meters = allMeters(network).map(({ meter, owner }) => effectiveMeter(meter, owner));
+
+    EFFECTIVE_METERS.set(network, meters);
+
+    return meters;
+
+}
 
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -395,9 +519,10 @@ function powerSum(station: JSONObject, evses: readonly JSONObject[], id: string)
  * charging pool template of it the payment option EVTaler without an EV Taler merchant (`InvalidPaymentOption`), or two of
  * its charging tariff offers overlap at an EVSE (`OverlappingOffers`).
  */
-export function invalidGroupOrOffer(operator: JSONObject): string | undefined {
+export const invalidGroupOrOffer = (operator: JSONObject): string | undefined =>
+    whileChecking(() => groupOrOfferError(operator));
 
-    fresh();
+function groupOrOfferError(operator: JSONObject): string | undefined {
 
     const id        = textOf(operator, operatorId);
     const evses     = new Set(poolsOf(operator).flatMap(pool => stationsOf(pool).flatMap(station => evsesOf(station).map(evse => keyOf(evse, evseId)))));
@@ -729,7 +854,10 @@ function newProviderOfferOverlap(network: Network, before: JSONObject | undefine
 }
 
 /** The error, when a charging pool or a charging pool template names the payment option EVTaler, but its operator has no merchant. */
-export function invalidPaymentOption(operator: JSONObject): string | undefined {
+export const invalidPaymentOption = (operator: JSONObject): string | undefined =>
+    whileChecking(() => paymentOptionError(operator));
+
+function paymentOptionError(operator: JSONObject): string | undefined {
 
     if (get(operator, 'evTaler') !== undefined)
         return undefined;
@@ -755,6 +883,10 @@ export function invalidPaymentOption(operator: JSONObject): string | undefined {
  * options after the last change (`invalidGroupOrOffer`).
  */
 export function operatorConstruction(operator: JSONObject, id: string, of: 'version' | 'change set'): void {
+    whileChecking(() => { construct(operator, id, of); });
+}
+
+function construct(operator: JSONObject, id: string, of: 'version' | 'change set'): void {
 
     const fail = (message: string, parameter?: string): never => {
         throw thrown(message, parameter);
@@ -899,7 +1031,6 @@ export function operatorConstruction(operator: JSONObject, id: string, of: 'vers
 
 /** What the constructor of the given charging station operator refuses, as its TryParse names it; undefined for nothing. */
 export function checkOperator(operator: JSONObject, id: string, of: 'version' | 'change set' = 'version'): Checked {
-    fresh();
     try {
         operatorConstruction(operator, id, of);
         return undefined;
@@ -1116,7 +1247,21 @@ function unknownGridConnectionPoint(network: Network, named: Named): string | un
 /** Whether the given operators have the given charging station, at the operator its identification names. */
 function hasStation(operators: readonly JSONObject[], station: Id): boolean {
     const operator = entityOf(operators, station.text.slice(0, 6), operatorId);
-    return operator !== undefined && poolsOf(operator).some(pool => objectsAt(pool, 'chargingStations').some(item => keyOf(item, stationId) === station.key));
+    return operator !== undefined && stationKeysOf(operator).has(station.key);
+}
+
+/** The keys of the charging stations of the pools of an operator, once while it is checked. */
+function stationKeysOf(operator: JSONObject): ReadonlySet<string> {
+
+    let keys = STATIONS.get(operator);
+
+    if (keys === undefined) {
+        keys = new Set(poolsOf(operator).flatMap(pool => objectsAt(pool, 'chargingStations').map(item => keyOf(item, stationId))));
+        STATIONS.set(operator, keys);
+    }
+
+    return keys;
+
 }
 
 /** `UnknownChargingStation`: the charging stations of parking garages, spaces, space templates and sensors. */
@@ -1544,9 +1689,10 @@ const rootTwice = (entities: readonly JSONObject[], parser: (text: string) => Id
  * checks them there; undefined for none. After a change set, a reference the version before the given one resolves names
  * what the change set withdrew while another party still names it.
  */
-export function invalidReferences(content: JSONObject, of: 'version' | 'change set', before?: JSONObject): string | undefined {
+export const invalidReferences = (content: JSONObject, of: 'version' | 'change set', before?: JSONObject): string | undefined =>
+    whileChecking(() => referenceError(content, of, before));
 
-    fresh();
+function referenceError(content: JSONObject, of: 'version' | 'change set', before?: JSONObject): string | undefined {
 
     const network = networkOf(content);
     const named   = namedBy(network);

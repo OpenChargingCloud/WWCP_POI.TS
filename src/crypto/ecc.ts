@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import { toHex }           from '../encoding/text.ts';
 import type { PrimeCurve } from './curves.ts';
 
 
@@ -63,7 +64,7 @@ export const bitLength = (value: bigint): number =>
     value <= 0n ? 0 : value.toString(2).length;
 
 export const bigintOf = (bytes: Uint8Array): bigint =>
-    bytes.reduce((value, octet) => (value << 8n) | BigInt(octet), 0n);
+    bytes.length === 0 ? 0n : BigInt(`0x${toHex(bytes)}`);
 
 /** The square root modulo an odd prime (Tonelli and Shanks); undefined, where there is none. */
 export function sqrtMod(value: bigint, p: bigint): bigint | undefined {
