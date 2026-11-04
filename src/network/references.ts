@@ -604,7 +604,7 @@ function membersOf(operator: JSONObject): Members {
         for (const station of stationsOf(pool))
             for (const evse of evsesOf(station)) {
                 evses.set(keyOf(evse, evseId), textOf(evse, evseId));
-                if (timeZone !== undefined && timeZoneNamed(timeZone) !== UTC)
+                if (timeZone !== undefined)
                     timeZones.set(keyOf(evse, evseId), timeZoneNamed(timeZone));
             }
 

@@ -33,14 +33,27 @@
 - Two charging tariff offers of an operator must not overlap (`offers.ts`, `OverlappingOffers` of WWCP_POI3, SPECIFICATION.md
   9.4): covering one EVSE, for some of the same sessions (ad hoc, or contracts of a provider both name, or one names
   none), at some of the same times within their `notBefore` and `notAfter`, both inclusive, and their opening times in the
-  time zone of the EVSE's charging pool, with what its templates give it: an IANA or a Windows name of a time zone, as
-  `TimeZoneInfo` finds it (`timeZones.ts`), else UTC; local times as `TimeZoneInfo` converts them, one a change to
-  daylight saving time skips the first after it, one it gives twice the one of standard time; exceptional closings
+  time zone of the EVSE's charging pool, with what its templates give it, else UTC; local times as `TimeZoneInfo`
+  converts them, one a change to daylight saving time skips the first after it, one it gives twice the one of standard
+  time; exceptional closings
   close, exceptional openings open. Refused in its words, at the first EVSE in the ordinal order, as the constructor of
   the operator refuses it, also after a change set. After a change set also two offers of an e-mobility provider the
   change set changed that overlap and did not in the version before (`NewProviderOfferOverlap`); by the changes of
-  others they may. Of 64 versions probed against WWCP_POI3 at 89d2e02, 63 are taken and refused alike, in the same
-  words; the one left names its time zone `CET`, which .NET on Windows does not find, on Linux does, as this library.
+  others they may. Of 64 versions probed against WWCP_POI3 at d1c41ca, all are taken and refused alike, in the same
+  words, also those of time zones a charging pool may not name.
+- The time zone of a charging pool or a charging pool template is one of a region of the IANA time zone database, as
+  the database writes it, which this platform knows (`timeZones.ts`, `POITimeZones` of WWCP_POI3 `d1c41ca`,
+  SPECIFICATION.md 9.4, D17 of the conformance tests): `Europe/Berlin`, also an older name the database keeps for one,
+  `Asia/Kolkata` as `Asia/Calcutta`, or of a part of a region, `America/Argentina/Buenos_Aires`. No name of another
+  system (`W. Europe Standard Time`), none without a region (`CET`, `UTC`, `Etc/GMT-1`, `US/Eastern`), none in another
+  case (`europe/berlin`), none the platform does not know: refused in the words of WWCP_POI3 as the constructor of the
+  pool or template refuses it, trimmed, after its images, no longer taken as UTC, nor a Windows name as its IANA name.
+  The case is the one Temporal gives (Node 26); without Temporal (Node 22 and 24) Intl gives it of a name, but of an
+  older name only the name it stands for, so an older name is then taken in any case (`Asia/KOLKATA`). Of 92 versions
+  probed against WWCP_POI3 at `d1c41ca`, 90 are taken and refused alike, in the same words; the two left name
+  `America/Ciudad_Juarez` and `Antarctica/Troll`, which .NET on Windows does not find, and this library takes, as Node
+  knows them: databases of different age know different names (SPECIFICATION.md 9.4). `poi-refusals.json` of
+  WWCPPOIConformanceTests vendored again without the marker of D17: its 10 time zones are refused by their reasons.
 - A measurement public key is a key as BouncyCastle 2.7.0 makes one, as WWCP_POI3 checks it (`measurementPublicKey.ts`,
   `MeasurementPublicKey.TryCheck`), refused in its words and those of BouncyCastle: a SubjectPublicKeyInfo of DER
   (`ber.ts`), of RSA, also of PSS and OAEP, its modulus odd, of no prime factor up to 743, of 16384 bits at most and no
@@ -101,6 +114,9 @@
   own, e.g. a roaming network with keys of its own.
 - A price statement whose price status 0.2.0 took and WWCP_POI3 refuses, e.g. naming the charging tariff
   `DE*POI*FOREIGN`, is refused before its signature is looked at.
+- A charging pool or a charging pool template naming its time zone by a Windows name, an abbreviation or in another case
+  than the IANA time zone database, which 0.2.0 took, is refused: it names it as the database writes it, e.g.
+  `Europe/Berlin`.
 
 
 ## 0.2.0 (2026-11-02)

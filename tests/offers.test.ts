@@ -129,11 +129,7 @@ describe('Charging tariff offers', () => {
 
         expect(refusal(offering(later))).toBe('taken');
         expect(refusal(offering(later, 'Europe/Berlin'))).toBe(overlap('a', 'b'));
-        expect(refusal(offering(later, 'europe/berlin'))).toBe(overlap('a', 'b'));
         expect(refusal(offering(later, ' Europe/Berlin '))).toBe(overlap('a', 'b'));
-        expect(refusal(offering(later, 'W. Europe Standard Time'))).toBe(overlap('a', 'b'));
-        expect(refusal(offering(later, 'Tokyo Standard Time'))).toBe('taken');
-        expect(refusal(offering(later, 'Nowhere/Land'))).toBe('taken');
         expect(refusal(offering([ offer('a', monday), offer('b', { openingTimes: weekly('monday', '01:30', '02:00') }) ], 'America/New_York'))).toBe(overlap('a', 'b'));
 
         // Of a charging pool template; of the charging pools, the second only.
@@ -148,6 +144,38 @@ describe('Charging tariff offers', () => {
             gef['chargingTariffOffers'] = later;
             defined((gef['chargingPools'] as JSONObject[])[1])['timeZone'] = 'Europe/Berlin';
         }))).toBe(overlap('a', 'b', 'DE*GEF*E4*1'));
+
+    });
+
+    it('of an operator in a time zone of a region of the IANA time zone database, as it writes it, which this platform knows', () => {
+
+        // 06:00 to 07:00 UTC on a Monday is 11:30 to 12:30 in Kolkata, 03:00 to 04:00 in Buenos Aires.
+        const monday = { notBefore: '2026-11-02T06:00:00.000Z', notAfter: '2026-11-02T06:59:59.999Z' };
+        const at     = (begin: string, end: string): JSONObject[] => [ offer('a', monday), offer('b', { openingTimes: weekly('monday', begin, end) }) ];
+
+        // Also an older name the database keeps for one, or a name of a part of a region.
+        for (const timeZone of [ 'Asia/Calcutta', 'Asia/Kolkata' ]) {
+            expect(refusal(offering(at('07:30', '09:00'), timeZone))).toBe('taken');
+            expect(refusal(offering(at('12:00', '13:00'), timeZone))).toBe(overlap('a', 'b'));
+        }
+
+        expect(refusal(offering(at('03:30', '04:00'), 'America/Argentina/Buenos_Aires'))).toBe(overlap('a', 'b'));
+
+        // No name of another system, none without a region, none in another case, none the database does not know: refused,
+        // not taken as UTC.
+        const unknown = (timeZone: string, of = 'charging pool', id = 'DE*GEF*P1'): string =>
+            `The given JSON representation of a ${of} is invalid: The time zone '${timeZone}' of the ${of} '${id}' is no time zone of a region of the IANA time zone database this reader knows! (Parameter 'TimeZone')`;
+
+        for (const timeZone of [ 'CET', 'UTC', 'Etc/UTC', 'Etc/GMT-1', 'US/Eastern', 'W. Europe Standard Time', 'Tokyo Standard Time',
+                                 'europe/berlin', 'Europe/BERLIN', 'Europe/Atlantis', 'Mars/Olympus', 'Nowhere/Land', 'Europe/Berlin/Mitte/Wedding' ])
+            expect(refusal(offering(at('07:30', '09:00'), timeZone))).toBe(unknown(timeZone));
+
+        // Trimmed, as it is read; also of a charging pool template.
+        expect(refusal(offering(at('07:30', '09:00'), ' CET '))).toBe(unknown('CET'));
+
+        expect(refusal(rich(({ gef }) => {
+            gef['chargingPoolTemplates'] = [ { '@id': 'DE*GEF*PT_CET', timeZone: 'CET', ...meta } ];
+        }))).toBe(unknown('CET', 'charging pool template', 'DE*GEF*PT_CET'));
 
     });
 

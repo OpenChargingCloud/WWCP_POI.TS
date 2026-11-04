@@ -18,12 +18,11 @@
 import { get, isArray, isObject, type JSONObject } from '../json/value.ts';
 import { freeId, idOf, idsOf, providerId, ticksOf, timestampOf } from './poiJSON.ts';
 import { hourMin }                from './poiValues.ts';
-import { WINDOWS_TIME_ZONES }     from './timeZones.ts';
 
 
 // When two charging tariff offers of one owner overlap, as ChargingTariffOffer.cs of WWCP_POI3 tells it: for some of the
 // same sessions (`SessionsOverlap`), at some of the same times at an EVSE both cover, in its time zone (`TimesOverlap`), a
-// time zone as `TimeZoneInfo` converts with it. Points in time are ticks of 100 ns since 1970, as `DateTimeOffset` holds
+// time zone as `TimeZoneInfo` converts with it, one a charging pool may have (`timeZones.ts`). Points in time are ticks of 100 ns since 1970, as `DateTimeOffset` holds
 // them: an inclusive notAfter ends a tick after it.
 
 
@@ -61,13 +60,9 @@ function utcOf(year: number, month: number, day: number, hour: number, minute: n
     return date.getTime();
 }
 
-/** The Windows names of time zones without case, with their IANA names. */
-const WINDOWS = new Map(Object.entries(WINDOWS_TIME_ZONES).map(([ windows, iana ]) => [ windows.toLowerCase(), iana ]));
-
 /**
- * The time zone of the given name as `TimeZoneInfo.TryFindSystemTimeZoneById` finds it: an IANA name this platform knows,
- * e.g. `Europe/Berlin`, or a Windows name, e.g. `W. Europe Standard Time`, both without case; UTC for none, as WWCP_POI3
- * takes a time zone it does not find.
+ * The time zone of the given name as `POITimeZones.TryFind` finds it: one of a charging pool or a charging pool template,
+ * which reading it found this platform to know (`knownTimeZone`); UTC for none.
  */
 export function timeZoneNamed(name: string | undefined): TimeZone {
 
@@ -79,27 +74,18 @@ export function timeZoneNamed(name: string | undefined): TimeZone {
     if (known !== undefined)
         return known;
 
-    let zone: TimeZone;
+    const format = new Intl.DateTimeFormat('en-US', { timeZone: name, hourCycle: 'h23', era: 'short', year: 'numeric', month: 'numeric',
+                                                      day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
 
-    try {
-
-        const format = new Intl.DateTimeFormat('en-US', { timeZone: WINDOWS.get(name.toLowerCase()) ?? name, hourCycle: 'h23', era: 'short', year: 'numeric', month: 'numeric',
-                                                          day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
-
-        zone = {
-            name,
-            offsetAt: (ms: number): number => {
-                const parts = Object.fromEntries(format.formatToParts(new Date(Math.floor(ms / 1000) * 1000)).map(part => [ part.type, part.value ]));
-                const year  = parts['era'] === 'BC' ? 1 - Number(parts['year']) : Number(parts['year']);
-                const local = utcOf(year, Number(parts['month']), Number(parts['day']), Number(parts['hour']), Number(parts['minute']), Number(parts['second']));
-                return (local - Math.floor(ms / 1000) * 1000) / MINUTE;
-            },
-        };
-
-    }
-    catch {
-        zone = UTC;
-    }
+    const zone: TimeZone = {
+        name,
+        offsetAt: (ms: number): number => {
+            const parts = Object.fromEntries(format.formatToParts(new Date(Math.floor(ms / 1000) * 1000)).map(part => [ part.type, part.value ]));
+            const year  = parts['era'] === 'BC' ? 1 - Number(parts['year']) : Number(parts['year']);
+            const local = utcOf(year, Number(parts['month']), Number(parts['day']), Number(parts['hour']), Number(parts['minute']), Number(parts['second']));
+            return (local - Math.floor(ms / 1000) * 1000) / MINUTE;
+        },
+    };
 
     ZONES.set(name, zone);
 

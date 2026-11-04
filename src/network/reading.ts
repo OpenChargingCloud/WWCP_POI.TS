@@ -33,6 +33,7 @@ import { evTalerMerchantOf, hermodURL }  from './evTaler.ts';
 import { checkPartyKeys, readPartyKeys } from './partyKeys.ts';
 import { trimmed, versionTwice }         from './versionTexts.ts';
 import { checkOperator }                 from './references.ts';
+import { unknownTimeZone }               from './timeZones.ts';
 import { ignoringCase }                  from './identifications.ts';
 
 
@@ -645,6 +646,7 @@ function poolListsConstruction(json: JSONObject, of: string): void {
     const relatedLocations    = objectsOf(get(json, 'relatedLocations')).map(location => ({ text: '', key: canonicalJSON([ location['geoLocation'] ?? null, location['name'] ?? null ]) }));
 
     raise(givenTwice(imagesAt(json),                              `An image of ${of}`));
+    raise(timeZoneError(json, of));
     raise(givenTwice(namesAt(json, 'facilities'),                 `A facility of ${of}`));
     raise(givenTwice(namesAt(json, 'paymentOptions'),             `A payment option of ${of}`));
     raise(givenTwice(authenticationModes,                         `An authentication mode of ${of}`));
@@ -657,6 +659,13 @@ function poolListsConstruction(json: JSONObject, of: string): void {
     raise(givenTwice(namesAt(json, 'standards'),                  `A standard of ${of}`));
     raise(givenTwice(keyed(idsAt(json, 'nutsCodes', freeId).map(code => code.text.toUpperCase()), name => name), `A NUTS code of ${of}`));
 
+}
+
+/** The time zone of a charging pool or a charging pool template, if it is none it may have or this platform does not know it. */
+function timeZoneError(json: JSONObject, of: string): Thrown | undefined {
+    const timeZone = get(json, 'timeZone');
+    const error    = typeof timeZone === 'string' ? unknownTimeZone(trimmed(timeZone), of) : undefined;
+    return error === undefined ? undefined : thrown(error, 'TimeZone');
 }
 
 const idsByNameAt = (json: JSONObject, property: string): string[] => {
