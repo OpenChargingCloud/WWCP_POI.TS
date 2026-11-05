@@ -23,6 +23,7 @@ import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { invalidGroupOrOffer, invalidPaymentOption } from '../network/references.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
+import { caseId, evseGroupId, freeId, poolGroupId, stationGroupId, type Id } from '../network/poiJSON.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
 import { notWritten }                     from '../network/writtenForm.ts';
 import type { Change, ChangeSet }         from './changeSet.ts';
@@ -186,6 +187,155 @@ const ENERGY_METER_CHILD_TYPES: Readonly<Record<string, EnergyMeterChildType>> =
     },
 
 };
+
+/**
+ * Entities a party embeds and changes on its own, identified within the roaming network: the charging tariff offers of
+ * charging station operators and e-mobility providers, the groups of e-mobility providers, the grid connection points of
+ * grid operators, the parking data of parking operators and the parking spaces of charging station operators
+ * (RoamingNetwork.OfferChanges.cs, ProviderChanges.cs, GridChanges.cs and ParkingChanges.cs of WWCP_POI3).
+ */
+interface EmbeddedType {
+    readonly what:        string;
+    /** The parties embedding one, in the order they are looked at, with the property of each holding them. */
+    readonly owners:      Readonly<Record<string, string>>;
+    /** Its identification as its type reads and compares it. */
+    readonly id:          (given: string) => Id | undefined;
+    readonly changeable:  readonly string[];
+    /** Whether it has a `created` and a `lastChange`: not a grid connection point or a parking product. */
+    readonly timestamps:  boolean;
+    readonly usage:       KeyUsage;
+    /** Whom an `Add` naming no fitting parent needs, by the parent it names. */
+    readonly addNeeds:    (parentType: string | undefined) => string;
+    /** Whether the roaming network operator signs in the place of an owner without signing keys (`SignerOf`). */
+    readonly inPlace:     boolean;
+}
+
+const BASE_PROPERTIES = [ 'name', 'description', 'dataSource' ];
+
+const PARKING_SPACE_PROPERTIES = [ 'geoLocation', 'parkingGarageId', 'parkingSensorIds', 'chargingStationIds', 'parkingProductIds', 'parkingRestrictions',
+                                   'euVehicleCategories', 'physicalReference', 'vehicleTypes', 'restrictedToVehicleTypes', 'maxVehicleWeight', 'maxVehicleHeight',
+                                   'maxVehicleLength', 'maxVehicleWidth', 'length', 'width', 'evsePosition', 'direction', 'surface', 'slope', 'driveThrough',
+                                   'reservationRequired', 'timeLimit', 'roofed', 'illuminated', 'refrigerationOutlet', 'dangerousGoodsAllowed', 'protectedArea',
+                                   'standards', 'images' ];
+
+const providerGroup = (what: string, property: string, id: (given: string) => Id | undefined, members: string): EmbeddedType => ({
+    what,
+    owners:      { EMobilityProvider: property },
+    id,
+    changeable:  [ ...BASE_PROPERTIES, members, 'customData' ],
+    timestamps:  true,
+    usage:       KeyUsages.Infrastructure,
+    addNeeds:    () => 'EMobilityProvider',
+    inPlace:     true,
+});
+
+const parking = (what: string, property: string, changeable: readonly string[], more: Partial<EmbeddedType> = {}): EmbeddedType => ({
+    what,
+    owners:      { ParkingOperator: property },
+    id:          freeId,
+    changeable,
+    timestamps:  true,
+    usage:       KeyUsages.Infrastructure,
+    addNeeds:    () => 'ParkingOperator',
+    inPlace:     false,
+    ...more,
+});
+
+const EMBEDDED_TYPES: Readonly<Record<string, EmbeddedType>> = {
+
+    ChargingTariffOffer: {
+        what:        'charging tariff offer',
+        owners:      { ChargingStationOperator: 'chargingTariffOffers', EMobilityProvider: 'chargingTariffOffers' },
+        id:          freeId,
+        changeable:  [ ...BASE_PROPERTIES, 'chargingTariff', 'discount', 'EVSEGroupIds', 'chargingStationGroupIds', 'chargingPoolGroupIds',
+                       'chargingStationOperatorIds', 'notBefore', 'notAfter', 'openingTimes', 'sessions', 'eMobilityProviderIds', 'maxSessionsPerContract',
+                       'customData' ],
+        timestamps:  true,
+        usage:       KeyUsages.Tariffs,
+        addNeeds:    parentType => parentType === 'ChargingStationOperator' ? 'ChargingStationOperator' : 'ChargingStationOperator or EMobilityProvider',
+        inPlace:     true,
+    },
+
+    GridConnectionPoint: {
+        what:        'grid connection point',
+        owners:      { GridOperator: 'gridConnectionPoints' },
+        id:          freeId,
+        changeable:  [ 'name', 'description', 'address', 'geoLocation', 'voltageLevel', 'connectionType', 'nominalVoltage', 'nominalFrequency',
+                       'contractedImportPower', 'contractedExportPower', 'contractedImportApparentPower', 'contractedExportApparentPower',
+                       'connectionAgreementId', 'networkLocationId', 'marketLocationIds', 'meteringLocationIds', 'energyMeter', 'maintainedBy', 'customData' ],
+        timestamps:  false,
+        usage:       KeyUsages.Infrastructure,
+        addNeeds:    () => 'GridOperator',
+        inPlace:     true,
+    },
+
+    ParkingGarage:         parking('parking garage', 'parkingGarages', [ ...BASE_PROPERTIES, 'address', 'geoLocation', 'chargingStationIds', 'openingTimes', 'images',
+                                                                         'parkingProductIds', 'customData' ]),
+    ParkingSpace:          parking('parking space', 'parkingSpaces', [ ...BASE_PROPERTIES, ...PARKING_SPACE_PROPERTIES, 'apdsReference', 'templateIds', 'customData' ], {
+                               owners:    { ParkingOperator: 'parkingSpaces', ChargingStationOperator: 'parkingSpaces' },
+                               addNeeds:  parentType => parentType === 'ChargingStationOperator' ? 'ChargingStationOperator' : 'ParkingOperator or ChargingStationOperator',
+                           }),
+    ParkingSensor:         parking('parking sensor', 'parkingSensors', [ ...BASE_PROPERTIES, 'geoLocation', 'chargingStationIds', 'customData' ]),
+    ParkingSpaceTemplate:  parking('parking space template', 'parkingSpaceTemplates', [ ...BASE_PROPERTIES, 'parkingProductIds', 'customData', ...PARKING_SPACE_PROPERTIES ]),
+    ParkingSpaceGroup:     parking('parking space group', 'parkingSpaceGroups', [ ...BASE_PROPERTIES, 'parkingSpaceIds', 'customData' ]),
+    ParkingProduct:        parking('parking product', 'parkingProducts', [ 'name', 'description', 'minDuration', 'stopParkingAfterTime', 'customData' ], {
+                               id:          caseId,
+                               timestamps:  false,
+                           }),
+
+};
+
+/** The groups of e-mobility providers, of the entity types of the groups of charging station operators (`ProviderGroupKind`). */
+const PROVIDER_GROUP_TYPES: Readonly<Record<string, EmbeddedType>> = {
+    EVSEGroup:             providerGroup('EVSE group',             'EVSEGroups',             evseGroupId,     'EVSEIds'),
+    ChargingStationGroup:  providerGroup('charging station group', 'chargingStationGroups',  stationGroupId,  'chargingStationIds'),
+    ChargingPoolGroup:     providerGroup('charging pool group',    'chargingPoolGroups',     poolGroupId,     'chargingPoolIds'),
+};
+
+/** Where an embedded entity is: its party, of which type, the array holding it, and the entity itself. */
+interface EmbeddedFound {
+    readonly party:      JSONObject;
+    readonly partyType:  string;
+    readonly children:   JSONArray;
+    readonly child:      JSONObject;
+}
+
+/** The party embedding an entity of the given type, by its identification as its type compares it. */
+function embeddedOf(content: JSONObject, type: EmbeddedType, entityId: string): EmbeddedFound | undefined {
+
+    const key = type.id(entityId)?.key;
+
+    if (key === undefined)
+        return undefined;
+
+    for (const [partyType, property] of Object.entries(type.owners))
+        for (const party of objectsOf(get(content, required(NETWORK_ARRAYS[partyType], partyType)))) {
+            const children = get(party, property);
+            const child    = objectsOf(children).find(item => typeof item['@id'] === 'string' && type.id(item['@id'])?.key === key);
+            if (child !== undefined)
+                return { party, partyType, children: children as JSONArray, child };
+        }
+
+    return undefined;
+
+}
+
+/**
+ * The type of the embedded entity a change changes, if it is one: a group of an e-mobility provider only when an `Add`
+ * names one as its parent or one has it, else it is one of a charging station operator (`IsProviderGroupChange`).
+ */
+function embeddedTypeOf(content: JSONObject, change: Change): EmbeddedType | undefined {
+
+    const providerGroupType = PROVIDER_GROUP_TYPES[change.entityType];
+
+    if (providerGroupType !== undefined)
+        return (change.kind === 'Add' ? change.parentEntityType === 'EMobilityProvider' : embeddedOf(content, providerGroupType, change.entityId) !== undefined)
+                   ? providerGroupType
+                   : undefined;
+
+    return EMBEDDED_TYPES[change.entityType];
+
+}
 
 /** Identifications of parties and their releases and certificates are compared case-insensitively, as their C# types do. */
 const sameId = (left: string, right: string): boolean =>
@@ -352,8 +502,8 @@ function checkOldValue(change: Change, current: JSONValue | undefined, index: nu
 }
 
 
-/** Applies an `UpdateProperty` or a `RemoveProperty` to an entity. */
-function applyProperty(entity: JSONObject, change: Change, index: number, what: string, lastChange: string): void {
+/** Applies an `UpdateProperty` or a `RemoveProperty` to an entity, and its `lastChange`, where it has one. */
+function applyProperty(entity: JSONObject, change: Change, index: number, what: string, lastChange: string | undefined): void {
 
     const property = change.propertyName;
 
@@ -371,7 +521,8 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
         set(entity, property, asGiven(change.newValue, property, `Change ${String(index)}, the ${what}`));
     }
 
-    entity['lastChange'] = lastChange;
+    if (lastChange !== undefined)
+        entity['lastChange'] = lastChange;
 
 }
 
@@ -733,6 +884,115 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
 }
 
 
+/**
+ * Applies a change of an entity a party embeds (`EMBEDDED_TYPES`): added to the party an `Add` names as its parent, changed
+ * and removed in the one embedding it, found by its identification as its type compares it, with its timestamps where it
+ * has them; the party changes with it.
+ */
+function applyEmbeddedChange(content: JSONObject, change: Change, index: number, createdAt: string, type: EmbeddedType): void {
+
+    const id = type.id(change.entityId);
+
+    if (id === undefined)
+        throw new POIError(`Change ${index}: invalid ${type.what} identification '${change.entityId}'!`);
+
+    // A grid connection point named by its identification as read, every other entity as the change names it.
+    const gridPoint  = type === EMBEDDED_TYPES['GridConnectionPoint'];
+    const what       = `${type.what} '${gridPoint ? id.text : change.entityId}'`;
+    const found      = embeddedOf(content, type, change.entityId);
+    let   party:     JSONObject;
+    let   property:  string;
+
+    if (change.kind === 'Add') {
+
+        if (found !== undefined)
+            throw new POIError(gridPoint
+                                   ? `Change ${index}: the ${what} already exists, at the grid operator '${asText(found.party['@id'])}'!`
+                                   : `Change ${index}: the ${what} already exists!`);
+
+        const parentProperty = change.parentEntityType === undefined ? undefined : type.owners[change.parentEntityType];
+        const parent         = change.parentEntityType === undefined || parentProperty === undefined
+                                   ? undefined
+                                   : partyNamed(content, change.parentEntityType, change.parentEntityId);
+
+        if (parent === undefined || parentProperty === undefined)
+            throw new POIError(`Change ${index}: the ${what} to add needs its ${type.addNeeds(change.parentEntityType)}, an existing one!`);
+
+        party     = parent;
+        property  = parentProperty;
+
+    }
+
+    else {
+
+        if (found === undefined)
+            throw new POIError(`Change ${index}: the ${what} does not exist!`);
+
+        if (change.parentEntityType !== undefined &&
+           (change.parentEntityType !== found.partyType || change.parentEntityId === undefined || !sameId(change.parentEntityId, asText(found.party['@id']))))
+            throw new POIError(`Change ${index}: the ${what} belongs to ${found.partyType} '${asText(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
+
+        party     = found.party;
+        property  = required(type.owners[found.partyType], found.partyType);
+
+    }
+
+    const isProperty  = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
+    const existing    = (): EmbeddedFound => required(found, `Change ${index}: the ${what} does not exist!`);
+
+    checkOldValue(change, isProperty ? get(existing().child, change.propertyName ?? '') : found?.child, index, what);
+
+    switch (change.kind) {
+
+        case 'UpdateProperty':
+        case 'RemoveProperty':
+            if (!type.changeable.includes(change.propertyName ?? ''))
+                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a ${type.what} can not be changed!`);
+            applyProperty(existing().child, change, index, what, type.timestamps ? createdAt : undefined);
+            break;
+
+        case 'Add': {
+
+            // Of the identification the change names: a grid connection point of one its type reads alike.
+            const given = change.newValue;
+
+            if (!isObject(given) || typeof given['@id'] !== 'string' ||
+                (gridPoint ? type.id(given['@id'])?.key !== id.key : given['@id'] !== change.entityId))
+                throw new POIError(`Change ${index}: the ${type.what} to add must be a JSON object with the identification '${gridPoint ? id.text : change.entityId}'!`);
+
+            const added    = type.timestamps ? entityToAdd(change, index, what, createdAt) : asGiven(given, undefined, `Change ${String(index)}, the ${what} to add`) as JSONObject;
+            const children = get(party, property);
+
+            if (children === undefined)
+                set(party, property, [ added ]);
+            else if (isArray(children))
+                insertOrdered(children, added);
+            else
+                throw new POIError(`Change ${index}: '${property}' of '${asText(party['@id'])}' is no array!`);
+
+            break;
+
+        }
+
+        case 'Remove': {
+            const { children, child } = existing();
+            children.splice(children.indexOf(child), 1);
+            if (children.length === 0)
+                unset(party, property);
+            break;
+        }
+
+        default:
+            throw new POIError(`Change ${index}: ${change.kind} of a ${type.what} is not supported by this library yet!`);
+
+    }
+
+    // The party embedding it changed with it, at the time of the change set.
+    party['lastChange'] = createdAt;
+
+}
+
+
 /** The party embedding an energy meter template or group: a charging station operator, or else a grid operator. */
 function energyMeterChildOf(content: JSONObject, type: EnergyMeterChildType, childId: string): { party: JSONObject, partyType: string, children: JSONArray, child: JSONObject } | undefined {
 
@@ -907,12 +1167,197 @@ function partiesOf(network: RoamingNetwork): Map<string, PartyKeys> {
  */
 type OwnerKeys = 'signing' | 'identity' | 'signingOrIdentity';
 
+/**
+ * An owner of a change: the roaming network operator, or a party, which the roaming network operator signs in the place of
+ * when it has no signing keys (`SignerOf`), unless `inPlace` is false.
+ */
 type Owner =
     | { readonly kind: 'rno', readonly keys: OwnerKeys }
-    | { readonly kind: 'party', readonly type: string, readonly id: string, readonly usage: KeyUsage, readonly keys: OwnerKeys };
+    | { readonly kind: 'party', readonly type: string, readonly id: string, readonly usage: KeyUsage, readonly keys: OwnerKeys, readonly inPlace?: boolean };
+
+/** A party, by its entity type and its identification as the version names it. */
+interface PartyRef {
+    readonly type:  string;
+    readonly id:    string;
+}
+
+/**
+ * Who owns what the earlier changes of a change set added or removed, as applying them decides (`EarlierChanges`): what
+ * they added, the parent of its `Add`; what they removed, alone or with the party embedding it, nobody.
+ */
+interface Earlier {
+    readonly energyMeterChildren:  Map<string, PartyRef>;
+    /** Embedded entities (`EMBEDDED_TYPES`, `PROVIDER_GROUP_TYPES`) by their types and keys: their owners, or none. */
+    readonly embedded:             Map<string, PartyRef | null>;
+    /** Grid connection points by their keys: their grid operators and maintainers, or none. */
+    readonly gridPoints:           Map<string, { readonly gridOperator: PartyRef, readonly maintainer: PartyRef } | null>;
+    readonly removedParties:       Set<string>;
+}
+
+const partyKeyOf = (party: PartyRef): string =>
+    `${party.type}:${party.id.toUpperCase()}`;
+
+/** The given party as the version names it: a change may name it in every spelling its identification considers equal (`PartyIdOf`). */
+const partyRefOf = (content: JSONObject, type: string, id: string): PartyRef =>
+    ({ type, id: asText(partyNamed(content, type, id)?.['@id'] ?? id) });
+
+/** The given owner of the version, unless an earlier change removed it (`NotRemoved`). */
+const notRemoved = (earlier: Earlier, party: PartyRef): PartyRef | null =>
+    earlier.removedParties.has(partyKeyOf(party)) ? null : party;
+
+/** The given party removed: nobody owns what it embeds any more (`RemoveParty`). */
+function removeParty(earlier: Earlier, party: PartyRef): void {
+
+    earlier.removedParties.add(partyKeyOf(party));
+
+    for (const [key, owner] of earlier.embedded)
+        if (owner !== null && partyKeyOf(owner) === partyKeyOf(party))
+            earlier.embedded.set(key, null);
+
+    for (const [key, point] of earlier.gridPoints)
+        if (point !== null && partyKeyOf(point.gridOperator) === partyKeyOf(party))
+            earlier.gridPoints.set(key, null);
+
+}
+
+/** The party a grid connection point names as its maintainer, if it names one (`POIPartyId.TryParse`). */
+function maintainerOf(content: JSONObject, maintainedBy: JSONValue | undefined): PartyRef | undefined {
+    return isObject(maintainedBy) && typeof maintainedBy['entityType'] === 'string' && typeof maintainedBy['entityId'] === 'string'
+               ? partyRefOf(content, maintainedBy['entityType'], maintainedBy['entityId'])
+               : undefined;
+}
+
+/**
+ * The owners of a change of an entity a party embeds, of which one signs it: the party embedding it, the parent of its
+ * `Add`; of a grid connection point its maintainer, and of its maintainer also its grid operator and the identity keys of
+ * the roaming network operator. Undefined for a group of a charging station operator.
+ */
+function embeddedOwnersOf(content: JSONObject, change: Change, index: number, earlier: Earlier): readonly Owner[] | undefined {
+
+    const signer = (party: PartyRef, usage: KeyUsage, inPlace = true): Owner =>
+        ({ kind: 'party', type: party.type, id: party.id, usage, keys: 'signing', inPlace });
+
+    const providerGroupType = PROVIDER_GROUP_TYPES[change.entityType];
+    const type              = providerGroupType ?? EMBEDDED_TYPES[change.entityType];
+
+    if (type === undefined)
+        return undefined;
+
+    const id = type.id(change.entityId);
+
+    if (id === undefined) {
+        if (providerGroupType !== undefined)
+            return undefined;
+        throw new POIError(`Change ${index}: invalid ${change.entityType} identification '${change.entityId}'!`);
+    }
+
+    const key = `${change.entityType}:${id.key}`;
+
+    // A grid connection point, by its maintainer: added by the maintainer it names or by its grid operator; taken over or
+    // handed on by its grid operator, handed on by its maintainer, or reassigned by the roaming network operator.
+    if (change.entityType === 'GridConnectionPoint') {
+
+        if (change.kind === 'Add') {
+
+            if (change.parentEntityType !== 'GridOperator' || change.parentEntityId === undefined)
+                throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its GridOperator as its parent!`);
+
+            const gridOperator  = partyRefOf(content, 'GridOperator', change.parentEntityId);
+            const maintainer    = maintainerOf(content, isObject(change.newValue) ? get(change.newValue, 'maintainedBy') : undefined) ?? gridOperator;
+
+            earlier.gridPoints.set(key, { gridOperator, maintainer });
+
+            return partyKeyOf(maintainer) === partyKeyOf(gridOperator)
+                       ? [ signer(gridOperator, type.usage) ]
+                       : [ signer(maintainer, type.usage), signer(gridOperator, type.usage) ];
+
+        }
+
+        let point = earlier.gridPoints.get(key);
+
+        if (!earlier.gridPoints.has(key)) {
+            const found         = embeddedOf(content, type, change.entityId);
+            const gridOperator  = found === undefined ? null : notRemoved(earlier, partyRefOf(content, 'GridOperator', asText(found.party['@id'])));
+            point = found === undefined || gridOperator === null
+                        ? null
+                        : { gridOperator, maintainer: maintainerOf(content, get(found.child, 'maintainedBy')) ?? gridOperator };
+        }
+
+        if (point === undefined || point === null)
+            throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' belongs to no grid operator!`);
+
+        const { gridOperator, maintainer } = point;
+        const ofMaintainer = (change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty') && change.propertyName === 'maintainedBy';
+
+        if (change.kind === 'Remove')
+            earlier.gridPoints.set(key, null);
+        else if (change.kind === 'RemoveProperty' && change.propertyName === 'maintainedBy')
+            earlier.gridPoints.set(key, { gridOperator, maintainer: gridOperator });
+        else if (change.kind === 'UpdateProperty' && change.propertyName === 'maintainedBy') {
+            const newMaintainer = maintainerOf(content, change.newValue);
+            if (newMaintainer !== undefined)
+                earlier.gridPoints.set(key, { gridOperator, maintainer: newMaintainer });
+        }
+
+        return ofMaintainer
+                   ? [ signer(gridOperator, type.usage), ...(partyKeyOf(maintainer) === partyKeyOf(gridOperator) ? [] : [ signer(maintainer, type.usage, false) ]),
+                       { kind: 'rno', keys: 'identity' } ]
+                   : [ signer(maintainer, type.usage) ];
+
+    }
+
+    let owner: PartyRef | null | undefined;
+
+    if (change.kind === 'Add') {
+
+        const parentType = change.parentEntityType;
+
+        if (providerGroupType !== undefined) {
+            if (parentType === 'EMobilityProvider' && change.parentEntityId !== undefined)
+                owner = partyRefOf(content, parentType, change.parentEntityId);
+        }
+        else if (parentType === undefined || type.owners[parentType] === undefined || change.parentEntityId === undefined) {
+            const parents = Object.keys(type.owners).length > 1 ? Object.keys(type.owners).join(' or ') : Object.keys(type.owners).join('');
+            throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its ${change.entityType === 'ParkingSpace' ? 'ParkingOperator or ChargingStationOperator' : parents} as its parent!`);
+        }
+        else
+            owner = partyRefOf(content, parentType, change.parentEntityId);
+
+        if (owner !== undefined)
+            earlier.embedded.set(key, owner);
+
+    }
+
+    else if (earlier.embedded.has(key))
+        owner = earlier.embedded.get(key);
+
+    else {
+        const found = embeddedOf(content, type, change.entityId);
+        if (found !== undefined)
+            owner = notRemoved(earlier, partyRefOf(content, found.partyType, asText(found.party['@id'])));
+    }
+
+    if (owner === undefined || owner === null) {
+
+        // No provider has it: a group of the charging station operator of its prefix.
+        if (providerGroupType !== undefined)
+            return undefined;
+
+        throw new POIError(change.entityType === 'ChargingTariffOffer' ? `Change ${index}: the ${change.entityType} '${change.entityId}' belongs to no charging station operator and no e-mobility provider!`
+                         : change.entityType === 'ParkingSpace'        ? `Change ${index}: the ${change.entityType} '${change.entityId}' belongs to no parking operator and no charging station operator!`
+                         :                                               `Change ${index}: the ${change.entityType} '${change.entityId}' belongs to no parking operator!`);
+
+    }
+
+    if (change.kind === 'Remove')
+        earlier.embedded.set(key, null);
+
+    return [ signer(owner, type.usage, type.inPlace) ];
+
+}
 
 
-function ownerOf(content: JSONObject, change: Change, index: number, addedEnergyMeterChildren: Map<string, { type: string, id: string }>): Owner {
+function ownerOf(content: JSONObject, change: Change, index: number, earlier: Earlier): Owner | readonly Owner[] {
 
     // The roaming network operator: its keys and its quorum by its identity keys, the certificates of its signing keys by
     // either kind, everything else by its signing keys.
@@ -928,6 +1373,10 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
         return { kind: 'rno', keys: 'signing' };
 
     if (PARTIES.has(change.entityType)) {
+
+        // Removed, nobody owns what it embeds any more.
+        if (change.kind === 'Remove')
+            removeParty(earlier, partyRefOf(content, change.entityType, change.entityId));
 
         if (change.kind === 'Add' || change.kind === 'Remove')
             return { kind: 'rno', keys: 'signing' };
@@ -999,11 +1448,11 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
                 throw new POIError(`Change ${index}: adding the ${change.entityType} '${change.entityId}' needs its ChargingStationOperator or GridOperator as its parent!`);
             const party = partyNamed(content, change.parentEntityType, change.parentEntityId);
             owner = { type: change.parentEntityType, id: asText(party?.['@id'] ?? change.parentEntityId) };
-            addedEnergyMeterChildren.set(key, owner);
+            earlier.energyMeterChildren.set(key, owner);
         }
         else {
             const found = energyMeterChildOf(content, energyMeterChild, change.entityId);
-            owner = addedEnergyMeterChildren.get(key) ?? (found === undefined ? undefined : { type: found.partyType, id: asText(found.party['@id']) });
+            owner = earlier.energyMeterChildren.get(key) ?? (found === undefined ? undefined : { type: found.partyType, id: asText(found.party['@id']) });
         }
 
         if (owner === undefined)
@@ -1012,6 +1461,12 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
         return { kind: 'party', type: owner.type, id: owner.id, usage: KeyUsages.Infrastructure, keys: 'signing' };
 
     }
+
+    // An offer, a group of a provider, a grid connection point or parking data.
+    const embeddedOwners = embeddedOwnersOf(content, change, index, earlier);
+
+    if (embeddedOwners !== undefined)
+        return embeddedOwners;
 
     if (INFRASTRUCTURE_TYPES.has(change.entityType)) {
 
@@ -1033,6 +1488,10 @@ function ownerOf(content: JSONObject, change: Change, index: number, addedEnergy
     throw new POIError(`Change ${index}: changes of ${change.entityType} '${change.entityId}' are not supported by this library yet!`);
 
 }
+
+
+const isOwnerList = (owned: Owner | readonly Owner[]): owned is readonly Owner[] =>
+    Array.isArray(owned);
 
 
 /** A change as WWCP_POI names it where it needs signatures: its kind, its entity and the property it changes, if any. */
@@ -1104,8 +1563,8 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
     const rnoIdentity   = rno?.identityKeys ?? [];
     const minConsensus  = rno?.minConsensus ?? 1;
 
-    // Energy meter templates and groups an earlier change of this change set adds, by their owners.
-    const addedEnergyMeterChildren = new Map<string, { type: string, id: string }>();
+    // Who owns what an earlier change of this change set adds or removes.
+    const earlier: Earlier = { energyMeterChildren: new Map(), embedded: new Map(), gridPoints: new Map(), removedParties: new Set() };
 
     // The identity keys its changes enter anew: each must sign it.
     const newIdentityKeys: POIPublicKey[] = [];
@@ -1187,11 +1646,43 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
                     .filter(signedValid)
                     .map(key => key.holderOrUnnamed));
 
+    // Whether an owner signed: by as many holders of its keys of the kinds named as its quorum needs.
+    const signs = (owner: Owner): boolean => {
+
+        if (owner.kind === 'rno')
+            return rno !== undefined && rnoHolders(owner.keys).size >= minConsensus;
+
+        const party = parties.get(`${owner.type}:${owner.id}`);
+
+        return party !== undefined &&
+              ((owner.keys !== 'identity' && party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key))) ||
+               (owner.keys !== 'signing'  && party.identityKeys.some(signedValid)) ||
+               (owner.keys !== 'signing'  && rnoHolders('identity').size >= minConsensus && rnoIdentity.some(signedValid)) ||
+               (owner.keys === 'signing'  && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus));
+
+    };
+
+    // The signature an owner gives, in words.
+    const signatureOf = (owner: Owner): string =>
+        owner.kind === 'rno'        ? `${owner.keys === 'identity' ? 'an identity key' : 'a signing key'} of the roaming network operator '${rno?.id ?? ''}'`
+      : owner.keys === 'identity'   ? `an identity key of the ${owner.type} '${owner.id}'`
+      :                               `a signing key of the ${owner.type} '${owner.id}'`;
+
     changeSet.changes.forEach((change, index) => {
 
         checkPartyChange(change, index);
 
-        const owner = ownerOf(before.content, change, index, addedEnergyMeterChildren);
+        const owned  = ownerOf(before.content, change, index, earlier);
+        const owners = isOwnerList(owned) ? owned : [ owned ];
+
+        // One of several owners signs it, e.g. of a grid connection point its grid operator or its maintainer.
+        if (owners.length > 1) {
+            if (!owners.some(signs))
+                throw new POIError(`${describeChange(change, index)} needs a signature by ${owners.map(signatureOf).join(' or ')}!`);
+            return;
+        }
+
+        const owner = required(owners[0], `Change ${index} has no owner!`);
 
         if (owner.kind === 'rno') {
 
@@ -1220,7 +1711,7 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         const bySigningKey   = owner.keys !== 'identity'  && party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key));
         const byIdentityKey  = owner.keys !== 'signing'   && party.identityKeys.some(signedValid);
         const byRecovery     = owner.keys !== 'signing'   && rnoHolders('identity').size >= minConsensus && rnoIdentity.some(signedValid);
-        const byRNO          = owner.keys === 'signing'   && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus;
+        const byRNO          = owner.keys === 'signing'   && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus;
 
         if (!bySigningKey && !byIdentityKey && !byRecovery && !byRNO) {
 
@@ -1298,6 +1789,9 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
         else if (ENERGY_METER_CHILD_TYPES[change.entityType] !== undefined)
             applyEnergyMeterChildChange(content, change, index, createdAt);
+
+        else if (embeddedTypeOf(content, change) !== undefined)
+            applyEmbeddedChange(content, change, index, createdAt, required(embeddedTypeOf(content, change), change.entityType));
 
         else if (INFRASTRUCTURE_TYPES.has(change.entityType))
             applyInfrastructureChange(content, change, index, createdAt);

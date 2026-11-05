@@ -97,6 +97,21 @@
 - `poi-refusals.json` of WWCPPOIConformanceTests `d388929` vendored, of 283 vectors: 10 versions naming a time zone of a
   charging pool or a charging pool template that is none of a region of the IANA time zone database, refused by WWCP_POI3
   since `d1c41ca` and taken by this library, marked as its deviation (D17 there).
+- A change set changes the entities a party embeds, as WWCP_POI3 applies them (`apply.ts`; RoamingNetwork.OfferChanges.cs,
+  ProviderChanges.cs, GridChanges.cs and ParkingChanges.cs): the charging tariff offers of charging station operators
+  and e-mobility providers, the EVSE, charging station and charging pool groups of e-mobility providers, the grid
+  connection points of grid operators, the parking garages, spaces, sensors, space templates, space groups and products
+  of parking operators and the parking spaces of charging station operators. Added to the party an `Add` names as its
+  parent, found by its identification as its type compares it, e.g. a parking product with case, the properties a change
+  set may change, in the words of WWCP_POI3; with their timestamps, but a grid connection point and a parking product,
+  which have none. Owned by the party embedding them (4.1), the offers by keys that may sign `tariffs`, the others
+  `infrastructure`; a grid connection point by its maintainer, its maintainer changed by it, its grid operator or the
+  identity keys of the roaming network operator; also after the earlier changes of the change set, which may add or
+  remove them or their party. 0.2.0 refused them as not supported. Of 107 change sets probed against WWCP_POI3 at
+  `d1c41ca` (`CreateChangeSet`), the 50 it takes lead to the same content here, and the 57 it refuses are refused here
+  too, 34 in the same words; the others in the words of the entity read again without `Change N:`, of the change as
+  WWCP_POI3 parses it, or of the written form, where WWCP_POI3 names a property of infrastructure a change set may not
+  change.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
