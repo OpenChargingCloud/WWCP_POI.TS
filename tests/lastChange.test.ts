@@ -7,6 +7,7 @@ import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 import { ChangeSet, changeSetIdentification } from '../src/history/changeSet.ts';
 import { applyChangeSet } from '../src/history/apply.ts';
 import { etagToJSON }     from '../src/etags.ts';
+import { canonicalJSON }  from '../src/json/canonical.ts';
 import { clone, isObject, set, without, type JSONObject, type JSONValue } from '../src/json/value.ts';
 
 
@@ -161,6 +162,62 @@ describe('The lastChange of what embeds a changed entity (4)', () => {
         expect(applyChangeSet(before, unsigned(), { checkOwnership: false }).matchesCommitETags(defined(versions[10]).eTags())).toBe(true);
         expect(() => applyChangeSet(before, unsigned(RoamingNetwork.parse(content).changeSetETags().map(eTag => etagToJSON(eTag))), { checkOwnership: false }))
             .toThrow(/The result does not match the change set/);
+
+    });
+
+});
+
+describe('No lastChange goes back (4, S5)', () => {
+
+    /** The given JSON with every text that is the given timestamp replaced by the other one. */
+    const restamped = (json: JSONValue, from: string, to: string): JSONValue =>
+        json === from                    ? to
+      : Array.isArray(json)              ? json.map(item => restamped(item, from, to))
+      : isObject(json)                   ? Object.fromEntries(Object.entries(json).map(([ key, value ]) => [ key, restamped(value, from, to) ]))
+      :                                    json;
+
+    it('stamps a change set created before its version with the lastChange of the version, as WWCP_POI 12e993a does', () => {
+
+        // Every change set of both epochs that gives no timestamp of its createdAt itself, created an hour before the
+        // lastChange of the version it is applied to: the very version it led to, stamped with that lastChange where it
+        // stamped its createdAt, as the lastChange of what it changes, adds and embeds. What a change set gives is kept as
+        // given; the change sets of elementChanges, embeddedChanges and preconditions, created before QA, are stamped
+        // with its lastChange as WWCP_POI3 at 12e993a stamped them.
+        let checked = 0;
+
+        for (const { epoch, changeSets, versions } of epochs)
+            changeSets.forEach((changeSet, index) => {
+
+                const before     = defined(versions[index]);
+                const last       = asText(before.content['lastChange']);
+                const createdAt  = asText(changeSet['createdAt']);
+                const expected   = restamped(defined(versions[index + 1]).content, createdAt, last) as JSONObject;
+
+                if (canonicalJSON(restamped(changeSet['changes'] ?? null, createdAt, '')) !== canonicalJSON(changeSet['changes'] ?? null))
+                    return;
+
+                checked++;
+
+                const json = without(changeSet, 'signatures');
+                set(json, 'createdAt', new Date(Date.parse(last) - 60 * 60 * 1000).toISOString());
+                set(json, 'afterETags', RoamingNetwork.parse(expected).changeSetETags().map(eTag => etagToJSON(eTag)));
+                set(json, '@id', changeSetIdentification(json));
+
+                expect(applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false }).content, `Epoch ${epoch}, revision ${index + 1}`).toEqual(expected);
+
+            });
+
+        expect(checked).toBeGreaterThan(15);
+
+    });
+
+    it('stamps a change set created after its version with its createdAt', () => {
+
+        const before = defined(versions[9]);
+        const later  = defined(changeSetsJSON[9]);
+
+        expect(Date.parse(asText(later['createdAt']))).toBeGreaterThan(Date.parse(asText(before.content['lastChange'])));
+        expect(applyChangeSet(before, ChangeSet.parse(later), { checkOwnership: false }).content['lastChange']).toBe(later['createdAt']);
 
     });
 

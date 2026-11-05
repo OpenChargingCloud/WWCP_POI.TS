@@ -53,16 +53,21 @@ function changeSet(before: RoamingNetwork, changes: JSONArray, after: JSONObject
 
 }
 
-/** The content after the given certificates were added to or changed in the given body at T0. */
+/**
+ * The content after the given certificates were added to or changed in the given body by a change set created at T0: stamped
+ * with T0, or with the lastChange of the version, where that is later, as no lastChange goes back (S5).
+ */
 function withCertificate(content: JSONObject, bodyId: string, given: JSONObject): JSONObject {
 
+    const last   = asText(content['lastChange']);
+    const stamp  = Date.parse(last) > Date.parse(T0) ? last : T0;
     const after  = clone(content);
     const body   = bodyOf(after, bodyId);
     const others = ((get(body, 'certificates') ?? []) as JSONObject[]).filter(item => item['@id'] !== given['@id']);
 
     body['certificates']  = [ ...others, given ].sort((left, right) => asText(left['@id']) < asText(right['@id']) ? -1 : 1);
-    body['lastChange']    = T0;
-    after['lastChange']   = T0;
+    body['lastChange']    = stamp;
+    after['lastChange']   = stamp;
 
     return after;
 

@@ -23,7 +23,7 @@ import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { invalidGroupOrOffer, invalidPaymentOption } from '../network/references.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
-import { caseId, evseGroupId, freeId, poolGroupId, stationGroupId, type Id } from '../network/poiJSON.ts';
+import { caseId, evseGroupId, freeId, poolGroupId, stationGroupId, timestampOf, type Id } from '../network/poiJSON.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
 import { notWritten }                     from '../network/writtenForm.ts';
 import { entityPropertyName, isElementChange, type Change, type ChangeSet } from './changeSet.ts';
@@ -1879,6 +1879,16 @@ function matchETags(given: readonly ETag[], version: RoamingNetwork, what: strin
  * Applies a change set to the version it fits (4, 5.2): its owners signed it (unless `checkOwnership` is false), its
  * `beforeETags` are those of the version, its changes apply, and the result has its `afterETags`. Returns the new version.
  */
+/**
+ * The stamp of a change set applied to the given version (SPECIFICATION.md 4, S5): its createdAt, or the lastChange of the
+ * roaming network of the version, where that is later; in milliseconds since 1970.
+ */
+export function stampOf(before: RoamingNetwork, changeSet: ChangeSet): number {
+    const lastChange = get(before.content, 'lastChange');
+    const last       = typeof lastChange === 'string' ? timestampOf(lastChange) : undefined;
+    return last !== undefined && last > changeSet.createdAt ? last : changeSet.createdAt;
+}
+
 export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, options: { checkOwnership?: boolean } = {}): RoamingNetwork {
 
     if (changeSet.roamingNetworkId !== before.id)
@@ -1896,7 +1906,11 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
         throw new POIError(`The change set does not fit this version of the roaming network: ${broken}`);
 
     const content    = clone(before.content);
-    const createdAt  = toTimestamp(changeSet.createdAt);
+
+    // What the change set is stamped with, as lastChange and as the created of what it adds: its createdAt, or the
+    // lastChange of the version it is applied to, where it was created before it. So no lastChange goes back, whatever time
+    // its signer chose (SPECIFICATION.md 4, POI3-ISSUES.md S5, WWCP_POI 12e993a); its keys are checked at its createdAt still.
+    const createdAt  = toTimestamp(stampOf(before, changeSet));
 
     changeSet.changes.forEach((change, index) => {
 
@@ -1945,7 +1959,7 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     if (changedVersion !== undefined)
         throw new POIError(changedVersion);
 
-    // A change set sets the lastChange of the roaming network always (4).
+    // A change set sets the lastChange of the roaming network always, to its stamp (4).
     content['lastChange'] = createdAt;
 
     const after = RoamingNetwork.afterChangeSet(content, before.content);

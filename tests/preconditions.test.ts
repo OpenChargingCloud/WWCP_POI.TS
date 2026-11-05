@@ -11,11 +11,12 @@ import type { JSONObject, JSONValue } from '../src/json/value.ts';
 
 // The preconditions of change sets (SPECIFICATION.md section 4, preconditions.ts): the ETag an entity must still have in
 // the version a change set is applied to, over its representation as the roaming network embeds it. The ETags below are
-// those WWCP_POI3 at 045e180 took as the ETags of these entities of QA, the after ETags those it calculated for the change.
+// those WWCP_POI3 at 045e180 took as the ETags of these entities of QA, the after ETags those WWCP_POI3 at 12e993a
+// calculated for the change (S5).
 
 const AT     = '2026-11-05T10:00:00.000Z';
 const QA     = RoamingNetwork.parse(rich());
-const AFTER  = [ 'b1da52b953ee91ee6561a1e8f0a049950bd4fd3a9f902ce78d2ebead37296525', '465697bccb1243047f330d5898c72acd11acb587e7f0166acfa4fe66d071ed5f' ] as const;
+const AFTER  = [ 'dfe25ca6d47bcd332e1dd85ab0ca08e8384e0cc2b0b782d1d55247f99706b748', '7959b848977aa09675b57615c7f0490901692ec0fc5fd1134eaecc68063e5bbf' ] as const;
 const POOL   = 'c77c0d24dab55b8f56e9ce02776856de3cae7714cb1df55c8a80e404948674e8';
 
 const change = { kind: 'UpdateProperty', entityType: 'ChargingStation', entityId: 'DE*GEF*S2', propertyName: 'description', newValue: { en: 'Two' } };
@@ -90,7 +91,7 @@ describe('Preconditions', () => {
 
         // Checked against the version before the change set, also for the entity it changes.
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL) ], [ { kind: 'UpdateProperty', entityType: 'ChargingPool', entityId: 'DE*GEF*P1', propertyName: 'description', newValue: { en: 'One' } } ],
-                       [ '7431fc2ae779214c422fafa404947fac5bc54d4d5c646aca7337540ee8a7f25e', 'e8857bd774eff455794bba3ca426f865b125dca5916866140a15916b6f07216a' ]))
+                       [ '39ba71aec674acb8bb07c00e3c89f9cf4b15773c10ade11e15dbcefaa6a81b8b', 'b9447b7760041907f6f9347f2a61a60b1a96bda315aebe9d32ccb16cdccdd961' ]))
             .toBe('taken');
 
     });

@@ -196,6 +196,15 @@
   of WWCPPOIConformanceTests `2d0780f`. The tests on QA hold the values of the new run; those WWCP_POI3 calculated of
   changed versions (element and embedded changes, preconditions, EV Taler) are calculated again by WWCP_POI3 at
   `045e180`, and this library takes the very same versions. `tests/conformance.test.ts` 794.
+- No lastChange goes back, as WWCP_POI `12e993a` stamps a change set (SPECIFICATION.md 4, "Timestamps", POI3-ISSUES.md
+  S5): with its createdAt, or the lastChange of the roaming network of the version it is applied to, where that is later,
+  as the lastChange of the network, of what it changes, adds and embeds, and as the created of what it adds without one.
+  Its keys are still checked at its createdAt; nobody is refused for it, only the ETags after it differ (`stampOf`). The
+  after ETags of the element and embedded change sets and of the preconditions of the tests, created before QA, are
+  those WWCP_POI3 at `12e993a` calculated for the very same changes (67 change sets, all alike). `poi-histories.json` of
+  WWCPPOIConformanceTests `249d667` vendored: the three rebased change sets of `history-parties`, created at 08:06:30 on a
+  head of 08:07:00, are stamped 08:07:00. `tests/lastChange.test.ts`: every change set of both epochs of QA, created
+  before its version, stamped with its lastChange.
 - EV Taler, phase 2, as WWCP_POI `c2d39e5` checks it (concepts/EVTaler.md 5 and 7, `src/evTaler`): the contract terms of
   a step of a session (`EVTalerContractTerms`: version 0, an order, an amount and a maximum fee as GNU Taler writes them,
   the merchant, its exchanges, the times, an auto refund) and their step in `extra.wwcp` (`EVTalerStep`: the roaming
