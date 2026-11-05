@@ -52,7 +52,7 @@ export { auditPath, leafHash, merkleRoot, merkleRootOfLeafHashes, nodeHash, root
 export { RoamingNetwork, RoamingNetworkOperator, ROAMING_NETWORK_CONTEXT } from './network/roamingNetwork.ts';
 export { EV_TALER_EXCHANGE_CONTEXT, EV_TALER_MERCHANT_CONTEXT, EV_TALER_PAYMENT_MEANS, EV_TALER_PAYMENT_OPTION, evTalerMerchantOf, isTalerPublicKey, paymentOptionName, type EVTalerExchange, type EVTalerMerchant } from './network/evTaler.ts';
 export { effectiveContent, effectiveChargingStationOperator } from './network/effective.ts';
-export { CHILD_ARRAYS, effectiveTreeETag, entityDigest, prunedTree, skeleton } from './network/tree.ts';
+export { CHILD_ARRAYS, effectiveTreeETag, entityDigest, givesCompletely, prunedTree, sizeOf, skeleton } from './network/tree.ts';
 
 // Proofs, statements and trust anchors
 export { TrustContext, type TrustEvaluation, type TrustEvaluationOptions } from './proofs/trustContext.ts';
@@ -68,7 +68,7 @@ export { Commit, SignatureRoles, COMMIT_CONTEXT, type RoleSignature } from './hi
 export { ChangeSet, CHANGE_SET_CONTEXT, MERGE_CHANGE_SET_ID_PREFIX, changeSetIdentification, type Change, type ChangeKind, type ChangeSetSignature } from './history/changeSet.ts';
 export { applyChangeSet, checkOwnership }                    from './history/apply.ts';
 export { Checkpoint, CheckpointProof, commitsRoot, CHECKPOINT_CONTEXT } from './history/checkpoint.ts';
-export { History, type EpochStatus, type HistoryOptions, type SnapshotOptions, type Version } from './history/history.ts';
+export { History, keyMaySignIn, type EpochStatus, type HistoryOptions, type SnapshotOptions, type Version } from './history/history.ts';
 export { EpochProfiles, FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, EPOCH_CONTEXT, EPOCH_LINK_CONTEXT, EPOCH_PROFILES_CONTEXT, STYX_CANONICAL_JSON, type Epoch, type EpochLink } from './history/epoch.ts';
 export { ArchiveSegment, parseArchiveSegmentInfo, verifySegmentLine, type ArchiveSegmentInfo } from './history/archive.ts';
 

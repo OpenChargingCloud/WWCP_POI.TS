@@ -196,6 +196,21 @@
   of WWCPPOIConformanceTests `2d0780f`. The tests on QA hold the values of the new run; those WWCP_POI3 calculated of
   changed versions (element and embedded changes, preconditions, EV Taler) are calculated again by WWCP_POI3 at
   `045e180`, and this library takes the very same versions. `tests/conformance.test.ts` 794.
+- Required signature roles, as WWCP_POI `12e993a` checks them (POI3-ISSUES.md S24): `requiredSignatureRoles` of a history,
+  the roles a commit must be signed in, refused before it is applied where it has no signature in one ("The commit '…'
+  is not signed in the role '…'!"), and once its signatures are verified where none of them is by a key the version it
+  leads to lets sign in that role ("… by a key that may sign in it!", `keyMaySignIn`): in the role of the roaming
+  network operator a signing key certified for it, in the role of a charging station operator a signing key of the
+  operator its signer names; leaders and witnesses are the verifier's. So also the commit of a snapshot.
+  `requiredCheckpointSignatureRoles`, the roles a checkpoint must be signed in ("The checkpoint '…' is not signed in the
+  role '…'!"). A signed commit without a verifier is refused before it is applied, as WWCP_POI does. Signatures of one
+  key in one role, e.g. the twin of an ECDSA signature (S11), are kept as given, each verified, and counted once by the
+  holder or witness they are of: WWCP_POI keeps the first alone when it reads a commit, which this library does not
+  follow (sent to the security audit as a finding). `tests/signatureRoles.test.ts`.
+- What a proof gives of a child array, as WWCP_POI `d35c780` tells it (S29): `givesCompletely`, whether an entity as a proof
+  gives it has a child array completely, as an array or none, or pruned or partially; `sizeOf`, how many children it has,
+  also where the proof gives only some or none of them. A size or index beyond what this platform holds, and an object as
+  the identification of the roaming network, were refused already.
 - No lastChange goes back, as WWCP_POI `12e993a` stamps a change set (SPECIFICATION.md 4, "Timestamps", POI3-ISSUES.md
   S5): with its createdAt, or the lastChange of the roaming network of the version it is applied to, where that is later,
   as the lastChange of the network, of what it changes, adds and embeds, and as the created of what it adds without one.

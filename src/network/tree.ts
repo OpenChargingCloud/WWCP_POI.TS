@@ -302,6 +302,33 @@ export function prunedTree(roamingNetwork: JSONObject, algorithm: HashAlgorithm)
 }
 
 /** The digest in hex, for messages. */
+/**
+ * Whether a proof gives the given child array of the given entity completely, as `RoamingNetworkProof.GivesCompletely` of
+ * WWCP_POI d35c780 tells it (8.4, POI3-ISSUES.md S29): as an array, or none, as an entity without such children has.
+ * Pruned it gives none of them, partial some, as leaves: what an app shows of it is then not all the entity has, e.g. not
+ * every EVSE of a station, tariff of an EVSE or certificate of a model. Of an entity as the proof gives it, e.g. in
+ * `ChargingStationProof.roamingNetwork`, not as the verified station resolves it.
+ */
+export const givesCompletely = (entity: JSONObject, childArray: string): boolean => {
+    const form = get(entity, childArray);
+    return form === undefined || isArray(form);
+};
+
+/**
+ * How many children the given child array of the given entity of a proof has, also where it gives only some or none of
+ * them, as `RoamingNetworkProof.SizeOf` tells it: 0 where it gives none, the length of an array, the `@size` of a pruned
+ * or partial one; undefined where that is no whole number this platform holds exactly.
+ */
+export const sizeOf = (entity: JSONObject, childArray: string): number | undefined => {
+    const form = get(entity, childArray);
+    if (form === undefined)
+        return 0;
+    if (isArray(form))
+        return form.length;
+    const size = isObject(form) ? get(form, '@size') : undefined;
+    return typeof size === 'number' && Number.isSafeInteger(size) && size >= 0 ? size : undefined;
+};
+
 export const hexDigest = (digest: Uint8Array): string =>
     toHex(digest);
 

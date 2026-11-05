@@ -17,14 +17,14 @@
 
 import { onlyProperties, requireArray, requireObject, CONTEXT_PREFIX } from '../common.ts';
 import { get, isArray, isObject, type JSONValue } from '../json/value.ts';
-import { timestampOf }                    from '../network/poiJSON.ts';
+import { operatorId, timestampOf }        from '../network/poiJSON.ts';
 import { compactJSON }                    from '../qidigital/json.ts';
 import { sameETags }                      from '../etags.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { Attestation }                    from '../proofs/attestation.ts';
 import { ChargingStationProof }           from '../proofs/stationProof.ts';
 import type { TrustAnchor }               from '../proofs/trustAnchor.ts';
-import { Commit }                         from './commit.ts';
+import { Commit, SignatureRoles, type RoleSignature } from './commit.ts';
 import { Checkpoint }                     from './checkpoint.ts';
 import { ChangeSet }                      from './changeSet.ts';
 import { applyChangeSet }                 from './apply.ts';
@@ -83,6 +83,42 @@ export interface HistoryOptions {
     readonly verifyCommit?:      (commit: Commit, before: RoamingNetwork | undefined, after: RoamingNetwork) => void;
     /** Refuses a checkpoint whose signatures are not those required. Required for a signed checkpoint. */
     readonly verifyCheckpoint?:  (checkpoint: Checkpoint) => void;
+    /**
+     * The roles a commit must be signed in, e.g. `roamingNetworkOperator` or `leader` (`RequiredSignatureRoles` of WWCP_POI
+     * 12e993a, POI3-ISSUES.md S24): each by a signature whose key the version the commit leads to lets sign in it, once
+     * `verifyCommit` verified the signatures (`keyMaySignIn`).
+     */
+    readonly requiredSignatureRoles?:            readonly string[];
+    /** The roles a checkpoint must be signed in, e.g. `roamingNetworkOperator` or `witness`, once `verifyCheckpoint` verified it. */
+    readonly requiredCheckpointSignatureRoles?:  readonly string[];
+}
+
+
+/**
+ * Whether the key of the given signature may sign in its role, as far as the given version tells it
+ * (`RoamingNetworkCommitSignatureRoles.KeyMaySignIn` of WWCP_POI 12e993a, S24): in the role of the roaming network operator
+ * a signing key certified for it, in the role of a charging station operator a signing key of the operator its signer
+ * names. Who leads or witnesses no version says: those roles are the verifier's to judge by the keys it trusts.
+ */
+export function keyMaySignIn(signature: RoleSignature, version: RoamingNetwork): boolean {
+
+    switch (signature.role) {
+
+        case SignatureRoles.RoamingNetworkOperator:
+            return version.operator?.signingKeyCertificates.some(certificate => certificate.signingKey.id === signature.keyId) ?? false;
+
+        case SignatureRoles.ChargingStationOperator: {
+            const signer          = operatorId(signature.signer ?? '');
+            const operatorJSON    = signer === undefined ? undefined : version.chargingStationOperators().find(item => operatorId(typeof item['@id'] === 'string' ? item['@id'] : '')?.key === signer.key);
+            const signingKeys     = operatorJSON === undefined ? undefined : get(operatorJSON, 'signingKeys');
+            return isArray(signingKeys) && signingKeys.some(key => isObject(key) && get(key, '@id') === signature.keyId);
+        }
+
+        default:
+            return true;
+
+    }
+
 }
 
 /**
@@ -285,7 +321,9 @@ export class History {
         }
 
         try {
+            history.checkSignedAsRequired(commit);
             history.verifyCommitSignatures(commit, undefined, network);
+            history.checkRequiredRoles(commit, network);
         }
         catch (e) {
             throw new POIError(`The snapshot is not signed as required: ${e instanceof Error ? e.message : String(e)}`);
@@ -352,7 +390,10 @@ export class History {
 
     }
 
-    /** Refuses a signed checkpoint without a verifier of checkpoint signatures, as WWCP_POI; verifies it otherwise. */
+    /**
+     * Refuses a signed checkpoint without a verifier of checkpoint signatures, as WWCP_POI; verifies it otherwise, and that it
+     * is signed in every required role (`TryAddCheckpoint`).
+     */
     private verifyCheckpointSignatures(checkpoint: Checkpoint): void {
 
         if (this.options.verifyCheckpoint !== undefined)
@@ -360,6 +401,37 @@ export class History {
 
         else if (checkpoint.signatures.length > 0)
             throw new POIError(`The checkpoint '${checkpoint.id}' is signed, but there is no verifier of checkpoint signatures!`);
+
+        for (const role of this.options.requiredCheckpointSignatureRoles ?? [])
+            if (!checkpoint.signatures.some(signature => signature.role === role))
+                throw new POIError(`The checkpoint '${checkpoint.id}' is not signed in the role '${role}'!`);
+
+    }
+
+    /**
+     * Refuses a commit not signed as required, without verifying a signature (`SignedAsRequiredError`): signed without a
+     * verifier of commit signatures, or not signed in a required role.
+     */
+    private checkSignedAsRequired(commit: Commit): void {
+
+        if (commit.signatures.length > 0 && this.options.verifyCommit === undefined)
+            throw new POIError(`The commit '${commit.id}' is signed, but there is no verifier of commit signatures!`);
+
+        for (const role of this.options.requiredSignatureRoles ?? [])
+            if (!commit.signatures.some(signature => signature.role === role))
+                throw new POIError(`The commit '${commit.id}' is not signed in the role '${role}'!`);
+
+    }
+
+    /**
+     * Refuses a commit not signed in a required role by a key the given version, the one it leads to, lets sign in it
+     * (`RequiredRolesError`): a role is no more than what a signature says, unless its key may sign in it.
+     */
+    private checkRequiredRoles(commit: Commit, version: RoamingNetwork): void {
+
+        for (const role of this.options.requiredSignatureRoles ?? [])
+            if (!commit.signatures.some(signature => signature.role === role && keyMaySignIn(signature, version)))
+                throw new POIError(`The commit '${commit.id}' is not signed in the role '${role}' by a key that may sign in it!`);
 
     }
 
@@ -457,6 +529,9 @@ export class History {
         const commit = value instanceof Commit ? value : Commit.parse(value);
         const head   = this.head;
 
+        // Whether it is signed as required first: its signatures are verified in its version, once calculated.
+        this.checkSignedAsRequired(commit);
+
         this.checkOpen();
 
         if (commit.roamingNetworkId !== head.network.id)
@@ -489,7 +564,9 @@ export class History {
 
         this.checkVersionEpoch(network);
 
+        // Its signatures by the keys of the version it leads to, a required role by a key that may sign in it.
         this.verifyCommitSignatures(commit, head.network, network);
+        this.checkRequiredRoles(commit, network);
 
         const version = { network, commit };
         this.versions.push(version);
