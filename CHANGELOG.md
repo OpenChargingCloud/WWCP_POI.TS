@@ -161,6 +161,10 @@
   statement names a restriction of OCPI, e.g. `max_kwh`, has invalid signatures now (`sessionPrice-conditional-price`).
   `poi-refusals.json` and `poi-verifier.json` of WWCPPOIConformanceTests `c540c7f` vendored, 290 vectors, 7 of them new;
   none deviates.
+- `poi-histories.json` of WWCPPOIConformanceTests `bc4e5a0` vendored: the 13 replays this library left to WWCP_POI3
+  (`notApplicable`) hold here as well and are replayed: the references a version holds, e.g. `station-*`, `meter-*`,
+  `withdrawn-while-named-*`, checked since `813e1d7`, and the changes of the groups of a provider and of grid connection
+  points, applied since `1946013`, each refused in the words of its reason. `tests/conformance.test.ts` 760.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
