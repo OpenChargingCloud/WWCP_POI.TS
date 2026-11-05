@@ -19,7 +19,7 @@ import { CoseKey } from '@vanaheimr/cose';
 
 import { optionalString, optionalTimestamp, requireObject, CONTEXT_PREFIX } from './common.ts';
 import { decodeDeterministicCbor, encodeCbor } from './encoding/cbor.ts';
-import { bytesEqual, fromBase64, toHex }      from './encoding/text.ts';
+import { bytesEqual, DOTNET_BAD_BASE64, fromBase64, isDotNetBase64, toHex } from './encoding/text.ts';
 import { get, isArray, type JSONObject, type JSONValue } from './json/value.ts';
 import { POIError }                           from './errors.ts';
 
@@ -44,18 +44,6 @@ const ALL_USAGES: readonly string[] = Object.values(KeyUsages);
 
 
 export const PUBLIC_KEY_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/publicKey/v1';
-
-/** What `Convert.FromBase64String` of .NET says of a text it can not read. */
-const DOTNET_BAD_BASE64 = 'The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.';
-
-/**
- * Whether `Convert.FromBase64String` of .NET reads the given text, though perhaps not canonically: white space left out
- * anywhere, groups of four characters of the alphabet, at most two padding characters at the end, unused bits of any value.
- */
-const isDotNetBase64 = (text: string): boolean => {
-    const significant = text.replace(/[ \t\r\n]/gu, '');
-    return significant.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/u.test(significant);
-};
 
 /** Whether the given bytes are deterministic CBOR, written again as they are. */
 const isDeterministicCbor = (bytes: Uint8Array): boolean => {

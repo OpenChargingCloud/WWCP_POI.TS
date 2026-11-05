@@ -85,6 +85,14 @@ export { OperatorTrust }                                     from './verifier/tr
 export { verifyVersion, describeVersion, type VerifiedVersion } from './verifier/version.ts';
 export { verifyChargingStation, verifyPriceStatements, type Manufactured, type NamedCertificate, type NamedTransparencySoftware, type VerifiedChargingStation, type VerifiedPrice } from './verifier/chargingStation.ts';
 export { evTalerExchangesAt, evTalerTariffOf } from './verifier/evTaler.ts';
+
+// EV Taler, phase 2: the steps of a session in their contract terms, and its settlement statement, read and verified
+export { EVTalerRates, NetDecimal, minorUnitDigits, roundToNearest, roundUp, talerAmountOf, writeAmount, writeDecimal } from './evTaler/amounts.ts';
+export { EVTalerSignedMeterValue, verifyMeterValue, type EVTalerMeasurementKey, type EVTalerMeterReading, type EVTalerMeterValueVerifier, type EVTalerVerifiedMeterValue } from './evTaler/meterValue.ts';
+export { EVTalerCovers, EVTalerStep, EV_TALER_STEP_CONTEXT, isEVTalerSessionId, type EVTalerCoversUnit, type EVTalerStepData } from './evTaler/step.ts';
+export { EVTalerPayURI, sameBaseURL } from './evTaler/payURI.ts';
+export { EVTalerAmountChecks, EVTalerContractTerms, evTalerTariff, type EVTalerAmountCheck, type EVTalerContractExchange, type EVTalerVerifiedStep } from './evTaler/contractTerms.ts';
+export { EVTalerSettlement, EV_TALER_SETTLEMENT_CONTEXT, type EVTalerSettledOrder, type EVTalerSettlementVerification } from './evTaler/settlement.ts';
 export { parseTrustedWitnesses, verifyCheckpointLine, verifyCheckpointSignatures, type CheckpointSignatures, type TrustedWitness } from './verifier/checkpoints.ts';
 export { parseEvidence, verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';
 export { POIClient, type CheckedChargingStation, type Fetch } from './client.ts';

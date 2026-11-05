@@ -137,6 +137,29 @@ export function fromBase64(text: string): Uint8Array {
 }
 
 
+/** What `Convert.FromBase64String` of .NET says of a text it can not read. */
+export const DOTNET_BAD_BASE64 = 'The input is not a valid Base-64 string as it contains a non-base 64 character, more than two padding characters, or an illegal character among the padding characters.';
+
+/**
+ * Whether `Convert.FromBase64String` of .NET reads the given text, though perhaps not canonically: white space left out
+ * anywhere, groups of four characters of the alphabet, at most two padding characters at the end, unused bits of any value.
+ */
+export const isDotNetBase64 = (text: string): boolean => {
+    const significant = text.replace(/[ \t\r\n]/gu, '');
+    return significant.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/u.test(significant);
+};
+
+/** Whether the given text is nonempty canonical Base64: what `Convert.ToBase64String` writes again of what it reads. */
+export const isCanonicalBase64 = (text: string): boolean => {
+    try {
+        return fromBase64(text).length > 0;
+    }
+    catch {
+        return false;
+    }
+};
+
+
 const BASE45 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
 const BASE45_MAP = positionsOf(BASE45);
 

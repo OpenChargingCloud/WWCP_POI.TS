@@ -196,6 +196,21 @@
   of WWCPPOIConformanceTests `2d0780f`. The tests on QA hold the values of the new run; those WWCP_POI3 calculated of
   changed versions (element and embedded changes, preconditions, EV Taler) are calculated again by WWCP_POI3 at
   `045e180`, and this library takes the very same versions. `tests/conformance.test.ts` 794.
+- EV Taler, phase 2, as WWCP_POI `c2d39e5` checks it (concepts/EVTaler.md 5 and 7, `src/evTaler`): the contract terms of
+  a step of a session (`EVTalerContractTerms`: version 0, an order, an amount and a maximum fee as GNU Taler writes them,
+  the merchant, its exchanges, the times, an auto refund) and their step in `extra.wwcp` (`EVTalerStep`: the roaming
+  network, the EVSE, the session, the step after the order before, the EV Taler tariff, the price statement, what it
+  covers, from step 2 on the signed meter value at the start, an object as OCPP 2.1 sends it), checked against the proof
+  of the station: the operator's merchant and exchanges in the currency of the EV Taler tariff of the EVSE, the price
+  statement current when the session began, each step following the one before, the signed start value verified with
+  the measurement key of the meter or the station the proof gives, by a transparency software passed in; the amount of a
+  step recalculated where the session is priced by one element of the simple profile (`EVTalerRates`), as System.Decimal
+  calculates it (`NetDecimal`: 96 bits, 28 places, rounded half to even), rounded up to the minor unit. A `taler://pay`
+  URI (`EVTalerPayURI`) names the merchant of the operator. The settlement statement (`EVTalerSettlement`), signed by the
+  operator with a key that may sign `payments`, refused without both signed meter values, of the steps of the session,
+  its energy and times those of the values, its price recalculated, half away from zero. Read and verified, not signed.
+  Of 178 sessions, steps, pay URIs and settlement statements probed against WWCP_POI3 at `c2d39e5`, on station proofs it
+  made, all are taken and refused alike, in the same words. `tests/evTalerSessions.test.ts`, on the proof of example A15.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
