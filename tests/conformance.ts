@@ -12,7 +12,8 @@ import { clone, isArray, isObject, type JSONObject, type JSONValue } from '../sr
 //     node tools/generate-test-vectors.mjs --mirror libs/WWCP_POI.TS/tests/vectors
 //
 // The frozen run they name (runs/<VECTORS_RUN> there, tests/at.ts) is vendored next to them, as tests/vectors/<VECTORS_RUN>.
-// So are the fixtures of ChargyWebApp poi-verifier.json names (runs/chargy-fc513cd there, tests/vectors/chargy-fc513cd).
+// So are the fixtures of ChargyWebApp poi-verifier.json names (runs/chargy-fc513cd there, tests/vectors/chargy-fc513cd),
+// and the documents the generator makes of them (test-vectors/chargy there, tests/vectors/chargy).
 
 
 /** The name this library is known by within the vector files ("knownDeviations", "notApplicable"). */
@@ -63,8 +64,11 @@ interface Vector extends Applicability {
     readonly description:  string;
 }
 
-/** A document of the frozen run: a file and a JSON pointer (RFC 6901) into it, "" for the whole file. */
-export interface DocumentRef { readonly file: string, readonly pointer: string }
+/**
+ * A document of the frozen run: a file and a JSON pointer (RFC 6901) into it, "" for the whole file. A document the
+ * generator makes names their directory next to the vector files, `documents` (e.g. "chargy", tests/vectors/chargy).
+ */
+export interface DocumentRef { readonly documents?: string, readonly file: string, readonly pointer: string }
 
 export interface PublicKeyOf { readonly coseKey: string, readonly keyId: string }
 
@@ -367,19 +371,22 @@ export const verifier = load('poi-verifier.json') as { readonly run: string, rea
 /** The vendored fixtures of ChargyWebApp: next to the vector files, by their name. */
 const CHARGY_RUN = join(VECTORS, verifier.run.split('/').pop() ?? verifier.run);
 
+/** The texts of the files read, by their path: a file of the fixtures and one the generator made may share a name. */
 const chargyTexts = new Map<string, string>();
 
 /**
- * A document of the fixtures, read as POI reads JSON: a pointer on into a string reads the string as a JSON document, and
- * so does one ending at a string of a JSON object.
+ * A document of the fixtures, or of those the generator makes of them, read as POI reads JSON: a pointer on into a string
+ * reads the string as a JSON document, and so does one ending at a string of a JSON object.
  */
 export function chargyDocument(ref: DocumentRef): JSONValue {
 
-    let text = chargyTexts.get(ref.file);
+    const path = join(ref.documents === undefined ? CHARGY_RUN : join(VECTORS, ref.documents), ref.file);
+
+    let text = chargyTexts.get(path);
 
     if (text === undefined) {
-        text = readFileSync(join(CHARGY_RUN, ref.file), 'utf8');
-        chargyTexts.set(ref.file, text);
+        text = readFileSync(path, 'utf8');
+        chargyTexts.set(path, text);
     }
 
     const value = tokens(ref.pointer).reduce((value, token) => step(typeof value === 'string' ? parseJSON(value) : value, token, ref.file), parseJSON(text));

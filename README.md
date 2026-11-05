@@ -319,7 +319,10 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the head, and
   the ECDSA twin of a price statement;
 - `tests/vectors/chargy-fc513cd`, the POI fixtures of ChargyWebApp at commit `fc513cd`, which `poi-verifier.json` names
-  its documents in: histories, prices, publications, sessions and trust transitions.
+  its documents in: histories, prices, publications, sessions and trust transitions;
+- `tests/vectors/chargy`, what WWCPPOIConformanceTests makes of them itself, which `poi-verifier.json` names with
+  `"documents": "chargy"`: in `POIPrices/`, the price evidence of sessions as ChargyWebApp made it, every signature
+  deterministic.
 
 - `tests/conformance.test.ts`: the golden vectors, as the C# implementation runs them in WWCPPOIConformanceTests.
 - `tests/canonical.test.ts`, `tests/specification.test.ts`: the test vectors of Styx and of section 6 of the
