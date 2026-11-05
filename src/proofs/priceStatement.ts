@@ -28,6 +28,7 @@ import { ignoringCase }              from '../network/identifications.ts';
 import { context, tariffId, Thrown, type Id } from '../network/poiJSON.ts';
 import { tariffElement }             from '../network/reading.ts';
 import { trimmed }                   from '../network/versionTexts.ts';
+import { notWritten }                from '../network/writtenForm.ts';
 import { POIError }                  from '../errors.ts';
 
 
@@ -54,7 +55,7 @@ const TARIFF_PRICES_CONTEXT  = CONTEXT_PREFIX + 'roamingNetwork/chargingTariffPr
 /**
  * The prices of a charging tariff in a price status as WWCP_POI3 reads them (`ChargingTariffPrices.TryParse`): the
  * tariff by its identification, `{operatorId}*T{suffix}` (SPECIFICATION.md 2, 12.1), and its elements, at least one, as
- * a tariff has them; the identification of the tariff, or the error.
+ * a tariff has them, written as a charging tariff holds them; the identification of the tariff, or the error.
  */
 function tariffPrices(value: JSONValue): Id | string {
 
@@ -87,6 +88,13 @@ function tariffPrices(value: JSONValue): Id | string {
         if (error !== undefined)
             return error;
     }
+
+    // Written as a charging tariff holds them, as a version holds the elements of a tariff (12.1): an element naming a
+    // restriction this reader does not know, e.g., would else be priced by it where its signer did not price it.
+    const found = notWritten(elements, 'elements', 'elements', 'version');
+
+    if (found !== undefined)
+        return `'${found.path}' of the prices of the charging tariff '${id.text}' is not written as a charging tariff holds it: ${found.reason}!`;
 
     return id;
 

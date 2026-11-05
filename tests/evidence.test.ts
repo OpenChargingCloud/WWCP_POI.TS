@@ -194,6 +194,41 @@ describe('The price status of a price statement (SPECIFICATION.md 2, 12.1)', () 
 
     });
 
+    it('holds its elements as a version holds those of a charging tariff, else refused before its signature (D18)', () => {
+
+        const elementOf = (prices: JSONObject): JSONObject =>
+            defined((prices['elements'] as JSONObject[])[0]);
+
+        const refusal = (change: (element: JSONObject) => void): string => {
+            try {
+                PriceStatement.parse(statement((_, prices) => { change(elementOf(prices)); }));
+            }
+            catch (e) {
+                return e instanceof Error ? e.message : String(e);
+            }
+            return 'taken';
+        };
+
+        const notHeld = (path: string, reason: string): string =>
+            invalid(`'${path}' of the prices of the charging tariff 'DE*GEF*T_DC' is not written as a charging tariff holds it: ${reason}!`);
+
+        // A restriction this reader does not know would else be priced where its signer did not price it.
+        expect(refusal(element => { element['restrictions'] = { startTime: '08:00', maxStateOfCharge: 80 }; }))
+            .toBe(notHeld('elements[0].restrictions.maxStateOfCharge', 'the content leaves it out'));
+        expect(refusal(element => { element['x'] = 1; })).toBe(notHeld('elements[0].x', 'the content leaves it out'));
+        expect(refusal(element => { element['restrictions'] = { minPower: '11' }; }))
+            .toBe(notHeld('elements[0].restrictions.minPower', "the content holds it as '11'"));
+        expect(refusal(element => { element['restrictions'] = { daysOfWeek: [ 'TUESDAY', 'MONDAY' ] }; }))
+            .toBe(notHeld('elements[0].restrictions.daysOfWeek', 'its elements are in the order the content holds them in'));
+
+        // Restrictions it knows, as a version holds them, are taken; the signature is what is checked then.
+        expect(refusal(element => { element['restrictions'] = { startTime: '08:00', endTime: '18:00', daysOfWeek: [ 'MONDAY', 'TUESDAY' ] }; })).toBe('taken');
+
+        // A price as given, also with trailing zeros, as a decimal holds it.
+        expect(refusal(element => { defined((element['priceComponents'] as JSONObject[])[0])['price'] = Decimal.parse('0.390'); })).toBe('taken');
+
+    });
+
 });
 
 

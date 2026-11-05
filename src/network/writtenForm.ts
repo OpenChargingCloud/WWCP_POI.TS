@@ -339,6 +339,8 @@ export const PROPERTIES_OF: Readonly<Record<string, readonly string[]>> = {
     exitAddress:             ADDRESS_PROPERTIES,
     geoLocation:             [ '@context', 'lat', 'lng', 'alt', 'projection' ],
     priceComponents:         [ '@context', 'type', 'price', 'stepSize', 'vat' ],
+    restrictions:            [ '@context', 'startTime', 'endTime', 'startDate', 'endDate', 'minEnergy', 'maxEnergy', 'minCurrent', 'maxCurrent',
+                               'minPower', 'maxPower', 'minDuration', 'maxDuration', 'daysOfWeek', 'reservation' ],
     publicKeys:              [ '@context', '@id', 'key', 'certificateChain' ],
     signingKeys:             KEY_PROPERTIES,
     identityKeys:            KEY_PROPERTIES,

@@ -112,6 +112,18 @@
   too, 34 in the same words; the others in the words of the entity read again without `Change N:`, of the change as
   WWCP_POI3 parses it, or of the written form, where WWCP_POI3 names a property of infrastructure a change set may not
   change.
+- The elements of the prices of a charging tariff in a price statement are written as a charging tariff holds them
+  (SPECIFICATION.md 12.1, WWCP_POI3 `5a72313`, D18 of the conformance tests), as a version holds the elements of a tariff:
+  an element, a price component or restrictions naming a property their type does not define, a number given as a text,
+  the days of the week out of their order, the JSON-LD context of an embedded object are refused before the signature,
+  "'elements[0].restrictions.maxStateOfCharge' of the prices of the charging tariff 'DE*GEF*T_DC' is not written as a
+  charging tariff holds it: the content leaves it out!" under "Invalid price status of the price statement: ". A reader
+  not knowing a restriction would else price a session where its signer did not. The written form knows the
+  restrictions of an element now (`startTime` to `reservation`, as ChargingTariffRestrictions writes them): a version
+  naming another one, e.g. `maxStateOfCharge`, is refused, which 0.2.0 took. The price evidence of a session whose
+  statement names a restriction of OCPI, e.g. `max_kwh`, has invalid signatures now (`sessionPrice-conditional-price`).
+  `poi-refusals.json` and `poi-verifier.json` of WWCPPOIConformanceTests `c540c7f` vendored, 290 vectors, 7 of them new;
+  none deviates.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
