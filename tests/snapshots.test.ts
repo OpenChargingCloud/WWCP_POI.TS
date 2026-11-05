@@ -74,6 +74,28 @@ describe('A snapshot of the head', () => {
 
     });
 
+    it('reads its effective last changes as WWCP_POI3 reads them, and takes the effective tree without them', () => {
+
+        const floor = { entityType: 'EVSE', entityId: 'DE*GEF*E1*1', lastChange: '2026-10-28T00:00:00.000Z' };
+
+        // Floors of members it has or not, in the forms DateTimeOffset reads: the ETags of the commit hold all the same.
+        for (const effectiveLastChanges of [ null, [], [ floor, { ...floor, entityId: 'DE*GEF*E9*9' }, { ...floor, lastChange: '2026-10-28 01:00:00+01:00' } ],
+                                             [ { '@context': 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/effectiveLastChange/v1', ...floor } ] ] as JSONValue[])
+            expect(History.fromSnapshot(ofHead({ effectiveLastChanges }), anchoredPQ).head.commit.revision).toBe(8);
+
+        expect(() => History.fromSnapshot(ofHead({ effectiveLastChanges: floor }), anchoredPQ))
+            .toThrow('The effective last changes of a snapshot must be a JSON array!');
+
+        for (const [ invalid, text ] of [ [ { ...floor, lastChange: 'yesterday' }, '{"entityType":"EVSE","entityId":"DE*GEF*E1*1","lastChange":"yesterday"}' ],
+                                          [ { entityType: 'EVSE', lastChange: floor.lastChange }, '{"entityType":"EVSE","lastChange":"2026-10-28T00:00:00.000Z"}' ],
+                                          [ { ...floor, entityType: 1 }, '{"entityType":1,"entityId":"DE*GEF*E1*1","lastChange":"2026-10-28T00:00:00.000Z"}' ],
+                                          [ { '@context': 'x', ...floor }, '{"@context":"x","entityType":"EVSE","entityId":"DE*GEF*E1*1","lastChange":"2026-10-28T00:00:00.000Z"}' ],
+                                          [ 'EVSE', '"EVSE"' ] ] as [ JSONValue, string ][])
+            expect(() => History.fromSnapshot(ofHead({ effectiveLastChanges: [ floor, invalid ] }), anchoredPQ))
+                .toThrow(`Invalid effective last change '${text}' of a snapshot!`);
+
+    });
+
     it('is refused without attestations of its head, or with one it cannot read', () => {
 
         const without = ofHead();

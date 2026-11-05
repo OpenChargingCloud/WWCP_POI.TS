@@ -112,6 +112,13 @@
   too, 34 in the same words; the others in the words of the entity read again without `Change N:`, of the change as
   WWCP_POI3 parses it, or of the written form, where WWCP_POI3 names a property of infrastructure a change set may not
   change.
+- The `effectiveLastChanges` of a snapshot are read as WWCP_POI3 reads them (`TryTakeEffectiveFloors`,
+  POIEffectiveLastChange): absent or `null`, or an array of `{entityType, entityId, lastChange}`, a JSON-LD context only
+  its own, the timestamp in a form `DateTimeOffset` reads; refused otherwise in its words, "The effective last changes of
+  a snapshot must be a JSON array!", "Invalid effective last change '{…}' of a snapshot!". 0.2.0 took any. They are the
+  floors of the `lastChange` of effective members POI_API keeps at runtime (SPECIFICATION.md 8.8, point 3), found again
+  for what a change set changes; the effective tree takes the `lastChange` of an effective member without them (8.1),
+  as WWCP_POI3 does (`EffectiveChargingPoolsOfTheContent`), so this library reads them and keeps none.
 - The preconditions of a change set hold, as WWCP_POI3 checks them (`preconditions.ts`; RoamingNetwork.Preconditions.cs,
   SPECIFICATION.md 4): each names the ETag an entity still has in the version the change set is applied to, after its
   `beforeETags` and before its changes, over the entity as the roaming network embeds it, with everything it embeds, its

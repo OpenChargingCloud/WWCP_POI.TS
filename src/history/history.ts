@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
-import { onlyProperties, requireArray, requireObject } from '../common.ts';
-import { get, type JSONValue }            from '../json/value.ts';
+import { onlyProperties, requireArray, requireObject, CONTEXT_PREFIX } from '../common.ts';
+import { get, isArray, isObject, type JSONValue } from '../json/value.ts';
+import { timestampOf }                    from '../network/poiJSON.ts';
+import { compactJSON }                    from '../qidigital/json.ts';
 import { sameETags }                      from '../etags.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { Attestation }                    from '../proofs/attestation.ts';
@@ -28,6 +30,39 @@ import { ChangeSet }                      from './changeSet.ts';
 import { applyChangeSet }                 from './apply.ts';
 import { EpochProfiles, FIRST_EPOCH, parseEpoch, parseEpochLink, sameEpoch, type Epoch, type EpochLink } from './epoch.ts';
 import { POIError, required }             from '../errors.ts';
+
+
+/** The context of an effective last change, where it is given. */
+const EFFECTIVE_LAST_CHANGE_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/effectiveLastChange/v1';
+
+/**
+ * Refuses the `effectiveLastChanges` of a snapshot WWCP_POI3 does not read (`TryTakeEffectiveFloors`, POIEffectiveLastChange):
+ * an array of `{entityType, entityId, lastChange}`, absent or `null` when there are none. They are the floors of the
+ * `lastChange` of effective members POI_API keeps at runtime (8.8, point 3): the effective tree takes the `lastChange` of an
+ * effective member without them (8.1), so they are read, not taken.
+ */
+function checkEffectiveLastChanges(value: JSONValue | undefined): void {
+
+    if (value === undefined || value === null)
+        return;
+
+    if (!isArray(value))
+        throw new POIError('The effective last changes of a snapshot must be a JSON array!');
+
+    for (const item of value) {
+
+        const valid = isObject(item) &&
+                      (get(item, '@context') === undefined || get(item, '@context') === EFFECTIVE_LAST_CHANGE_CONTEXT) &&
+                      typeof get(item, 'entityType') === 'string' &&
+                      typeof get(item, 'entityId')   === 'string' &&
+                      typeof get(item, 'lastChange') === 'string' && timestampOf(get(item, 'lastChange') as string) !== undefined;
+
+        if (!valid)
+            throw new POIError(`Invalid effective last change '${compactJSON(item)}' of a snapshot!`);
+
+    }
+
+}
 
 
 /** A version with the commit leading to it. */
@@ -193,6 +228,8 @@ export class History {
         catch (e) {
             throw new POIError(`Invalid commit of the snapshot: ${e instanceof Error ? e.message : String(e)}`);
         }
+
+        checkEffectiveLastChanges(get(json, 'effectiveLastChanges'));
 
         if (get(json, 'epoch') !== undefined) {
             const epochJSON = requireObject(get(json, 'epoch'), 'The epoch of a snapshot');
