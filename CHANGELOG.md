@@ -165,6 +165,11 @@
   (`notApplicable`) hold here as well and are replayed: the references a version holds, e.g. `station-*`, `meter-*`,
   `withdrawn-while-named-*`, checked since `813e1d7`, and the changes of the groups of a provider and of grid connection
   points, applied since `1946013`, each refused in the words of its reason. `tests/conformance.test.ts` 760.
+- `poi-histories.json` of WWCPPOIConformanceTests `70deea0` vendored: 14 replays of the entities a party embeds, as
+  `1946013` applies them, in `history-parties`: offers of an operator, signed for `tariffs`, not overlapping; an offer
+  and groups of a provider, signed by the provider, not by the operator of the same prefix; a grid connection point
+  handed on and named in one change set, by its new maintainer (csharp-review 9); parking data of a parking operator
+  and the parking space of a charging station operator, each signed by its own party. `tests/conformance.test.ts` 774.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
