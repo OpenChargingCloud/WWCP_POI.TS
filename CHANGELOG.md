@@ -112,6 +112,17 @@
   too, 34 in the same words; the others in the words of the entity read again without `Change N:`, of the change as
   WWCP_POI3 parses it, or of the written form, where WWCP_POI3 names a property of infrastructure a change set may not
   change.
+- The preconditions of a change set hold, as WWCP_POI3 checks them (`preconditions.ts`; RoamingNetwork.Preconditions.cs,
+  SPECIFICATION.md 4): each names the ETag an entity still has in the version the change set is applied to, after its
+  `beforeETags` and before its changes, over the entity as the roaming network embeds it, with everything it embeds, its
+  canonical JSON or its deterministic CBOR, in the hash algorithm it names. The entity is found by its type and
+  identification as its type compares it, e.g. `DEGEFP1` as `DE*GEF*P1`, among the entities a change set addresses on
+  their own (`Flatten`), not a model, which is unique within its manufacturer only, as in WWCP_POI3. Refused otherwise in
+  its words, "The change set does not fit this version of the roaming network: Precondition 0: the ChargingPool
+  'DE*GEF*P1' changed, it no longer has the ETag json:sha256:hex:…!", and a precondition not read as it reads one in a
+  change set, "Invalid precondition 1!". 0.2.0 refused change sets with preconditions as not supported. Of 79 change sets
+  with preconditions probed against WWCP_POI3 at `d1c41ca`, ETags of 40 entities of every kind among them, all are taken
+  and refused alike, 70 in the same words, the others refused when read, where the probe reads a precondition on its own.
 - A change set changes elements, as WWCP_POI3 applies them (`elements.ts`, `apply.ts`; POIElements.cs and
   RoamingNetwork.ElementChanges.cs): `AddElement`, `RemoveElement`, `ReplaceElement`, `UpdateElementProperty` and
   `RemoveElementProperty` address an element of a property of an entity by their element path, e.g.

@@ -24,6 +24,7 @@ import { toHex }                     from '../encoding/text.ts';
 import { parseETags, type ETag }     from '../etags.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { trimmed }                   from '../network/versionTexts.ts';
+import { parsePreconditions, type Precondition } from './preconditions.ts';
 import { POIError }                  from '../errors.ts';
 
 
@@ -299,7 +300,7 @@ export class ChangeSet {
         public readonly roamingNetworkId:  string,
         public readonly createdAt:         number,
         public readonly changes:           readonly Change[],
-        public readonly preconditions:     readonly JSONObject[],
+        public readonly preconditions:     readonly Precondition[],
         public readonly beforeETags:       readonly ETag[],
         public readonly afterETags:        readonly ETag[],
         public readonly signatures:        readonly ChangeSetSignature[],
@@ -367,9 +368,7 @@ export class ChangeSet {
 
         });
 
-        const preconditions = get(json, 'preconditions') === undefined
-                                  ? []
-                                  : requireArray(get(json, 'preconditions'), `The preconditions of the change set '${id}'`).map(item => requireObject(item, 'A precondition'));
+        const preconditions = parsePreconditions(get(json, 'preconditions'));
 
         const signatures = get(json, 'signatures') === undefined
                                ? []

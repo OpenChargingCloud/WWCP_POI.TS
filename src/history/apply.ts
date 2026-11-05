@@ -28,6 +28,7 @@ import { trimmed }                        from '../network/versionTexts.ts';
 import { notWritten }                     from '../network/writtenForm.ts';
 import { entityPropertyName, isElementChange, type Change, type ChangeSet } from './changeSet.ts';
 import { applyElement, pathText }       from './elements.ts';
+import { brokenPrecondition }           from './preconditions.ts';
 import { POIError, required }             from '../errors.ts';
 
 
@@ -1888,8 +1889,11 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
     matchETags(changeSet.beforeETags, before, 'The change set does not fit this version of the roaming network');
 
-    if (changeSet.preconditions.length > 0)
-        throw new POIError('Change sets with preconditions are not supported by this library yet!');
+    // Its preconditions hold in the version it is applied to (4): the entities they name have the ETags they name.
+    const broken = brokenPrecondition(before.content, changeSet.preconditions);
+
+    if (broken !== undefined)
+        throw new POIError(`The change set does not fit this version of the roaming network: ${broken}`);
 
     const content    = clone(before.content);
     const createdAt  = toTimestamp(changeSet.createdAt);
