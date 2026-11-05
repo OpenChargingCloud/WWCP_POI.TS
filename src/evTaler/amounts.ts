@@ -396,12 +396,16 @@ export class EVTalerRates {
     public stepPrice(covers: EVTalerCovers): NetDecimal | string {
 
         const quantity = covers.to.minus(covers.from);
-        const rate     = covers.unit === 'kWh' ? this.energyPerKWh : this.timePerHour?.dividedBy(NetDecimal.of(60));
 
-        if (rate === undefined)
+        // Multiplied before divided, as WWCP_POI a374855 does: a decimal holds no rate of a minute such as 0.40 / 60
+        // exactly, and rounding up would take its last digit for a cent.
+        const price    = covers.unit === 'kWh' ? (this.energyPerKWh === undefined ? undefined : quantity.times(this.energyPerKWh))
+                                               : (this.timePerHour  === undefined ? undefined : quantity.times(this.timePerHour).dividedBy(NetDecimal.of(60)));
+
+        if (price === undefined)
             return `The charging tariff does not price what a step covers, '${covers.unit}'!`;
 
-        return roundUp(quantity.times(rate), this.currency);
+        return roundUp(price, this.currency);
 
     }
 

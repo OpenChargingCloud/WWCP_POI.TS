@@ -370,22 +370,29 @@ describe('EV Taler, phase 2: the steps of a session and its settlement (WWCP_POI
 
 describe('Amounts of EV Taler, as System.Decimal calculates them (EVTalerAmounts, EVTalerRates)', () => {
 
-    it('rounds a step up to the minor unit, after dividing as System.Decimal divides: an hour at 0.40 € is 0.41 €', () => {
+    it('rounds a step up to the cent, multiplied before divided: an hour at 0.40 € is 0.40 €, not a cent more (WWCP_POI a374855)', () => {
 
         const of = (text: string): NetDecimal => defined(NetDecimal.parse(text));
 
-        // 0.40 / 60 is 0.0066666666666666666666666667, rounded half to even at 28 places: 60 minutes of it are just above 0.40.
+        // System.Decimal holds 0.40 / 60 as 0.0066666666666666666666666667, rounded half to even at 28 places: 60 minutes of
+        // that rate are just above 0.40, which rounding up took for a cent before WWCP_POI a374855 multiplied first.
         expect(of('0.40').dividedBy(of('60')).toString()).toBe('0.0066666666666666666666666667');
         expect(writeDecimal(of('0.40').dividedBy(of('60')).times(of('60')))).toBe('0.400000000000000000000000002');
         expect(of('2').dividedBy(of('3')).toString()).toBe('0.6666666666666666666666666667');
         expect(of('10').dividedBy(of('3')).toString()).toBe('3.3333333333333333333333333333');
         expect(of('100').dividedBy(of('3')).toString()).toBe('33.333333333333333333333333333');
 
+        // As A_step_costs_what_it_covers_rounded_up_to_the_cent: 0.59 € a kWh, 0.40 € an hour in minutes.
+        const simple = EVTalerRates.of('EUR', {}, [ { priceComponents: [ { type: 'ENERGY', price: Decimal.parse('0.59'), stepSize: 1 },
+                                                                        { type: 'TIME', price: Decimal.parse('0.40'), stepSize: 60 } ] } ]) as EVTalerRates;
+        const price  = (from: number, to: number, unit: string): string => writeAmount(simple.stepPrice(EVTalerCovers.create(from, to, unit)) as NetDecimal, 'EUR');
+
+        expect([ price(0, 60, 'min'), price(0, 30, 'min'), price(30, 120, 'min'), price(0, 7, 'min'), price(0, 5, 'kWh'), price(5, 5.5, 'kWh') ])
+            .toEqual([ '0.40', '0.20', '0.60', '0.05', '2.95', '0.30' ]);
+
         const rates = EVTalerRates.of('EUR', {}, [ { priceComponents: [ { type: 'FLAT', price: Decimal.parse('0.50') }, { type: 'ENERGY', price: Decimal.parse('0.65'), stepSize: 1 },
                                                                        { type: 'TIME', price: Decimal.parse('0.40'), stepSize: 60 } ] } ]) as EVTalerRates;
 
-        expect(writeAmount(rates.stepPrice(EVTalerCovers.create(0, 60, 'min')) as NetDecimal, 'EUR')).toBe('0.41');
-        expect(writeAmount(rates.stepPrice(EVTalerCovers.create(0, 7, 'min')) as NetDecimal, 'EUR')).toBe('0.05');
         expect(writeAmount(rates.stepPrice(EVTalerCovers.create(0, 2.5, 'kWh')) as NetDecimal, 'EUR')).toBe('1.63');
 
         // The price of a session to the nearest minor unit, half away from zero: 0.50 € + 7.412 kWh at 0.65 € + 34 minutes at 0.40 €.

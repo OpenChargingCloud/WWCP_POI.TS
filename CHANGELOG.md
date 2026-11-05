@@ -211,6 +211,11 @@
   its energy and times those of the values, its price recalculated, half away from zero. Read and verified, not signed.
   Of 178 sessions, steps, pay URIs and settlement statements probed against WWCP_POI3 at `c2d39e5`, on station proofs it
   made, all are taken and refused alike, in the same words. `tests/evTalerSessions.test.ts`, on the proof of example A15.
+- EV Taler: a step in minutes costs what it covers, rounded up to the cent, not a cent more, as WWCP_POI `a374855`
+  calculates it: the quantity multiplied by the price of an hour before it is divided by 60. A decimal holds no rate of a
+  minute such as 0.40 / 60 exactly, and rounding up took its last digit for a cent: 60 minutes at 0.40 EUR an hour were
+  0.41 EUR, 30 minutes 0.21 EUR. Found by the probe of this port. The 178 cases probed again against WWCP_POI3 with
+  `a374855`: all alike.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the
