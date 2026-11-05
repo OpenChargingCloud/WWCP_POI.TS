@@ -42,7 +42,7 @@ const release = (id: string, version: string): JSONObject =>
 const network = (): RoamingNetwork => RoamingNetwork.parse({
     '@context':                         ROAMING_NETWORK_CONTEXT,
     '@id':                              'rn1',
-    transparencySoftwareManufacturers:  [ { '@id': 'OpenChargingCloud', name: { en: 'Open Charging Cloud' }, transparencySoftware: [ release('chargy-1.0', '1.0'), release('chargy-1.1', '1.1') ],
+    transparencySoftwareManufacturers:  [ { '@id': 'OpenChargingCloud', name: { en: 'Open Charging Cloud' }, transparencySoftware: [ release('OpenChargingCloud:chargy-1.0', '1.0'), release('OpenChargingCloud:chargy-1.1', '1.1') ],
                                             created: CREATED, lastChange: CREATED } ],
     chargingStationOperators:           [ {
         '@id':                     'DE*GEF',
@@ -50,7 +50,7 @@ const network = (): RoamingNetwork => RoamingNetwork.parse({
         chargingPools:             [ { '@id': 'DE*GEF*P1', chargingStations: [ {
                                        '@id':                       'DE*GEF*S1',
                                        serialNumber:                'WB22-000815',
-                                       transparencySoftwareStatus:  [ status('chargy-1.0', 'germanCalibrationLaw') ],
+                                       transparencySoftwareStatus:  [ status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ],
                                        publicKeys:                  [ KEY1 ],
                                        templateIds:                 [ 'DE*GEF*ST1' ],
                                        EVSEs:                       [ { '@id': 'DE*GEF*E1*1', iso15118Certificate: SECC, created: CREATED, lastChange: CREATED } ],
@@ -59,7 +59,7 @@ const network = (): RoamingNetwork => RoamingNetwork.parse({
                                    } ], created: CREATED, lastChange: CREATED } ],
         chargingStationTemplates:  [ { '@id':                       'DE*GEF*ST1',
                                        modelURL:                    MODEL_URL,
-                                       transparencySoftwareStatus:  [ status('chargy-1.0', 'forInformationOnly'), status('chargy-1.1', 'forInformationOnly') ],
+                                       transparencySoftwareStatus:  [ status('OpenChargingCloud:chargy-1.0', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.1', 'forInformationOnly') ],
                                        signatureMethods:            [ 'OCMF' ],
                                        created:                     CREATED,
                                        lastChange:                  CREATED } ],
@@ -123,7 +123,7 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
         // of a release the station names too, the station's, all ordered by release.
         expect(effective['modelURL']).toBe(MODEL_URL);
         expect(effective['signatureMethods']).toEqual([ 'OCMF' ]);
-        expect(releasesOf(effective)).toEqual([ 'chargy-1.0 germanCalibrationLaw', 'chargy-1.1 forInformationOnly' ]);
+        expect(releasesOf(effective)).toEqual([ 'OpenChargingCloud:chargy-1.0 germanCalibrationLaw', 'OpenChargingCloud:chargy-1.1 forInformationOnly' ]);
 
         // Its serial number, public keys and ISO 15118 certificates are its own; the stored station names nothing of its template.
         expect(effective['serialNumber']).toBe('WB22-000815');
@@ -144,7 +144,7 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
             update('ChargingStation', 'DE*GEF*S1',   'modelURL',                    null,                                          'https://acme.example/wallbox-22-rev-b'),
             update('ChargingStation', 'DE*GEF*S1',   'signatureMethods',            null,                                          [ 'SAFE' ]),
             update('ChargingStation', 'DE*GEF*S1',   'publicKeys',                  [ KEY1 ],                                      [ KEY2 ]),
-            update('ChargingStation', 'DE*GEF*S1',   'transparencySoftwareStatus',  [ status('chargy-1.0', 'germanCalibrationLaw') ], [ status('chargy-1.1', 'germanCalibrationLaw') ]),
+            update('ChargingStation', 'DE*GEF*S1',   'transparencySoftwareStatus',  [ status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ], [ status('OpenChargingCloud:chargy-1.1', 'germanCalibrationLaw') ]),
             update('EVSE',            'DE*GEF*E1*1', 'iso15118Certificate',         SECC,                                          '-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----'),
         ];
 
@@ -168,7 +168,7 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
         expect(effective['modelURL']).toBe('https://acme.example/wallbox-22-rev-b');
         expect(effective['signatureMethods']).toEqual([ 'OCMF', 'SAFE' ]);
         expect(effective['publicKeys']).toEqual([ KEY2 ]);
-        expect(releasesOf(effective)).toEqual([ 'chargy-1.0 forInformationOnly', 'chargy-1.1 germanCalibrationLaw' ]);
+        expect(releasesOf(effective)).toEqual([ 'OpenChargingCloud:chargy-1.0 forInformationOnly', 'OpenChargingCloud:chargy-1.1 germanCalibrationLaw' ]);
         expect(evseOf(effective)['iso15118Certificate']).toContain('MIIC');
 
     });
@@ -177,9 +177,9 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
 
         const before = network();
 
-        for (const given of [ [ status('chargy-1.1', 'forInformationOnly'), status('chargy-1.0', 'germanCalibrationLaw') ],
-                              [ status('chargy-1.0', 'forInformationOnly'), status('chargy-1.0', 'germanCalibrationLaw') ] ])
-            expect(() => applyChangeSet(before, changeSet(before, [ update('ChargingStation', 'DE*GEF*S1', 'transparencySoftwareStatus', [ status('chargy-1.0', 'germanCalibrationLaw') ], given) ]),
+        for (const given of [ [ status('OpenChargingCloud:chargy-1.1', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ],
+                              [ status('OpenChargingCloud:chargy-1.0', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ] ])
+            expect(() => applyChangeSet(before, changeSet(before, [ update('ChargingStation', 'DE*GEF*S1', 'transparencySoftwareStatus', [ status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ], given) ]),
                                         { checkOwnership: false }))
                 .toThrow("'transparencySoftwareStatus' is not given as the content holds it: its elements are in the order the content holds them in, each once!");
 
@@ -199,7 +199,7 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
           : isObject(value) ? (value['@id'] === 'DE*GEF*S1' && isArray(value['EVSEs']) ? value : Object.values(value).map(find).find(found => found !== undefined))
           : undefined;
 
-        defined(find(attested), 'The station DE*GEF*S1')['transparencySoftwareStatus'] = [ status('chargy-1.5.0', 'germanCalibrationLaw'), status('chargy-9', 'forInformationOnly') ];
+        defined(find(attested), 'The station DE*GEF*S1')['transparencySoftwareStatus'] = [ status('GraphDefined:chargy-1.5.0', 'germanCalibrationLaw'), status('OpenChargingCloud:chargy-9', 'forInformationOnly') ];
 
         vi.spyOn(proof, 'verify').mockReturnValue({ ...verified, attested });
 
@@ -208,10 +208,10 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
         // The release of the station is proven by the certificate of the station alone, those of the meters by both.
         expect(station.transparencySoftware.map(({ namedBy, legalStatus, release, certificates }) =>
                    `${namedBy.entityType} ${namedBy.entityId}: ${asText(release['@id'])}, ${legalStatus ?? ''}, as ${certificates.map(item => asText(item.certificate['@id'])).join(' and ')} name it`))
-            .toEqual([ 'ChargingStation DE*GEF*S1: chargy-1.5.0, germanCalibrationLaw, as PTB-2026-0042 name it',
-                       'EnergyMeter DE*GEF*M1*1: chargy-1.5.0, germanCalibrationLaw, as PTB-2026-0042 and PTB-2026-0017 name it',
-                       'EnergyMeter DE*GEF*M1*2: chargy-1.5.0, germanCalibrationLaw, as PTB-2026-0042 and PTB-2026-0017 name it' ]);
-        expect(station.warnings).toEqual([ "the transparency software 'chargy-9' of the charging station 'DE*GEF*S1' is not given by the proof" ]);
+            .toEqual([ 'ChargingStation DE*GEF*S1: GraphDefined:chargy-1.5.0, germanCalibrationLaw, as PTB:2026-0042 name it',
+                       'EnergyMeter DE*GEF*M1*1: GraphDefined:chargy-1.5.0, germanCalibrationLaw, as PTB:2026-0042 and PTB:2026-0017 name it',
+                       'EnergyMeter DE*GEF*M1*2: GraphDefined:chargy-1.5.0, germanCalibrationLaw, as PTB:2026-0042 and PTB:2026-0017 name it' ]);
+        expect(station.warnings).toEqual([ "the transparency software 'OpenChargingCloud:chargy-9' of the charging station 'DE*GEF*S1' is not given by the proof" ]);
 
     });
 

@@ -177,6 +177,25 @@
   tariff of the pattern `{operatorId}*T{suffix}` the EVSE does not name, of which none applies, and
   `-conditional-element`, an element restricted by `maxEnergy`, whose price is selected without a rate.
   `tests/conformance.test.ts` 776.
+- Transparency software releases and certificates are identified under their owners, as WWCP_POI3 `045e180` checks it
+  (SPECIFICATION.md 4.1, POI3-ISSUES.md S36, `ForeignTransparencySoftware`, `ForeignConformityCertificate`,
+  `IsIdentifiedUnder`): the `@id` of a release is the `@id` of its manufacturer, a colon and a name without one
+  (`GraphDefined:chargy-1.5.0`), of a certificate the `@id` of the body issuing it alike (`PTB:2026-0042`), the prefix
+  compared without case, both trimmed as read. A version holding one identified otherwise is refused before releases or
+  certificates given twice, in its words: "The transparency software release 'chargy-1.5.0' of the manufacturer
+  'GraphDefined' is not identified as one of it: by 'GraphDefined:' and a name without a colon!"; so is a change set
+  leading to one, after the unknown parking spaces and before the releases given twice. References name them as before.
+  Of 38 versions and change sets probed against WWCP_POI3 at `045e180`, all are taken and refused alike, in the same
+  words. `tests/releaseIdentifications.test.ts`.
+- The test vectors of a new run of the C# examples, `tests/vectors/csharp-045e180` in place of `csharp-33447ac`: WWCP_POI
+  `045e180`, examples A1 to A15, MakeProofs at `2026-11-05T19:46:00.000Z` (`tests/at.ts`). Releases and certificates
+  under their owners (`GraphDefined:chargy-1.5.0`, `PTB:2026-0017`, `PTB:2026-0042`); example A15 names the EV Taler
+  merchant of DE*GEF, so the head of epoch 2 is revision 11, while `QA.json` stays revision 8, as example A14 left it.
+  With them `poi-history.json` (100 vectors), `poi-refusals.json` (296, 6 of them of S36), `poi-histories.json` (75
+  replays, 8 of them of S36, the histories naming releases and certificates under their owners) and `poi-qidigital.json`
+  of WWCPPOIConformanceTests `2d0780f`. The tests on QA hold the values of the new run; those WWCP_POI3 calculated of
+  changed versions (element and embedded changes, preconditions, EV Taler) are calculated again by WWCP_POI3 at
+  `045e180`, and this library takes the very same versions. `tests/conformance.test.ts` 794.
 - `hermodURL` as Hermod reads a URL: no `_` in host names, an empty port, an IPv6 address checked.
 - Reading a version takes about two to three times as long as with 0.2.0, e.g. 1.0 to 1.3 s for 3204 charging pools of
   12816 EVSEs, each energy meter with a P-256 key of its own, where 0.2.0 took 0.4 s. A check of a version finds the

@@ -13,7 +13,7 @@ import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 // e-mobility provider a change set makes overlap, the change set (RoamingNetwork.Offers.cs). The outcomes of the operator's
 // cases are those of WWCP_POI3 at 89d2e02 for the same versions.
 
-const T    = '2026-10-27T17:20:56.138Z';
+const T    = '2026-11-05T19:43:46.188Z';
 const meta = { created: T, lastChange: T };
 
 /** Where an offer applies, the AC EVSEs of DE*GEF unless told otherwise. */

@@ -91,14 +91,15 @@ describe('Identifications unique within the roaming network', () => {
         expect(refusalOf(() => read(groups)))
             .toBe("The given JSON representation of a roaming network is invalid: The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network! (Parameter 'EMobilityProviders')");
 
-        // The groups of providers before the releases, of a version; after them, after the last change of a change set.
-        const releases = { ...groups, transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('chargy-1.0') ] }),
-                                                                           entity('ZAP',  { transparencySoftware: [ release('Chargy-1.0') ] }) ] };
+        // The groups of providers before the releases, of a version; after them, after the last change of a change set. A
+        // release of ACME at ZAP: not identified as one of ZAP (S36), so no longer one of two manufacturers.
+        const releases = { ...groups, transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('ACME:chargy-1.0') ] }),
+                                                                           entity('ZAP',  { transparencySoftware: [ release('ACME:Chargy-1.0') ] }) ] };
 
         expect(refusalOf(() => read(releases)))
             .toBe("The given JSON representation of a roaming network is invalid: The EVSE group 'DE*GDF*EGMOTORWAY' must not be given twice in the roaming network! (Parameter 'EMobilityProviders')");
         expect(duplicateIdentification(network(releases), 'change set'))
-            .toBe("The transparency software release 'Chargy-1.0' of the manufacturer 'ZAP' is one of the manufacturer 'ACME' already!");
+            .toBe("The transparency software release 'ACME:Chargy-1.0' of the manufacturer 'ZAP' is not identified as one of it: by 'ZAP:' and a name without a colon!");
 
     });
 
@@ -156,18 +157,23 @@ describe('Identifications unique within the roaming network', () => {
                                              entity('DE*NET', { gridConnectionPoints: [ { '@id': 'CONNECTION-1' } ] }) ] }))
             .toThrow("The grid connection point 'CONNECTION-1' of the grid operator 'DE*NET' must be unique within the roaming network, but the grid operator 'DE*NE1' has it too!");
 
-        expect(() => read({ transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('chargy-1.0') ] }),
-                                                                 entity('ZAP',  { transparencySoftware: [ release('Chargy-1.0') ] }) ] }))
-            .toThrow("The transparency software release 'Chargy-1.0' of the manufacturer 'ZAP' is one of the manufacturer 'ACME' already!");
+        // A release or a certificate of another party, also in another case: not identified as one of its own (S36), before
+        // it is given twice; identified under each own party, it is not.
+        expect(() => read({ transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('ACME:chargy-1.0') ] }),
+                                                                 entity('ZAP',  { transparencySoftware: [ release('acme:Chargy-1.0') ] }) ] }))
+            .toThrow("The transparency software release 'acme:Chargy-1.0' of the manufacturer 'ZAP' is not identified as one of it: by 'ZAP:' and a name without a colon!");
+        expect(() => read({ transparencySoftwareManufacturers: [ entity('ACME', { transparencySoftware: [ release('ACME:chargy-1.0') ] }),
+                                                                 entity('ZAP',  { transparencySoftware: [ release('ZAP:chargy-1.0') ] }) ] }))
+            .not.toThrow();
 
         // Certificates WWCP_POI reads, which it reads before it makes the network of them.
         const certificate = (id: string): JSONObject =>
             ({ '@id': id, chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300', hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.5.0' ],
-               verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ] });
+               verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0' ] });
 
-        expect(() => read({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ certificate('cert-1') ] }),
-                                                          entity('VDE', { certificates: [ certificate('CERT-1') ] }) ] }))
-            .toThrow("The certificate 'CERT-1' of the conformity assessment body 'VDE' is one of the conformity assessment body 'PTB' already!");
+        expect(() => read({ conformityAssessmentBodies: [ entity('PTB', { certificates: [ certificate('PTB:cert-1') ] }),
+                                                          entity('VDE', { certificates: [ certificate('ptb:CERT-1') ] }) ] }))
+            .toThrow("The certificate 'ptb:CERT-1' of the conformity assessment body 'VDE' is not identified as one of it: by 'VDE:' and a name without a colon!");
 
         expect(() => read({ chargingStationOperators: [ entity('DE*GEF', { chargingTariffOffers: [ entity('offer-1', { discount: { percent: 10 }, chargingStationOperatorIds: [ 'DE*GEF' ] }) ] }) ],
                             eMobilityProviders:       [ entity('DE-GDF', { chargingTariffOffers: [ entity('OFFER-1', { discount: { percent: 10 }, chargingStationOperatorIds: [ 'DE*GEF' ] }) ] }) ] }))

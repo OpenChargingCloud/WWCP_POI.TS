@@ -1722,7 +1722,8 @@ function referenceError(content: JSONObject, of: 'version' | 'change set', befor
 
         const error = unknownManufacturer(network, named) ?? duplicate('gridConnectionPoint') ?? unknownGridConnectionPoint(network, named) ??
                       unknownMaintainer(network, named) ?? duplicate('energyMeter') ?? duplicate('parking') ?? unknownChargingStation(network, named) ??
-                      unknownParkingSpace(network, named) ?? duplicate('release') ?? duplicate('certificate') ?? duplicate('number') ??
+                      unknownParkingSpace(network, named) ?? duplicate('foreignRelease') ?? duplicate('release') ??
+                      duplicate('foreignCertificate') ?? duplicate('certificate') ?? duplicate('number') ??
                       unknownCertificateReference(network, named) ?? duplicate('energyMeterGroup') ?? duplicate('providerGroup') ??
                       duplicate('tariffOffer') ?? newProviderOfferOverlap(network, before) ?? duplicate('energyMeterTemplate') ??
                       unknownMeterTemplateReference(network, named) ??
@@ -1755,9 +1756,9 @@ function referenceError(content: JSONObject, of: 'version' | 'change set', befor
            ofParameter('GridOperators',                      unknownMaintainer(network, named)) ??
            ofParameter('EMobilityProviders',                 duplicate('providerGroup') ?? duplicate('tariffOffer')) ??
            rootTwice(objectsAt(content, 'transparencySoftwareManufacturers'), freeId, 'transparency software manufacturer') ??
-           ofParameter('TransparencySoftwareManufacturers',  duplicate('release')) ??
+           ofParameter('TransparencySoftwareManufacturers',  duplicate('foreignRelease') ?? duplicate('release')) ??
            rootTwice(objectsAt(content, 'conformityAssessmentBodies'), freeId, 'conformity assessment body') ??
-           ofParameter('ConformityAssessmentBodies',         duplicate('certificate') ?? duplicate('number')) ??
+           ofParameter('ConformityAssessmentBodies',         duplicate('foreignCertificate') ?? duplicate('certificate') ?? duplicate('number')) ??
            ofParameter('TransparencySoftwareManufacturers',  unknownCertificateReference(network, named)) ??
            ofParameter('ChargingStationOperators',           duplicate('energyMeterGroup') ?? duplicate('energyMeterTemplate') ?? unknownMeterTemplateReference(network, named)) ??
            ofParameter('EnergyMeterManufacturers',           unknownMeterManufacturer(network, named) ?? contradictedMeterModel(network)) ??

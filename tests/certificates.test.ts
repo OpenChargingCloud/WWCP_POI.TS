@@ -25,7 +25,7 @@ const entity = (id: string, more: JSONObject = {}): JSONObject =>
 
 /** A release of Chargy, of the given version. */
 const release = (version: string): JSONObject =>
-    ({ '@id': `chargy-${version}`, name: { en: 'Chargy' }, version, openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] });
+    ({ '@id': `GraphDefined:chargy-${version}`, name: { en: 'Chargy' }, version, openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] });
 
 /**
  * The PTB with the given certificates, notified for the CRA and the MID, so that it may issue a certificate under both; with
@@ -44,15 +44,15 @@ const meter = (more: JSONObject = {}): JSONObject =>
 
 /** A certificate for the charging station model GD-DC300 of GD, issued with the energy meter model eHZ of EMH. */
 const ofStation = (more: JSONObject = {}): JSONObject =>
-    ({ '@id': 'PTB-2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300', hardwareRevisions: [ '1.0' ],
-       firmwareVersions: [ '2.5.0' ], verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], compatibleTransparencySoftwareIds: [],
-       energyMeters: [ meter() ], documentURL: 'https://www.ptb.example/certificates/PTB-2026-0042.pdf',
+    ({ '@id': 'PTB:2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300', hardwareRevisions: [ '1.0' ],
+       firmwareVersions: [ '2.5.0' ], verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0' ], compatibleTransparencySoftwareIds: [],
+       energyMeters: [ meter() ], documentURL: 'https://www.ptb.example/certificates/PTB:2026-0042.pdf',
        notBefore: '2026-01-01T00:00:00.000Z', notAfter: '2036-01-01T00:00:00.000Z', legislation: 'MID', ...more });
 
 /** A certificate for the energy meter model eHZ of EMH. */
 const ofMeter = (more: JSONObject = {}): JSONObject =>
-    ({ '@id': 'PTB-2026-0017', energyMeterManufacturerId: 'EMH', energyMeterModel: 'eHZ', hardwareRevisions: [ '1' ],
-       firmwareVersions: [ '1.2' ], verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more });
+    ({ '@id': 'PTB:2026-0017', energyMeterManufacturerId: 'EMH', energyMeterModel: 'eHZ', hardwareRevisions: [ '1' ],
+       firmwareVersions: [ '1.2' ], verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more });
 
 /** The certificate of the given kind without the given properties. */
 const without = (certificate: JSONObject, ...properties: string[]): JSONObject =>
@@ -76,13 +76,13 @@ describe('Certificates', () => {
             return 'taken';
         };
 
-        expect(refusalOf(without(ofMeter(), 'hardwareRevisions'))).toBe("The certificate 'PTB-2026-0017' must name at least one hardware revision of its model! (Parameter 'HardwareRevisions')");
-        expect(refusalOf(ofMeter({ hardwareRevisions: [ '1', '1' ] }))).toBe("A hardware revision of the certificate 'PTB-2026-0017' must not be given twice! (Parameter 'Versions')");
+        expect(refusalOf(without(ofMeter(), 'hardwareRevisions'))).toBe("The certificate 'PTB:2026-0017' must name at least one hardware revision of its model! (Parameter 'HardwareRevisions')");
+        expect(refusalOf(ofMeter({ hardwareRevisions: [ '1', '1' ] }))).toBe("A hardware revision of the certificate 'PTB:2026-0017' must not be given twice! (Parameter 'Versions')");
         expect(refusalOf(ofStation({ legislation: ' ' }))).toBe("A legislation must not be empty. (Parameter 'Legislation')");
         expect(refusalOf(ofStation({ notAfter: '2025-12-31T23:59:59.999Z' }))).toBe("notBefore must not exceed notAfter. (Parameter 'NotBefore')");
-        expect(refusalOf(ofMeter({ energyMeters: [ meter() ] }))).toBe("The certificate 'PTB-2026-0017' of an energy meter model names no energy meters! (Parameter 'EnergyMeters')");
+        expect(refusalOf(ofMeter({ energyMeters: [ meter() ] }))).toBe("The certificate 'PTB:2026-0017' of an energy meter model names no energy meters! (Parameter 'EnergyMeters')");
         expect(refusalOf(ofStation({ energyMeters: [ meter(), meter() ] })))
-            .toBe("The energy meter model 'eHZ' of 'EMH' must not be given twice in the certificate 'PTB-2026-0042'! (Parameter 'EnergyMeters')");
+            .toBe("The energy meter model 'eHZ' of 'EMH' must not be given twice in the certificate 'PTB:2026-0042'! (Parameter 'EnergyMeters')");
         expect(refusalOf(ofStation({ energyMeters: [ meter({ firmwareVersions: [] }) ] })))
             .toBe("energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one firmware version! (Parameter 'FirmwareVersions')");
 
@@ -104,7 +104,7 @@ describe('Certificates', () => {
         expect(() => read([ without(ofStation(), 'energyMeters', 'documentURL', 'notBefore', 'notAfter', 'legislation') ]))
             .not.toThrow();
 
-        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [], compatibleTransparencySoftwareIds: [ 'chargy-1.5.0' ] }) ]))
+        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [], compatibleTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0' ] }) ]))
             .not.toThrow();
 
         // A model named as null names none, as StrictJSON.Text reads it, which WWCP_POI writes without it: refused, as the
@@ -117,16 +117,16 @@ describe('Certificates', () => {
     it('for exactly one model, with its manufacturer', () => {
 
         expect(refusing(without(ofMeter(), 'energyMeterManufacturerId', 'energyMeterModel')))
-            .toThrow("The certificate 'PTB-2026-0017' must be for either a charging station model or an energy meter model!");
+            .toThrow("The certificate 'PTB:2026-0017' must be for either a charging station model or an energy meter model!");
 
         expect(refusing(ofMeter({ chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300' })))
-            .toThrow("The certificate 'PTB-2026-0017' must be for either a charging station model or an energy meter model!");
+            .toThrow("The certificate 'PTB:2026-0017' must be for either a charging station model or an energy meter model!");
 
         expect(refusing(without(ofStation(), 'chargingStationManufacturerId')))
-            .toThrow("The certificate 'PTB-2026-0042' must name the charging station model it is for with its manufacturer!");
+            .toThrow("The certificate 'PTB:2026-0042' must name the charging station model it is for with its manufacturer!");
 
         expect(refusing(without(ofMeter(), 'energyMeterModel')))
-            .toThrow("The certificate 'PTB-2026-0017' must name the energy meter model it is for with its manufacturer!");
+            .toThrow("The certificate 'PTB:2026-0017' must name the energy meter model it is for with its manufacturer!");
 
         expect(refusing(ofStation({ chargingStationModel: 300 })))
             .toThrow("chargingStationModel: expected a string.");
@@ -136,10 +136,10 @@ describe('Certificates', () => {
     it('naming at least one hardware revision and one firmware version, also of each energy meter it was issued with', () => {
 
         expect(refusing(ofMeter({ hardwareRevisions: [] })))
-            .toThrow("The certificate 'PTB-2026-0017' must name at least one hardware revision of its model!");
+            .toThrow("The certificate 'PTB:2026-0017' must name at least one hardware revision of its model!");
 
         expect(refusing(without(ofStation(), 'firmwareVersions')))
-            .toThrow("The certificate 'PTB-2026-0042' must name at least one firmware version of its model!");
+            .toThrow("The certificate 'PTB:2026-0042' must name at least one firmware version of its model!");
 
         expect(refusing(ofStation({ energyMeters: [ meter({ hardwareRevisions: [] }) ] })))
             .toThrow("energyMeters[0]: The certified energy meter model 'eHZ' of 'EMH' must name at least one hardware revision!");
@@ -161,14 +161,14 @@ describe('Certificates', () => {
             .toThrow("energyMeters[0]: manufacturerId: expected a nonempty string.");
 
         expect(refusing(ofStation({ energyMeters: [ meter(), meter({ modelId: 'EHZ', firmwareVersions: [ '1.3' ] }) ] })))
-            .toThrow("The energy meter model 'eHZ' of 'EMH' must not be given twice in the certificate 'PTB-2026-0042'!");
+            .toThrow("The energy meter model 'eHZ' of 'EMH' must not be given twice in the certificate 'PTB:2026-0042'!");
 
         // Of those named twice, the one named first, as it is named first.
         expect(refusing(ofStation({ energyMeters: [ meter({ modelId: 'A' }), meter({ modelId: 'B' }), meter({ modelId: 'B' }), meter({ modelId: ' a ' }) ] })))
-            .toThrow("The energy meter model 'A' of 'EMH' must not be given twice in the certificate 'PTB-2026-0042'!");
+            .toThrow("The energy meter model 'A' of 'EMH' must not be given twice in the certificate 'PTB:2026-0042'!");
 
         expect(refusing(ofMeter({ energyMeters: [ meter() ] })))
-            .toThrow("The certificate 'PTB-2026-0017' of an energy meter model names no energy meters!");
+            .toThrow("The certificate 'PTB:2026-0017' of an energy meter model names no energy meters!");
 
         // None given as an empty list WWCP_POI takes, and writes without it: refused, as the content holds it without.
         expect(() => read([ ofMeter({ energyMeters: [] }) ]))
@@ -221,21 +221,21 @@ describe('Certificates', () => {
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [] })))
             .toThrow("A document must identify at least one software release.");
 
-        expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', ' chargy-1.5.0' ] })))
+        expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0', ' GraphDefined:chargy-1.5.0' ] })))
             .toThrow("Empty or duplicate TransparencySoftware reference.");
 
-        expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'chargy-1.4.0', 'chargy-1.4.0' ] })))
+        expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'GraphDefined:chargy-1.4.0', 'GraphDefined:chargy-1.4.0' ] })))
             .toThrow("Empty or duplicate TransparencySoftware reference.");
 
-        expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'CHARGY-1.5.0' ] })))
+        expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'GRAPHDEFINED:CHARGY-1.5.0' ] })))
             .toThrow("A release cannot be both verified and merely compatible in the same document.");
 
         // As WWCP_POI takes it (References): named twice in another case is not twice; in their ordinal order, as it writes them.
-        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'CHARGY-1.5.0', 'chargy-1.5.0' ] }) ])).not.toThrow();
-        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', 'CHARGY-1.5.0' ] }) ]))
+        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'GRAPHDEFINED:CHARGY-1.5.0', 'GraphDefined:chargy-1.5.0' ] }) ])).not.toThrow();
+        expect(() => read([ ofMeter({ verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0', 'GRAPHDEFINED:CHARGY-1.5.0' ] }) ]))
             .toThrow("'conformityAssessmentBodies[0].certificates[0].verifiedTransparencySoftwareIds' is not written as the content holds it: its elements are in the order the content holds them in!");
 
-        expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'chargy-1.5.0', ' ' ] })))
+        expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0', ' ' ] })))
             .toThrow("verifiedTransparencySoftwareIds[1]: Invalid text representation of a transparency software identification: ' '!");
 
         expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 15 ] })))
@@ -263,13 +263,13 @@ describe('Certificates', () => {
         // The constructor: the model, its versions twice, at least one of each, the legislation, the validity, the releases,
         // the energy meters.
         expect(refusing(without(ofStation({ hardwareRevisions: [ '1.0', '1.0' ] }), 'chargingStationManufacturerId')))
-            .toThrow("The certificate 'PTB-2026-0042' must name the charging station model it is for with its manufacturer!");
+            .toThrow("The certificate 'PTB:2026-0042' must name the charging station model it is for with its manufacturer!");
 
         expect(refusing(ofStation({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [] })))
-            .toThrow("A hardware revision of the certificate 'PTB-2026-0042' must not be given twice!");
+            .toThrow("A hardware revision of the certificate 'PTB:2026-0042' must not be given twice!");
 
         expect(refusing(ofStation({ firmwareVersions: [], legislation: '' })))
-            .toThrow("The certificate 'PTB-2026-0042' must name at least one firmware version of its model!");
+            .toThrow("The certificate 'PTB:2026-0042' must name at least one firmware version of its model!");
 
         expect(refusing(ofStation({ legislation: '', notAfter: CREATED.replace('2026', '2025') })))
             .toThrow("A legislation must not be empty.");
@@ -280,7 +280,7 @@ describe('Certificates', () => {
         expect(refusing(ofMeter({ verifiedTransparencySoftwareIds: [], energyMeters: [ meter() ] })))
             .toThrow("A document must identify at least one software release.");
 
-        expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'chargy-1.5.0' ], energyMeters: [ meter() ] })))
+        expect(refusing(ofMeter({ compatibleTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0' ], energyMeters: [ meter() ] })))
             .toThrow("A release cannot be both verified and merely compatible in the same document.");
 
     });
@@ -290,7 +290,7 @@ describe('Certificates', () => {
         // Of the PTB without keys: the roaming network operator states it in its place.
         const before = read([ ofStation({ statedBy: 'roamingNetworkOperator' }) ]);
 
-        /** The change set updating the legislation of PTB-2026-0042 to the given one, with the ETags of what it leads to. */
+        /** The change set updating the legislation of PTB:2026-0042 to the given one, with the ETags of what it leads to. */
         const updating = (legislation: JSONValue): ChangeSet => {
 
             const after        = clone(before.content);
@@ -305,7 +305,7 @@ describe('Certificates', () => {
                 '@context':        CHANGE_SET_CONTEXT,
                 roamingNetworkId:  'rn1',
                 createdAt:         T0,
-                changes:           [ { kind: 'UpdateProperty', entityType: 'ConformityCertificate', entityId: 'PTB-2026-0042', propertyName: 'legislation',
+                changes:           [ { kind: 'UpdateProperty', entityType: 'ConformityCertificate', entityId: 'PTB:2026-0042', propertyName: 'legislation',
                                        oldValue: 'MID', newValue: legislation } ],
                 beforeETags:       before.changeSetETags().map(eTag => etagToJSON(eTag)),
                 afterETags:        [ etagToJSON(jsonETag(after)), etagToJSON(cborETag(after)) ],

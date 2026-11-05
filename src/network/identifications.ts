@@ -16,6 +16,7 @@
  */
 
 import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
+import { trimmed }                                                  from './versionTexts.ts';
 
 
 // Identifications WWCP_POI keeps unique within the roaming network, not only within their party, as RoamingNetwork.cs checks
@@ -128,6 +129,37 @@ function ofAnother(parties: readonly JSONObject[], property: string, message: (c
 }
 
 /**
+ * Whether the given identification is one of its owner, as `IsIdentifiedUnder` of WWCP_POI checks it (4.1): the
+ * identification of the owner, a colon and a name without one, the prefix compared without case, as both are.
+ */
+export const isIdentifiedUnder = (id: string, ownerId: string): boolean =>
+    id.length > ownerId.length + 1 &&
+    ignoringCase(id.slice(0, ownerId.length + 1)) === ignoringCase(`${ownerId}:`) &&
+    !id.includes(':', ownerId.length + 1);
+
+/**
+ * The error, when one of the given parties has a child of the given array not identified as one of it (4.1,
+ * `ForeignTransparencySoftware`, `ForeignConformityCertificate`): so no party takes the identification another one gives
+ * its child, which others name alone. Both trimmed, as their identifications read them.
+ */
+function notIdentifiedUnder(parties: readonly JSONObject[], property: string, message: (child: string, party: string) => string): string | undefined {
+
+    for (const party of parties)
+        for (const child of objectsOf(get(party, property))) {
+
+            const childId  = trimmed(idOf(child));
+            const partyId  = trimmed(idOf(party));
+
+            if (!isIdentifiedUnder(childId, partyId))
+                return message(childId, partyId);
+
+        }
+
+    return undefined;
+
+}
+
+/**
  * The energy meters of the given charging station operators and grid operators (`AllEnergyMeters`): of their charging pools,
  * charging stations and EVSEs, and of their grid connection points.
  */
@@ -230,8 +262,12 @@ export function duplicateIdentification(content: JSONObject, of: 'version' | 'ch
                                       `The grid connection point '${point}' of the grid operator '${gridOperator}' must be unique within the roaming network, but the grid operator '${other}' has it too!`);
     const energyMeter          = (): string | undefined => givenTwice('energy meter', energyMetersOf(operators, gridOperators), ignoringCase);
     const parking              = (): string | undefined => duplicateParking(parkingOperators, operators);
+    const foreignRelease       = (): string | undefined => notIdentifiedUnder(softwareManufacturers, 'transparencySoftware', (id, manufacturer) =>
+                                      `The transparency software release '${id}' of the manufacturer '${manufacturer}' is not identified as one of it: by '${manufacturer}:' and a name without a colon!`);
     const release              = (): string | undefined => ofAnother(softwareManufacturers, 'transparencySoftware', (id, manufacturer, other) =>
                                       `The transparency software release '${id}' of the manufacturer '${manufacturer}' is one of the manufacturer '${other}' already!`);
+    const foreignCertificate   = (): string | undefined => notIdentifiedUnder(bodies, 'certificates', (id, body) =>
+                                      `The certificate '${id}' of the conformity assessment body '${body}' is not identified as one of it: by '${body}:' and a name without a colon!`);
     const certificate          = (): string | undefined => ofAnother(bodies, 'certificates', (id, body, other) =>
                                       `The certificate '${id}' of the conformity assessment body '${body}' is one of the conformity assessment body '${other}' already!`);
     const number               = (): string | undefined => duplicateNotifiedBodyNumber(bodies);
@@ -244,15 +280,16 @@ export function duplicateIdentification(content: JSONObject, of: 'version' | 'ch
 
     // One kind of them, bare: of a grid connection point, an energy meter, … (`references.ts` orders them).
     const kinds: Readonly<Record<string, () => string | undefined>> = {
-        gridConnectionPoint, energyMeter, parking, release, certificate, number, energyMeterGroup, providerGroup, tariffOffer, energyMeterTemplate,
+        gridConnectionPoint, energyMeter, parking, foreignRelease, release, foreignCertificate, certificate, number, energyMeterGroup,
+        providerGroup, tariffOffer, energyMeterTemplate,
     };
 
     if (kind !== undefined)
         return kinds[kind]?.();
 
     if (of === 'change set')
-        return gridConnectionPoint() ?? energyMeter() ?? parking() ?? release() ?? certificate() ?? number() ?? energyMeterGroup() ??
-               providerGroup() ?? tariffOffer() ?? energyMeterTemplate();
+        return gridConnectionPoint() ?? energyMeter() ?? parking() ?? foreignRelease() ?? release() ?? foreignCertificate() ??
+               certificate() ?? number() ?? energyMeterGroup() ?? providerGroup() ?? tariffOffer() ?? energyMeterTemplate();
 
     const ofParameter = (parameter: string, error: string | undefined): string | undefined =>
         error === undefined ? undefined : inRoamingNetwork(error, parameter);
@@ -261,8 +298,8 @@ export function duplicateIdentification(content: JSONObject, of: 'version' | 'ch
            ofParameter('ChargingStationOperators',           energyMeter()) ??
            ofParameter('ParkingOperators',                   parking()) ??
            ofParameter('EMobilityProviders',                 providerGroup() ?? tariffOffer()) ??
-           ofParameter('TransparencySoftwareManufacturers',  release()) ??
-           ofParameter('ConformityAssessmentBodies',         certificate() ?? number()) ??
+           ofParameter('TransparencySoftwareManufacturers',  foreignRelease() ?? release()) ??
+           ofParameter('ConformityAssessmentBodies',         foreignCertificate() ?? certificate() ?? number()) ??
            ofParameter('ChargingStationOperators',           energyMeterGroup() ?? energyMeterTemplate());
 
 }

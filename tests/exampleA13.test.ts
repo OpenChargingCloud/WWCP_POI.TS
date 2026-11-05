@@ -56,10 +56,10 @@ describe('Example A13: who checks the meter', () => {
                    `by the ${text(body, '@id')}, notified body ${text(body, 'notifiedBodyNumber')}, stated by: ${statedBy}; ` +
                    `for the ${asText(certificate['chargingStationModel'] ?? certificate['energyMeterModel'])} ${versions(certificate, 'hardwareRevisions')}, firmware ${versions(certificate, 'firmwareVersions')}: ${forThisModel}; ` +
                    `with ${versions(certificate, 'verifiedTransparencySoftwareIds')}${(get(certificate, 'energyMeters') as JSONObject[] | undefined ?? []).map(item => `, the ${text(item, 'modelId')} of ${text(item, 'manufacturerId')} ${versions(item, 'hardwareRevisions')}, firmware ${versions(item, 'firmwareVersions')}`).join('')}`))
-            .toEqual([ 'ChargingStation DE*GEF*S1: PTB-2026-0042, under the MID, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the GD-DC300 1.0, firmware 2.5.0: true; ' +
-                       'with chargy-1.5.0, the KDM-500 of KERNBERG 2.1, firmware 3.2',
-                       'EnergyMeter DE*GEF*M1*1: PTB-2026-0017, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0',
-                       'EnergyMeter DE*GEF*M1*2: PTB-2026-0017, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the KDM-500 2.1, firmware 3.2: true; with chargy-1.5.0' ]);
+            .toEqual([ 'ChargingStation DE*GEF*S1: PTB:2026-0042, under the MID, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the GD-DC300 1.0, firmware 2.5.0: true; ' +
+                       'with GraphDefined:chargy-1.5.0, the KDM-500 of KERNBERG 2.1, firmware 3.2',
+                       'EnergyMeter DE*GEF*M1*1: PTB:2026-0017, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the KDM-500 2.1, firmware 3.2: true; with GraphDefined:chargy-1.5.0',
+                       'EnergyMeter DE*GEF*M1*2: PTB:2026-0017, by the PTB, notified body 0102, stated by: ConformityAssessmentBody; for the KDM-500 2.1, firmware 3.2: true; with GraphDefined:chargy-1.5.0' ]);
 
         // The release of the meter, with its legal status, proven by both certificates, which name it among their components.
         // The station signs no measurements itself and names none.
@@ -72,10 +72,10 @@ describe('Example A13: who checks the meter', () => {
         const { legalStatus, release, manufacturer, certificates } = defined(software[0]);
 
         expect(`DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: ${text(release, 'name')} ${text(release, 'version')}, ${legalStatus}, as ${certificates.map(item => text(item.certificate, '@id')).join(' and ')} name it`)
-            .toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: Chargy Transparency Software 1.5.0, germanCalibrationLaw, as PTB-2026-0042 and PTB-2026-0017 name it');
+            .toBe('DE*GEF*M1*1, the energy meter of DE*GEF*E1*1: Chargy Transparency Software 1.5.0, germanCalibrationLaw, as PTB:2026-0042 and PTB:2026-0017 name it');
         expect(`by ${text(manufacturer, 'name')}, ${text(manufacturer, 'craRole')}, supported until ${text(release, 'supportUntil')}, ` +
                `vulnerabilities to ${text(manufacturer, 'vulnerabilityContact')}, bill of materials ${text(release, 'softwareBillOfMaterials')}`)
-            .toBe('by GraphDefined GmbH, manufacturer, supported until 2031-10-27T17:20:56.014Z, vulnerabilities to security@graphdefined.example, ' +
+            .toBe('by GraphDefined GmbH, manufacturer, supported until 2031-11-05T19:43:46.123Z, vulnerabilities to security@graphdefined.example, ' +
                   'bill of materials https://www.graphdefined.example/chargy/1.5.0/sbom.cdx.json');
 
         // The manufacturer and the body are given as skeletons: their own properties, without their other children.
@@ -100,7 +100,7 @@ describe('Example A13: who checks the meter', () => {
         const changed = clone(proof);
         const find    = (value: JSONValue | undefined): JSONObject | undefined =>
             isArray(value) ? value.map(find).find(found => found !== undefined)
-          : isObject(value) ? (value['@id'] === 'PTB-2026-0042' ? value : Object.values(value).map(find).find(found => found !== undefined))
+          : isObject(value) ? (value['@id'] === 'PTB:2026-0042' ? value : Object.values(value).map(find).find(found => found !== undefined))
           : undefined;
 
         defined(find(changed))['chargingStationModel'] = 'GD-AC44';
@@ -129,20 +129,20 @@ describe('Example A13: who checks the meter', () => {
 
         expect(release.description).toBe('Chargy 1.5.0');
         expect(() => applyChangeSet(history.head.network, ChangeSet.parse(unsigned)))
-            .toThrow("Change 0: Add of the TransparencySoftware 'chargy-1.5.0' needs a signature by a signing key of the TransparencySoftwareManufacturer 'GraphDefined'!");
+            .toThrow("Change 0: Add of the TransparencySoftware 'GraphDefined:chargy-1.5.0' needs a signature by a signing key of the TransparencySoftwareManufacturer 'GraphDefined'!");
 
         // As committed, signed by the key of GraphDefined that may sign its releases.
         history.append(release);
 
         const graphDefined = defined((get(history.head.network.content, 'transparencySoftwareManufacturers') as JSONObject[])[0]);
-        expect((get(graphDefined, 'transparencySoftware') as JSONObject[]).map(item => item['@id'])).toEqual([ 'chargy-1.5.0' ]);
+        expect((get(graphDefined, 'transparencySoftware') as JSONObject[]).map(item => item['@id'])).toEqual([ 'GraphDefined:chargy-1.5.0' ]);
 
         // Revision 6, the certificates of the PTB, signed by its key for certificates; revision 7, the DC stations and meters.
         history.append(defined(all[5]));
         history.append(defined(all[6]));
 
         const ptb = defined((get(history.head.network.content, 'conformityAssessmentBodies') as JSONObject[]).find(item => item['@id'] === 'PTB'));
-        expect((get(ptb, 'certificates') as JSONObject[]).map(item => `${asText(item['@id'])} ${asText(item['legislation'] ?? '-')}`)).toEqual([ 'PTB-2026-0017 -', 'PTB-2026-0042 MID' ]);
+        expect((get(ptb, 'certificates') as JSONObject[]).map(item => `${asText(item['@id'])} ${asText(item['legislation'] ?? '-')}`)).toEqual([ 'PTB:2026-0017 -', 'PTB:2026-0042 MID' ]);
 
         const bsi = defined((get(history.head.network.content, 'conformityAssessmentBodies') as JSONObject[]).find(item => item['@id'] === 'BSI'));
         expect(get(bsi, 'signingKeys')).toBeUndefined();

@@ -26,9 +26,9 @@ const bodyOf = (content: JSONObject, id: string): JSONObject =>
 const certificateOf = (body: JSONObject, id: string): JSONObject =>
     defined((get(body, 'certificates') as JSONObject[]).find(certificate => certificate['@id'] === id), id);
 
-/** A certificate of the given body, as the PTB-2026-0017 of the PTB, stated by the roaming network operator or not. */
+/** A certificate of the given body, as the PTB:2026-0017 of the PTB, stated by the roaming network operator or not. */
 const certificate = (id: string, statedBy?: string): JSONObject => {
-    const meter = without(certificateOf(bodyOf(qa(), 'PTB'), 'PTB-2026-0017'), 'legislation');
+    const meter = without(certificateOf(bodyOf(qa(), 'PTB'), 'PTB:2026-0017'), 'legislation');
     return statedBy === undefined ? { ...meter, '@id': id } : { ...meter, '@id': id, statedBy };
 };
 
@@ -74,16 +74,16 @@ describe('Who states a certificate', () => {
     it('is the roaming network operator in place of a body without keys, and says so', () => {
 
         const before  = RoamingNetwork.parse(qa());
-        const stated  = certificate('BSI-2026-1', 'roamingNetworkOperator');
+        const stated  = certificate('BSI:2026-1', 'roamingNetworkOperator');
 
-        const after   = applyChangeSet(before, changeSet(before, [ add('BSI-2026-1', stated, 'BSI') ], withCertificate(before.content, 'BSI', stated)), { checkOwnership: false });
-        expect(certificateOf(bodyOf(after.content, 'BSI'), 'BSI-2026-1')['statedBy']).toBe('roamingNetworkOperator');
+        const after   = applyChangeSet(before, changeSet(before, [ add('BSI:2026-1', stated, 'BSI') ], withCertificate(before.content, 'BSI', stated)), { checkOwnership: false });
+        expect(certificateOf(bodyOf(after.content, 'BSI'), 'BSI:2026-1')['statedBy']).toBe('roamingNetworkOperator');
 
-        expect(() => applyChangeSet(before, changeSet(before, [ add('BSI-2026-1', certificate('BSI-2026-1'), 'BSI') ]), { checkOwnership: false }))
-            .toThrow("The certificate 'BSI-2026-1' of the conformity assessment body 'BSI' without signing keys is stated by the roaming network operator in its place: its statedBy is 'roamingNetworkOperator'!");
+        expect(() => applyChangeSet(before, changeSet(before, [ add('BSI:2026-1', certificate('BSI:2026-1'), 'BSI') ]), { checkOwnership: false }))
+            .toThrow("The certificate 'BSI:2026-1' of the conformity assessment body 'BSI' without signing keys is stated by the roaming network operator in its place: its statedBy is 'roamingNetworkOperator'!");
 
-        expect(() => applyChangeSet(before, changeSet(before, [ add('BSI-2026-1', certificate('BSI-2026-1', 'BSI'), 'BSI') ]), { checkOwnership: false }))
-            .toThrow("The certificate 'BSI-2026-1' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by 'BSI'!");
+        expect(() => applyChangeSet(before, changeSet(before, [ add('BSI:2026-1', certificate('BSI:2026-1', 'BSI'), 'BSI') ]), { checkOwnership: false }))
+            .toThrow("The certificate 'BSI:2026-1' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by 'BSI'!");
 
     });
 
@@ -91,30 +91,30 @@ describe('Who states a certificate', () => {
 
         const before  = RoamingNetwork.parse(qa());
 
-        expect(() => applyChangeSet(before, changeSet(before, [ add('PTB-2026-0099', certificate('PTB-2026-0099', 'roamingNetworkOperator'), 'PTB') ]), { checkOwnership: false }))
-            .toThrow("The certificate 'PTB-2026-0099' of the conformity assessment body 'PTB' is stated by the body itself, with its keys: it names no statedBy!");
+        expect(() => applyChangeSet(before, changeSet(before, [ add('PTB:2026-0099', certificate('PTB:2026-0099', 'roamingNetworkOperator'), 'PTB') ]), { checkOwnership: false }))
+            .toThrow("The certificate 'PTB:2026-0099' of the conformity assessment body 'PTB' is stated by the body itself, with its keys: it names no statedBy!");
 
-        // PTB-2026-0017, as if the roaming network operator stated it before the PTB had keys.
+        // PTB:2026-0017, as if the roaming network operator stated it before the PTB had keys.
         const content = qa();
-        certificateOf(bodyOf(content, 'PTB'), 'PTB-2026-0017')['statedBy'] = 'roamingNetworkOperator';
+        certificateOf(bodyOf(content, 'PTB'), 'PTB:2026-0017')['statedBy'] = 'roamingNetworkOperator';
         const earlier = RoamingNetwork.parse(content);
 
-        const newNumber = { kind: 'UpdateProperty', entityType: 'ConformityCertificate', entityId: 'PTB-2026-0017', propertyName: 'documentNumber', oldValue: null, newValue: 'PTB-17' };
-        const itsOwn    = { kind: 'RemoveProperty', entityType: 'ConformityCertificate', entityId: 'PTB-2026-0017', propertyName: 'statedBy', oldValue: 'roamingNetworkOperator' };
+        const newNumber = { kind: 'UpdateProperty', entityType: 'ConformityCertificate', entityId: 'PTB:2026-0017', propertyName: 'documentNumber', oldValue: null, newValue: 'PTB-17' };
+        const itsOwn    = { kind: 'RemoveProperty', entityType: 'ConformityCertificate', entityId: 'PTB:2026-0017', propertyName: 'statedBy', oldValue: 'roamingNetworkOperator' };
 
         expect(() => applyChangeSet(earlier, changeSet(earlier, [ newNumber ]), { checkOwnership: false }))
-            .toThrow("The certificate 'PTB-2026-0017' of the conformity assessment body 'PTB' is stated by the body itself, with its keys: it names no statedBy!");
+            .toThrow("The certificate 'PTB:2026-0017' of the conformity assessment body 'PTB' is stated by the body itself, with its keys: it names no statedBy!");
 
-        const restated = { ...without(certificateOf(bodyOf(content, 'PTB'), 'PTB-2026-0017'), 'statedBy'), documentNumber: 'PTB-17' };
+        const restated = { ...without(certificateOf(bodyOf(content, 'PTB'), 'PTB:2026-0017'), 'statedBy'), documentNumber: 'PTB-17' };
         const after    = applyChangeSet(earlier, changeSet(earlier, [ newNumber, itsOwn ], withCertificate(earlier.content, 'PTB', restated)), { checkOwnership: false });
 
-        expect(certificateOf(bodyOf(after.content, 'PTB'), 'PTB-2026-0017')).toEqual(restated);
+        expect(certificateOf(bodyOf(after.content, 'PTB'), 'PTB:2026-0017')).toEqual(restated);
 
     });
 
     it('is shown by the proof of a station, as the certificate says', () => {
 
-        // The station proof of example A13, as verified, PTB-2026-0042 stated by the roaming network operator: no run of the
+        // The station proof of example A13, as verified, PTB:2026-0042 stated by the roaming network operator: no run of the
         // examples has one, so the attested content is changed here.
         const proof     = ChargingStationProof.parse(readJSON('published/QA-DE-GEF-E1-1-proof.json'));
         const verified  = proof.verify(anchorPQ, AT);
@@ -122,19 +122,19 @@ describe('Who states a certificate', () => {
 
         const find = (value: JSONValue | undefined): JSONObject | undefined =>
             isArray(value)  ? value.map(find).find(found => found !== undefined)
-          : isObject(value) ? (value['@id'] === 'PTB-2026-0042' ? value : Object.values(value).map(find).find(found => found !== undefined))
+          : isObject(value) ? (value['@id'] === 'PTB:2026-0042' ? value : Object.values(value).map(find).find(found => found !== undefined))
           : undefined;
 
-        defined(find(attested), 'PTB-2026-0042')['statedBy'] = 'roamingNetworkOperator';
+        defined(find(attested), 'PTB:2026-0042')['statedBy'] = 'roamingNetworkOperator';
 
         vi.spyOn(proof, 'verify').mockReturnValue({ ...verified, attested });
 
         const station = verifyChargingStation(anchorPQ, proof, { at: AT, evseId: 'DE*GEF*E1*1' });
 
         expect(station.certificates.map(({ namedBy, certificate, statedBy }) => `${namedBy.entityId} ${asText(certificate['@id'])}: ${statedBy}`))
-            .toEqual([ 'DE*GEF*S1 PTB-2026-0042: RoamingNetworkOperator',
-                       'DE*GEF*M1*1 PTB-2026-0017: ConformityAssessmentBody',
-                       'DE*GEF*M1*2 PTB-2026-0017: ConformityAssessmentBody' ]);
+            .toEqual([ 'DE*GEF*S1 PTB:2026-0042: RoamingNetworkOperator',
+                       'DE*GEF*M1*1 PTB:2026-0017: ConformityAssessmentBody',
+                       'DE*GEF*M1*2 PTB:2026-0017: ConformityAssessmentBody' ]);
 
     });
 

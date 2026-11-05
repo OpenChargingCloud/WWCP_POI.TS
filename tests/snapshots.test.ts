@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AT, defined, readJSON, UNCHECKED } from './helpers.ts';
+import { asText, AT, defined, readJSON, UNCHECKED } from './helpers.ts';
 import { anchor, anchorPQ, byOperator, commits } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
@@ -15,27 +15,39 @@ import { clone, type JSONObject, type JSONValue } from '../src/json/value.ts';
 // cannot check are not taken unchecked (WWCPPOIConformanceTests O3).
 
 
-// The head of QA, revision 8 of epoch 2, as a snapshot of the head carries it since WWCP_POI ff2c56f: with the attestations
-// MakeProofs made of it at AT, valid for 15 minutes, by the three holders of the roaming network operator.
-const network       = readJSON('published/QA.json') as JSONObject;
+// The head of QA, revision 11 of epoch 2, as a snapshot of the head carries it since WWCP_POI ff2c56f: with the attestations
+// MakeProofs made of it at AT, valid for 15 minutes, by the three holders of the roaming network operator. QA as example A14
+// published it, revision 8, and the commits of example A15 after it, followed as example A11 checks them.
+const published     = readJSON('published/QA.json') as JSONObject;
 const attestations  = readJSON('proofs/QA-epoch-2-attestations.json') as JSONObject[];
-const ofHead = (more: JSONObject = {}): JSONObject => ({
-    timestamp:       AT,
-    commit:          readJSON('published/QA-commit.json'),
-    roamingNetwork:  network,
-    epoch:           defined((readJSON('published/QA-live-snapshot.json') as JSONObject)['epoch']),
-    attestations,
-    ...more,
-});
+const epoch         = defined((readJSON('published/QA-live-snapshot.json') as JSONObject)['epoch']);
 
 /** As example A11 checks the commits of epoch 2: signed as the roaming network operator by its quorum. */
-const trustPQ       = OperatorTrust.of(anchorPQ, RoamingNetwork.parse(network), AT);
+const trustPQ       = OperatorTrust.of(anchorPQ, RoamingNetwork.parse(published), AT);
 const byOperatorPQ: HistoryOptions = {
     verifyCommit: commit => { trustPQ.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
 };
 
+const toHead        = commits('proofs/QA-epoch-2-commits-to-head.json') as JSONObject[];
+const headCommit    = defined(toHead.at(-1));
+const network       = ((): JSONObject => {
+    const history = History.fromSnapshot({ timestamp: AT, commit: readJSON('published/QA-commit.json'), roamingNetwork: published, epoch }, { ...byOperatorPQ, unanchored: true });
+    for (const commit of toHead.slice(history.head.commit.revision))
+        history.append(commit);
+    return history.head.network.content;
+})();
+
+const ofHead = (more: JSONObject = {}): JSONObject => ({
+    timestamp:       AT,
+    commit:          headCommit,
+    roamingNetwork:  network,
+    epoch,
+    attestations,
+    ...more,
+});
+
 const anchoredPQ    = { ...byOperatorPQ, trustAnchor: anchorPQ, at: AT };
-const headId        = '32019bbe06b6';
+const headId        = asText(headCommit['@id']).slice(0, 12);
 
 /** The attestations of the head changed as given. */
 const changed = (change: (attestation: JSONObject) => void, which = attestations.length): JSONObject[] =>
@@ -54,11 +66,11 @@ describe('A snapshot of the head', () => {
         const history = History.fromSnapshot(ofHead(), anchoredPQ);
 
         expect(history.epoch.number).toBe(2);
-        expect(history.head.commit.revision).toBe(8);
+        expect(history.head.commit.revision).toBe(11);
         expect(history.head.commit.id.startsWith(headId)).toBe(true);
 
         // Valid until 15 minutes after AT, by every holder.
-        expect(History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-10-27T17:38:00.000Z' }).head.commit.revision).toBe(8);
+        expect(History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-05T20:01:00.000Z' }).head.commit.revision).toBe(11);
 
     });
 
@@ -70,7 +82,7 @@ describe('A snapshot of the head', () => {
         expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, unanchored: true }))
             .toThrow('A snapshot is taken anchored in a trust anchor, or unanchored, not both!');
 
-        expect(History.fromSnapshot(ofHead(), { ...byOperatorPQ, unanchored: true }).head.commit.revision).toBe(8);
+        expect(History.fromSnapshot(ofHead(), { ...byOperatorPQ, unanchored: true }).head.commit.revision).toBe(11);
 
     });
 
@@ -81,7 +93,7 @@ describe('A snapshot of the head', () => {
         // Floors of members it has or not, in the forms DateTimeOffset reads: the ETags of the commit hold all the same.
         for (const effectiveLastChanges of [ null, [], [ floor, { ...floor, entityId: 'DE*GEF*E9*9' }, { ...floor, lastChange: '2026-10-28 01:00:00+01:00' } ],
                                              [ { '@context': 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/effectiveLastChange/v1', ...floor } ] ] as JSONValue[])
-            expect(History.fromSnapshot(ofHead({ effectiveLastChanges }), anchoredPQ).head.commit.revision).toBe(8);
+            expect(History.fromSnapshot(ofHead({ effectiveLastChanges }), anchoredPQ).head.commit.revision).toBe(11);
 
         expect(() => History.fromSnapshot(ofHead({ effectiveLastChanges: floor }), anchoredPQ))
             .toThrow('The effective last changes of a snapshot must be a JSON array!');
@@ -102,13 +114,13 @@ describe('A snapshot of the head', () => {
         delete without['attestations'];
 
         expect(() => History.fromSnapshot(without, anchoredPQ))
-            .toThrow(/^The snapshot is not anchored in the trust anchor of the roaming network 'QA': No attestation of the head '32019bbe06b6[0-9a-f]+' of the roaming network 'QA' is given!$/);
+            .toThrow(new RegExp(`^The snapshot is not anchored in the trust anchor of the roaming network 'QA': No attestation of the head '${headId}[0-9a-f]+' of the roaming network 'QA' is given!$`, 'u'));
 
         expect(() => History.fromSnapshot(ofHead({ attestations: [] }), anchoredPQ))
-            .toThrow("No attestation of the head '32019bbe06b6");
+            .toThrow(`No attestation of the head '${headId}`);
 
         // Every attestation read as POI reads it: one it cannot read is refused, not left out.
-        expect(() => History.fromSnapshot(ofHead({ attestations: [ ...attestations, { ...defined(attestations[0]), validUntil: '2026-10-29T17:23:00.000Z' } ] }), anchoredPQ))
+        expect(() => History.fromSnapshot(ofHead({ attestations: [ ...attestations, { ...defined(attestations[0]), validUntil: '2026-11-07T19:46:00.000Z' } ] }), anchoredPQ))
             .toThrow('Invalid attestation of the snapshot: An attestation is valid for 24 hours at most');
 
         expect(() => History.fromSnapshot(ofHead({ attestations: {} }), anchoredPQ))
@@ -118,10 +130,10 @@ describe('A snapshot of the head', () => {
 
     it('is refused when its attestations are not valid at the time it is checked', () => {
 
-        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-10-27T17:38:00.001Z' }))
-            .toThrow(/Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:[0-9a-f]+ of the proof, not of 2! \(the attestation by '[0-9a-f]+' is not valid at 2026-10-27T17:38:00.001Z;/);
+        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-05T20:01:00.001Z' }))
+            .toThrow(/Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:[0-9a-f]+ of the proof, not of 2! \(the attestation by '[0-9a-f]+' is not valid at 2026-11-05T20:01:00.001Z;/);
 
-        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-10-27T17:22:59.999Z' }))
+        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-05T19:45:59.999Z' }))
             .toThrow('Valid attestations of trusted keys of 0 holders attest the root');
 
     });
@@ -149,7 +161,7 @@ describe('A snapshot of the head', () => {
             .toThrow(/^The snapshot is not anchored in the trust anchor of the roaming network 'QA': Valid attestations of trusted keys of 1 holder attest the root effectiveTree:sha256:hex:[0-9a-f]+ of the proof, not of 2!$/);
 
         // A signature that does not verify.
-        expect(() => History.fromSnapshot(ofHead({ attestations: changed(attestation => { attestation['validUntil'] = '2026-10-27T17:37:59.999Z'; }, 2) }), anchoredPQ))
+        expect(() => History.fromSnapshot(ofHead({ attestations: changed(attestation => { attestation['validUntil'] = '2026-11-05T20:00:59.999Z'; }, 2) }), anchoredPQ))
             .toThrow(/of 1 holder attest the root .* \(the attestation by '[0-9a-f]+' is invalid:/);
 
     });

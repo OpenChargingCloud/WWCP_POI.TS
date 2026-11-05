@@ -69,7 +69,7 @@ describe('Reading', () => {
             .toBe("The charging connector '1' is a socket: it has no cable of its own!");
         expect(refusal(qa(({ gef }) => { firstOf(gef, 'energyMeterTemplates')['role'] = 5; }))).toBe("Invalid energy meter role '5'!");
         expect(refusal(qa(({ gef }) => { firstOf(defined((gef['energyMeterTemplates'] as JSONObject[]).find(template => template['transparencySoftwareStatus'] !== undefined)), 'transparencySoftwareStatus')['legalStatus'] = 5; })))
-            .toBe(`Invalid transparency software status '{"transparencySoftwareId":"chargy-1.5.0","legalStatus":5}': Invalid legal status '5'!`);
+            .toBe(`Invalid transparency software status '{"transparencySoftwareId":"GraphDefined:chargy-1.5.0","legalStatus":5}': Invalid legal status '5'!`);
 
     });
 

@@ -426,16 +426,16 @@ describe('QI-Digital: refused documents', () => {
 
     it('refuses a signature by a key not valid when it signed, or not at the time given', () => {
 
-        const expired = network('2026-10-26T00:00:00.000Z');
+        const expired = network('2026-11-04T00:00:00.000Z');
 
         expect(() => { typeExamination().verify(expired); })
             .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at ${T0}, when the digital certificate of conformity 'DE-26-M-PTB-0108' was signed!`);
 
-        const later = network('2026-10-28T00:00:00.000Z');
+        const later = network('2026-11-06T00:00:00.000Z');
         typeExamination().verify(later, T0);
 
-        expect(() => { typeExamination().verify(later, '2026-10-29T00:00:00.000Z'); })
-            .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at 2026-10-29T00:00:00.000Z!`);
+        expect(() => { typeExamination().verify(later, '2026-11-07T00:00:00.000Z'); })
+            .toThrow(`The signing key '${PTB_CERTIFICATES.id}' of the conformity assessment body 'PTB' is not valid at 2026-11-07T00:00:00.000Z!`);
 
     });
 

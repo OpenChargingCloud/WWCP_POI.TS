@@ -9,9 +9,9 @@ import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 // provider with a group and an offer, a grid operator with a grid connection point, a meter group and a meter template, a
 // parking operator with a garage, a space, a sensor, a template, a group and a product, and at DE*GEF a charging pool
 // template, a charging tariff template, a tariff group, a pool group, an offer, a brand and a parking space. WWCP_POI3 at
-// 89d2e02 takes it as it is; the tests change it as WWCP_POI3 refuses it.
+// 045e180 takes it as it is; the tests change it as WWCP_POI3 refuses it.
 
-const T = '2026-10-27T17:20:56.138Z';
+const T = '2026-11-05T19:43:46.188Z';
 const meta = { created: T, lastChange: T };
 
 /** The parts of QA a test changes. */

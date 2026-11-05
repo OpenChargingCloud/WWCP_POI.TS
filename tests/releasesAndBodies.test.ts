@@ -21,14 +21,14 @@ import { SigningKeyCertificate } from '../src/proofs/signingKeyCertificate.ts';
 
 describe('A release keeps its version (S31)', () => {
 
-    // QA without its eTags; GraphDefined, the transparency software manufacturer, has the release chargy-1.5.0.
+    // QA without its eTags; GraphDefined, the transparency software manufacturer, has the release GraphDefined:chargy-1.5.0.
     const qa      = (): JSONObject => without(readJSON('published/QA.json') as JSONObject, 'eTags');
     const before  = RoamingNetwork.parse(qa());
 
     const manufacturerOf = (network: JSONObject): JSONObject =>
         defined((network['transparencySoftwareManufacturers'] as JSONObject[]).find(manufacturer => manufacturer['@id'] === 'GraphDefined'));
     const releaseOf      = (network: JSONObject): JSONObject =>
-        defined((manufacturerOf(network)['transparencySoftware'] as JSONObject[]).find(release => release['@id'] === 'chargy-1.5.0'));
+        defined((manufacturerOf(network)['transparencySoftware'] as JSONObject[]).find(release => release['@id'] === 'GraphDefined:chargy-1.5.0'));
 
     /** A change set of the given changes, unsigned, leading to the given content. */
     const changeSetOf = (changes: JSONObject[], after: JSONObject = qa()): ChangeSet => {
@@ -47,9 +47,9 @@ describe('A release keeps its version (S31)', () => {
     const apply = (changes: JSONObject[], after?: JSONObject): RoamingNetwork =>
         applyChangeSet(before, changeSetOf(changes, after), { checkOwnership: false });
 
-    const remove  = { kind: 'Remove', entityType: 'TransparencySoftware', entityId: 'chargy-1.5.0', oldValue: releaseOf(qa()) };
+    const remove  = { kind: 'Remove', entityType: 'TransparencySoftware', entityId: 'GraphDefined:chargy-1.5.0', oldValue: releaseOf(qa()) };
     const addOf   = (release: JSONObject): JSONObject =>
-        ({ kind: 'Add', entityType: 'TransparencySoftware', entityId: 'chargy-1.5.0', newValue: release,
+        ({ kind: 'Add', entityType: 'TransparencySoftware', entityId: 'GraphDefined:chargy-1.5.0', newValue: release,
            parentEntityType: 'TransparencySoftwareManufacturer', parentEntityId: 'GraphDefined' });
 
     /** QA after a change of the release at AT: the manufacturer and the network changed with it. */
@@ -63,10 +63,10 @@ describe('A release keeps its version (S31)', () => {
 
     it('refuses a change set updating or removing it', () => {
 
-        expect(() => apply([ { kind: 'UpdateProperty', entityType: 'TransparencySoftware', entityId: 'chargy-1.5.0', propertyName: 'version', newValue: '1.6.0' } ]))
-            .toThrow("Change 0: the version of the transparency software release 'chargy-1.5.0' can not be changed: a new version is a new release!");
-        expect(() => apply([ { kind: 'RemoveProperty', entityType: 'TransparencySoftware', entityId: 'chargy-1.5.0', propertyName: 'version', oldValue: '1.5.0' } ]))
-            .toThrow("Change 0: the version of the transparency software release 'chargy-1.5.0' can not be changed: a new version is a new release!");
+        expect(() => apply([ { kind: 'UpdateProperty', entityType: 'TransparencySoftware', entityId: 'GraphDefined:chargy-1.5.0', propertyName: 'version', newValue: '1.6.0' } ]))
+            .toThrow("Change 0: the version of the transparency software release 'GraphDefined:chargy-1.5.0' can not be changed: a new version is a new release!");
+        expect(() => apply([ { kind: 'RemoveProperty', entityType: 'TransparencySoftware', entityId: 'GraphDefined:chargy-1.5.0', propertyName: 'version', oldValue: '1.5.0' } ]))
+            .toThrow("Change 0: the version of the transparency software release 'GraphDefined:chargy-1.5.0' can not be changed: a new version is a new release!");
 
     });
 
@@ -75,7 +75,7 @@ describe('A release keeps its version (S31)', () => {
         const otherVersion = { ...releaseOf(qa()), version: '1.6.0' };
 
         expect(() => apply([ remove, addOf(otherVersion) ], changed(release => { release['version'] = '1.6.0'; })))
-            .toThrow("The version of the transparency software release 'chargy-1.5.0' can not be changed from '1.5.0' to '1.6.0': a new version is a new release!");
+            .toThrow("The version of the transparency software release 'GraphDefined:chargy-1.5.0' can not be changed from '1.5.0' to '1.6.0': a new version is a new release!");
 
         // Removed and added again with its version, it may change otherwise; its other properties change as before.
         const renamed = changed(release => { release['name'] = { en: 'Chargy Desktop' }; });
@@ -84,7 +84,7 @@ describe('A release keeps its version (S31)', () => {
 
         const supported = changed(release => { release['supportUntil'] = '2027-12-31T23:59:59.000Z'; });
 
-        expect(apply([ { kind: 'UpdateProperty', entityType: 'TransparencySoftware', entityId: 'chargy-1.5.0', propertyName: 'supportUntil',
+        expect(apply([ { kind: 'UpdateProperty', entityType: 'TransparencySoftware', entityId: 'GraphDefined:chargy-1.5.0', propertyName: 'supportUntil',
                          newValue: '2027-12-31T23:59:59.000Z' } ], supported).content).toEqual(RoamingNetwork.parse(supported).content);
 
     });
@@ -210,8 +210,8 @@ describe('The roaming network operator says what a body is notified for (S32)', 
 
 describe('A conformity assessment body, as its constructor checks it in WWCP_POI3', () => {
 
-    // QA without its eTags: PTB, the notified body 0102 for the MID, issued PTB-2026-0017 (no legislation) and
-    // PTB-2026-0042 (under the MID); BSI is notified for the CRA. Every refusal is the one WWCP_POI3 gives the same content.
+    // QA without its eTags: PTB, the notified body 0102 for the MID, issued PTB:2026-0017 (no legislation) and
+    // PTB:2026-0042 (under the MID); BSI is notified for the CRA. Every refusal is the one WWCP_POI3 gives the same content.
     const qa = (change: (body: (id: string) => JSONObject, certificate: (id: string) => JSONObject) => void = () => {}): JSONObject => {
         const json   = without(readJSON('published/QA.json') as JSONObject, 'eTags');
         const body   = (id: string): JSONObject => defined((json['conformityAssessmentBodies'] as JSONObject[]).find(item => item['@id'] === id));
@@ -275,14 +275,14 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
 
     it('refuses a certificate issued under a legislation it is not notified for, exactly as written', () => {
 
-        expect(refusal(qa((_, certificate) => { certificate('PTB-2026-0042')['legislation'] = 'CRA'; }))).toBe(notNotified('PTB-2026-0042', 'CRA'));
-        expect(refusal(qa((_, certificate) => { certificate('PTB-2026-0042')['legislation'] = 'mid'; }))).toBe(notNotified('PTB-2026-0042', 'mid'));
-        expect(refusal(qa((_, certificate) => { certificate('PTB-2026-0042')['legislation'] = ' MID'; }))).toBe(notNotified('PTB-2026-0042', ' MID'));
-        expect(refusal(qa(body => { delete body('PTB')['notifiedFor']; }))).toBe(notNotified('PTB-2026-0042', 'MID'));
+        expect(refusal(qa((_, certificate) => { certificate('PTB:2026-0042')['legislation'] = 'CRA'; }))).toBe(notNotified('PTB:2026-0042', 'CRA'));
+        expect(refusal(qa((_, certificate) => { certificate('PTB:2026-0042')['legislation'] = 'mid'; }))).toBe(notNotified('PTB:2026-0042', 'mid'));
+        expect(refusal(qa((_, certificate) => { certificate('PTB:2026-0042')['legislation'] = ' MID'; }))).toBe(notNotified('PTB:2026-0042', ' MID'));
+        expect(refusal(qa(body => { delete body('PTB')['notifiedFor']; }))).toBe(notNotified('PTB:2026-0042', 'MID'));
 
         // Its certificates in the ordinal order of their identifications.
-        expect(refusal(qa((_, certificate) => { certificate('PTB-2026-0042')['legislation'] = 'CRA'; certificate('PTB-2026-0017')['legislation'] = 'RED'; })))
-            .toBe(notNotified('PTB-2026-0017', 'RED'));
+        expect(refusal(qa((_, certificate) => { certificate('PTB:2026-0042')['legislation'] = 'CRA'; certificate('PTB:2026-0017')['legislation'] = 'RED'; })))
+            .toBe(notNotified('PTB:2026-0017', 'RED'));
 
     });
 
@@ -290,7 +290,7 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
 
         expect(refusal(qa(body => { body('PTB')['notifiedBodyNumber'] = '102'; body('PTB')['notifiedFor'] = [ 'MID', 'MID' ]; })))
             .toMatch(/must be four digits! \(Parameter 'NotifiedBodyNumber'\)$/u);
-        expect(refusal(qa((body, certificate) => { body('PTB')['notifiedFor'] = [ '', 'MID' ]; certificate('PTB-2026-0042')['legislation'] = 'CRA'; })))
+        expect(refusal(qa((body, certificate) => { body('PTB')['notifiedFor'] = [ '', 'MID' ]; certificate('PTB:2026-0042')['legislation'] = 'CRA'; })))
             .toMatch(/must not be empty! \(Parameter 'NotifiedFor'\)$/u);
 
         // As the content holds them before what the constructor checks.
@@ -298,12 +298,12 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
             .toBe("The legislations the conformity assessment body 'PTB' is notified for are written in their ordinal order!");
 
         // BSI, read before PTB.
-        expect(refusal(qa((body, certificate) => { certificate('PTB-2026-0042')['legislation'] = 'CRA'; body('BSI')['notifiedBodyNumber'] = '12'; })))
+        expect(refusal(qa((body, certificate) => { certificate('PTB:2026-0042')['legislation'] = 'CRA'; body('BSI')['notifiedBodyNumber'] = '12'; })))
             .toBe(invalid("The notified body number '12' of the conformity assessment body 'BSI' must be four digits!", 'NotifiedBodyNumber'));
 
         // A body as WWCP_POI3 reads it, before two bodies of the same number.
-        expect(refusal(qa((body, certificate) => { body('BSI')['notifiedBodyNumber'] = '0102'; certificate('PTB-2026-0042')['legislation'] = 'CRA'; })))
-            .toBe(notNotified('PTB-2026-0042', 'CRA'));
+        expect(refusal(qa((body, certificate) => { body('BSI')['notifiedBodyNumber'] = '0102'; certificate('PTB:2026-0042')['legislation'] = 'CRA'; })))
+            .toBe(notNotified('PTB:2026-0042', 'CRA'));
 
     });
 
@@ -312,20 +312,20 @@ describe('A conformity assessment body, as its constructor checks it in WWCP_POI
         const content      = qa();
         const before       = RoamingNetwork.parse(content);
         const ptb          = defined((content['conformityAssessmentBodies'] as JSONObject[]).find(item => item['@id'] === 'PTB'));
-        const issued       = defined((ptb['certificates'] as JSONObject[]).find(item => item['@id'] === 'PTB-2026-0042'));
+        const issued       = defined((ptb['certificates'] as JSONObject[]).find(item => item['@id'] === 'PTB:2026-0042'));
         const eTags        = before.changeSetETags().map(eTag => etagToJSON(eTag));
         const json: JSONObject = {
             '@context':        CHANGE_SET_CONTEXT,
             roamingNetworkId:  'QA',
             createdAt:         AT,
-            changes:           [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'PTB-2026-0099', newValue: { ...clone(issued), '@id': 'PTB-2026-0099', legislation: 'CRA' },
+            changes:           [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'PTB:2026-0099', newValue: { ...clone(issued), '@id': 'PTB:2026-0099', legislation: 'CRA' },
                                    parentEntityType: 'ConformityAssessmentBody', parentEntityId: 'PTB' } ],
             beforeETags:       eTags,
             afterETags:        eTags,
         };
         json['@id'] = changeSetIdentification(json);
 
-        expect(() => applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false })).toThrow(notNotified('PTB-2026-0099', 'CRA'));
+        expect(() => applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false })).toThrow(notNotified('PTB:2026-0099', 'CRA'));
 
     });
 

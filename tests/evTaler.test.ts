@@ -93,9 +93,9 @@ describe('Payment options, an open set of names (WWCP_POI ec3dace)', () => {
 
         expect(pool['paymentOptions']).toEqual([ 'Cash', 'EVTaler' ]);
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:cc50af4905ab48b4a9b58023815fc7f6a3782f1c5f4a03d8245a8def343e9564',
-            'cbor:sha256:hex:d2a4d58396e57a60ad9bb1b4d5b40f4f4123eb4fb95ae78fc7e3011d506a0e20',
-            'effectiveTree:sha256:hex:7df2ffe0197ec0a870da010ebaee68de1fc67f8e70f6ac8174a8ee131db8b9bd',
+            'json:sha256:hex:94244a4095bd8befeb02001c9e52d589bf64929a524e5203fb91b658edd849df',
+            'cbor:sha256:hex:0afc79f9519b3bd4c18373ad8fc8d30bc3144edd3b0731e430233b665b6c2d92',
+            'effectiveTree:sha256:hex:6feb44fd4f7decc2269440dd6e2ec0796fb22291177db2572aee1f8a6034e2b6',
         ]);
 
     });
@@ -111,9 +111,9 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
 
         // The ETags WWCP_POI3 calculates of the same content: its canonical JSON, its CBOR, its effective tree.
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:0f5a32066177617bd2d6cb388e8a7e7d8809c26e2b0f7b619a2e29c7c678c2ae',
-            'cbor:sha256:hex:ce7588bafa7e7060050f66ff234bbab3ecee111e1b3dbeb88f402e53627f08a9',
-            'effectiveTree:sha256:hex:4893d5ad0a10e029141291e3ed59013db45fb1ac08c99a42a379ddf6b6b38924',
+            'json:sha256:hex:aaab56516e8cc93cf1b2a47d229a96c8a12fafae9cfefde9670d35cf731d07db',
+            'cbor:sha256:hex:f416c43450c161cf2d11732bcbfbfe97a22d4b30a21fab2ac55d74228f086624',
+            'effectiveTree:sha256:hex:b8dfd839f7fb3109115b91d6c364001501b9c4115e571bbd36e2fc08fce25ef0',
         ]);
 
         const read = evTalerMerchantOf(merchant()) as EVTalerMerchant;
@@ -340,10 +340,13 @@ describe('The EV Taler tariff and exchanges of an EVSE, as an app reads them fro
     const proven = verifyChargingStation(anchorPQ, readJSON('proofs/QA-proof-station-DE_GEF_S1.json'), { at: AT });
     const EVSE   = 'DE*GEF*E1*1';
 
-    /** The station as a proof gives it once DE*GEF named its merchant and its pool EVTaler, its tariffs changed as given. */
+    /**
+     * The station as a proof gives it, DE*GEF with this merchant or none (the proof of the head names the one of example
+     * A15), its pool with the given payment options, its tariffs changed as given.
+     */
     const station = (tariff: (given: JSONObject) => JSONObject = given => given, withMerchant = true, paymentOptions: string[] = [ 'EVTaler' ]): VerifiedChargingStation => ({
         ...proven,
-        operator:      withMerchant ? { ...proven.operator, evTaler: merchant() } : proven.operator,
+        operator:      withMerchant ? { ...proven.operator, evTaler: merchant() } : without(proven.operator, 'evTaler'),
         chargingPool:  { ...proven.chargingPool, paymentOptions },
         tariffs:       new Map([ ...proven.tariffs ].map(([ evseId, tariffs ]) => [ evseId, tariffs.map(tariff) ])),
     });

@@ -111,7 +111,7 @@ function changeSetOf(before: RoamingNetwork, changes: JSONObject[], signers: Rea
 
 /** A change set adding a certificate to the BSI, signed by the signing key of DE*RNO, or by the keys given. */
 const addCertificate = (before: RoamingNetwork, signers = [ SIGNING ]): ChangeSet =>
-    changeSetOf(before, [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'BSI-2026-0001', newValue: { '@id': 'BSI-2026-0001' },
+    changeSetOf(before, [ { kind: 'Add', entityType: 'ConformityCertificate', entityId: 'BSI:2026-0001', newValue: { '@id': 'BSI:2026-0001' },
                             parentEntityType: 'ConformityAssessmentBody', parentEntityId: 'BSI' } ], signers);
 
 
@@ -132,7 +132,7 @@ describe('The roaming network operator in place of a party without signing keys 
         const byInfrastructure = network('infrastructure');
 
         expect(() => { checkOwnership(byInfrastructure, addCertificate(byInfrastructure)); })
-            .toThrow("Change 0: Add of the ConformityCertificate 'BSI-2026-0001' needs a signature by a signing key of the ConformityAssessmentBody 'BSI'!");
+            .toThrow("Change 0: Add of the ConformityCertificate 'BSI:2026-0001' needs a signature by a signing key of the ConformityAssessmentBody 'BSI'!");
 
     });
 

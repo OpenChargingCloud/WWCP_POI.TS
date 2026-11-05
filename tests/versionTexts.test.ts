@@ -90,11 +90,11 @@ const stationModel = (more: JSONObject): JSONObject =>
 /** A certificate WWCP_POI reads (`certificates.test.ts`), with the given properties. */
 const certificate = (more: JSONObject): JSONObject =>
     ({ chargingStationManufacturers:       [ entity('GD', { chargingStationModels: [ { '@id': 'GD-DC300', hardwareRevisions: [ '1.0', 'A', 'a' ], firmwareVersions: [ '2.4.1' ] } ] }) ],
-       transparencySoftwareManufacturers:  [ entity('GraphDefined', { transparencySoftware: [ { '@id': 'chargy-1.5.0', name: { en: 'Chargy' }, version: '1.5.0', openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] } ] }) ],
+       transparencySoftwareManufacturers:  [ entity('GraphDefined', { transparencySoftware: [ { '@id': 'GraphDefined:chargy-1.5.0', name: { en: 'Chargy' }, version: '1.5.0', openSourceLicenses: [ { '@id': 'AGPL-3.0', URLs: [] } ] } ] }) ],
        energyMeterManufacturers:           [ entity('EMH', { energyMeterModels: [ { '@id': 'eHZ', hardwareRevisions: [ '1' ], firmwareVersions: [ '1' ] } ] }) ],
-       conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB-2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300',
+       conformityAssessmentBodies: [ entity('PTB', { certificates: [ { '@id': 'PTB:2026-0042', chargingStationManufacturerId: 'GD', chargingStationModel: 'GD-DC300',
                                                                        hardwareRevisions: [ '1.0' ], firmwareVersions: [ '2.4.1' ],
-                                                                       verifiedTransparencySoftwareIds: [ 'chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more } ] }) ] });
+                                                                       verifiedTransparencySoftwareIds: [ 'GraphDefined:chargy-1.5.0' ], compatibleTransparencySoftwareIds: [], ...more } ] }) ] });
 
 
 describe('Hardware revisions, firmware versions and serial numbers', () => {
@@ -169,10 +169,10 @@ describe('Hardware revisions, firmware versions and serial numbers', () => {
 
         // As ModelVersions.Of refuses them, by ConformityCertificate and CertifiedEnergyMeter (WWCP_POI2).
         expect(() => read(certificate({ hardwareRevisions: [ '1.0', '1.0' ], firmwareVersions: [ '2.4.1' ] })))
-            .toThrow("A hardware revision of the certificate 'PTB-2026-0042' must not be given twice!");
+            .toThrow("A hardware revision of the certificate 'PTB:2026-0042' must not be given twice!");
 
         expect(() => read(certificate({ firmwareVersions: [ '2.4.1', '2.4.1' ] })))
-            .toThrow("A firmware version of the certificate 'PTB-2026-0042' must not be given twice!");
+            .toThrow("A firmware version of the certificate 'PTB:2026-0042' must not be given twice!");
 
         expect(() => read(certificate({ energyMeters: [ { manufacturerId: 'EMH', modelId: 'eHZ', hardwareRevisions: [ '1', '1' ] } ] })))
             .toThrow("energyMeters[0]: A hardware revision of the certified energy meter model 'eHZ' of 'EMH' must not be given twice!");

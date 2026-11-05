@@ -47,19 +47,19 @@ describe('References', () => {
             .toBe(ofNetwork("The energy meter 'DE*GEF*M2*1' names the hardware revision '1.4' without its model!", 'EnergyMeterManufacturers'));
 
         expect(refusal(qa(({ network }) => { delete network['energyMeterManufacturers']; })))
-            .toBe(ofNetwork("The manufacturer 'KERNBERG' of the certificate 'PTB-2026-0017' is unknown in the roaming network!", 'TransparencySoftwareManufacturers'));
+            .toBe(ofNetwork("The manufacturer 'KERNBERG' of the certificate 'PTB:2026-0017' is unknown in the roaming network!", 'TransparencySoftwareManufacturers'));
 
         expect(refusal(qa(({ network }) => { delete network['transparencySoftwareManufacturers']; })))
-            .toBe(ofNetwork("The transparency software release 'chargy-1.5.0' of the certificate 'PTB-2026-0017' is unknown in the roaming network!", 'TransparencySoftwareManufacturers'));
+            .toBe(ofNetwork("The transparency software release 'GraphDefined:chargy-1.5.0' of the certificate 'PTB:2026-0017' is unknown in the roaming network!", 'TransparencySoftwareManufacturers'));
 
         expect(refusal(qa(({ network }) => { delete network['conformityAssessmentBodies']; })))
-            .toBe(ofNetwork("The certificate 'PTB-2026-0042' of the charging station template 'DE*GEF*ST_DC' is unknown in the roaming network!", 'TransparencySoftwareManufacturers'));
+            .toBe(ofNetwork("The certificate 'PTB:2026-0042' of the charging station template 'DE*GEF*ST_DC' is unknown in the roaming network!", 'TransparencySoftwareManufacturers'));
 
         expect(refusal(qa(({ evse }) => { delete (evse['energyMeter'] as JSONObject)['templateIds']; })))
-            .toBe(ofNetwork("The energy meter 'DE*GEF*M1*1' of the charging station 'DE*GEF*S1' is none of the energy meters the certificate 'PTB-2026-0042' was issued with!", 'TransparencySoftwareManufacturers'));
+            .toBe(ofNetwork("The energy meter 'DE*GEF*M1*1' of the charging station 'DE*GEF*S1' is none of the energy meters the certificate 'PTB:2026-0042' was issued with!", 'TransparencySoftwareManufacturers'));
 
-        expect(refusal(rich(({ gef }) => { byId(gef['energyMeterTemplates'], 'DE*GEF*EMT_AC')['certificateIds'] = [ 'PTB-2026-0042' ]; })))
-            .toBe(ofNetwork("The certificate 'PTB-2026-0042' of the energy meter 'DE*GEF*M2*1' is for the charging station model 'GD-DC300' of 'GraphDefined', not for a model of energy meters!", 'TransparencySoftwareManufacturers'));
+        expect(refusal(rich(({ gef }) => { byId(gef['energyMeterTemplates'], 'DE*GEF*EMT_AC')['certificateIds'] = [ 'PTB:2026-0042' ]; })))
+            .toBe(ofNetwork("The certificate 'PTB:2026-0042' of the energy meter 'DE*GEF*M2*1' is for the charging station model 'GD-DC300' of 'GraphDefined', not for a model of energy meters!", 'TransparencySoftwareManufacturers'));
 
         expect(refusal(rich(({ gef }) => { byId(gef['energyMeterTemplates'], 'DE*GEF*EMT_AC')['signatureMethods'] = [ 'EDL40' ]; })))
             .toBe(ofNetwork("The energy meter 'DE*GEF*M2*1' signs with 'EDL40', no signature method of its model 'SM-3' of 'SAALE'!", 'EnergyMeterManufacturers'));

@@ -38,15 +38,24 @@ describe('Replaying the history of QA commit by commit, through both epochs', ()
         expect(epoch2.root.commit.id).toBe((published['commit'] as JSONObject)['@id']);
         expect(epoch2.root.commit.id).toHaveLength(128);
 
-        for (const commit of commits('proofs/QA-epoch-2-commits-to-head.json'))
+        const toHead = commits('proofs/QA-epoch-2-commits-to-head.json') as JSONObject[];
+
+        for (const commit of toHead.slice(0, 8))
             epoch2.append(commit);
 
         epoch2.takeCheckpoint(Checkpoint.parse(readJSON('published/QA-epoch-2-checkpoint-0.json')));
 
-        // The head of epoch 2, as example A14 published it.
+        // The version of epoch 2 example A14 published, revision 8.
         expect(epoch2.head.commit.revision).toBe(8);
         expect(epoch2.head.commit.id).toBe((readJSON('published/QA-commit.json') as JSONObject)['@id']);
         expect(epoch2.head.network.matchesCommitETags(RoamingNetwork.parse(readJSON('published/QA.json')).eTags())).toBe(true);
+
+        // The head of epoch 2, after the commits of example A15, as MakeProofs proved it.
+        for (const commit of toHead.slice(8))
+            epoch2.append(commit);
+
+        expect(epoch2.head.commit.revision).toBe(11);
+        expect(epoch2.head.commit.id).toBe(defined(toHead.at(-1))['@id']);
 
         // Its trust followed OCC from the identity keys of the trust anchor of epoch 1 to those of epoch 2.
         expect([ ...verifier.trust.keyStatement.identityKeys.map(key => key.id) ].sort())

@@ -11,12 +11,12 @@ import type { JSONObject, JSONValue } from '../src/json/value.ts';
 
 // The preconditions of change sets (SPECIFICATION.md section 4, preconditions.ts): the ETag an entity must still have in
 // the version a change set is applied to, over its representation as the roaming network embeds it. The ETags below are
-// those WWCP_POI3 at d1c41ca took as the ETags of these entities of QA, the after ETags those it calculated for the change.
+// those WWCP_POI3 at 045e180 took as the ETags of these entities of QA, the after ETags those it calculated for the change.
 
 const AT     = '2026-11-05T10:00:00.000Z';
 const QA     = RoamingNetwork.parse(rich());
-const AFTER  = [ 'e90c77271721d7301f05b3dbe4ec2466d9c970d0f83606a69c25ab974217875a', '667b3f25f5bde5c4e79a408a9729360d58b68402620d91f74d8090c0bab40782' ] as const;
-const POOL   = '456fe37c619f6689b0db613bb458d77b43df38ae696712ca8d564c9a2b7ccdf3';
+const AFTER  = [ 'b1da52b953ee91ee6561a1e8f0a049950bd4fd3a9f902ce78d2ebead37296525', '465697bccb1243047f330d5898c72acd11acb587e7f0166acfa4fe66d071ed5f' ] as const;
+const POOL   = 'c77c0d24dab55b8f56e9ce02776856de3cae7714cb1df55c8a80e404948674e8';
 
 const change = { kind: 'UpdateProperty', entityType: 'ChargingStation', entityId: 'DE*GEF*S2', propertyName: 'description', newValue: { en: 'Two' } };
 
@@ -62,14 +62,14 @@ describe('Preconditions', () => {
     it('hold for an entity of every kind, as the roaming network embeds it, with everything it embeds', () => {
 
         for (const precondition of [
-            pre('RoamingNetwork',          'QA',                '72e1a19586b4671b3fc2c49ddf72252b6f1ed0c907bd17f89238d90d972d2df9'),
-            pre('ChargingStationOperator', 'DE*GEF',            'a3e3dfe2568c9106b33a0dbcb194994c9f2089d081b194a6eccf82ae00cafd82'),
+            pre('RoamingNetwork',          'QA',                'f75b07d72c437c0fca96a49ca36d2da139424ccc87f29b6590a13b5a55214f61'),
+            pre('ChargingStationOperator', 'DE*GEF',            '2425a31f9b6a5602cce84fd9cf804ab0b038e2d93c64d402d2c5787c01f5788d'),
             pre('ChargingPool',            'DE*GEF*P1',         POOL),
-            pre('ChargingStation',         'DE*GEF*S1',         '69828f90b3726ff2980323cdf1cf996a37a3311a1bb7d7aca9d0bc3b80e82530'),
-            pre('EVSE',                    'DE*GEF*E1*1',       '3e361f1ccbb01c50adb56d43cfcbb34a7b50541d31b55f396d559ef6de9d6aeb'),
-            pre('ConformityCertificate',   'PTB-2026-0017',     '37a7c1c475fa61e1bfd9d9d6f286eb87faf4c65cedf94e39059ed03a47d09d13'),
-            pre('EVSEGroup',               'DE*GDF*EG_FAV',     '86e192ecef255160a13a835d4de9d9080671cf256aacaabea52e97e9ac53e38e'),
-            pre('GridConnectionPoint',     'gcp-1',             '5b599091a9d3e4c6d7046bc92021a18e559867b1d5d5d76aec5e08e2f1ee1b7f'),
+            pre('ChargingStation',         'DE*GEF*S1',         '29db04ef6000058af583be364477919fb6fce896b53406cf90eaf627faf03ec4'),
+            pre('EVSE',                    'DE*GEF*E1*1',       '1364b20fb0253528dc4c55f1fc57c259c48a21aa97fbba846cb669bea65371ce'),
+            pre('ConformityCertificate',   'PTB:2026-0017',     'f0c986637b8de6b9dbdc5271ee8566db9fcb015c909965f0e320c78714ddbf1c'),
+            pre('EVSEGroup',               'DE*GDF*EG_FAV',     '080fcca09cf9aeecf614b1c12e971ce403bca4190987b44a9109e75ed8edbd0a'),
+            pre('GridConnectionPoint',     'gcp-1',             'ac927fc6ddceac6daff7b7efe9fa4cbb2c50b6e9071c128fd3e8248d9327ea67'),
             pre('ParkingProduct',          'P1',                'e30df4421eacfaa06624ac1be72a71dd8117055c2be31f8b9580b853d17d730d'),
         ])
             expect(outcome([ precondition ])).toBe('taken');
@@ -78,8 +78,8 @@ describe('Preconditions', () => {
 
     it('of every format and hash algorithm, an entity named in any spelling its type considers equal', () => {
 
-        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', 'dbd66bf6ee6e5798264ec34fcaaac55e36e26ed36ca0f597c244351fc115bcd1', 'cbor') ])).toBe('taken');
-        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '29f00353267b4675012bd4314477de8ec4d85d7d415e9956ac33871fcb4757b54341625f7198905ef92d43c4b2eaf5aa70c18685f8b4d36790b6d0895680312b', 'cbor', 'sha512') ]))
+        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', 'ffc175c08b954ba9c53b3676e4cc8c300761fa7bf2c2c02fb10ee1ce2d9b59c9', 'cbor') ])).toBe('taken');
+        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', 'dfc1a421866aeeb98631353abcee89415236d60745f491a46c259cdd43ef83fb5ca7de536edcf8e99a9fc515301c75fc92ebe66db6781bbc94cc8e0a6c748631', 'cbor', 'sha512') ]))
             .toBe('taken');
 
         // An entity has no effectiveTree ETag: WWCP_POI3 takes one over its canonical JSON.
@@ -90,15 +90,15 @@ describe('Preconditions', () => {
 
         // Checked against the version before the change set, also for the entity it changes.
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL) ], [ { kind: 'UpdateProperty', entityType: 'ChargingPool', entityId: 'DE*GEF*P1', propertyName: 'description', newValue: { en: 'One' } } ],
-                       [ '8ed22eb964b0af32ae1ef1f999a341f924a1410d0eae96aa06e18bf6d2a1da09', 'bda07e484ca60d612aa684ec40271b6b95116c90f51440104abf76d5d59e9cc6' ]))
+                       [ '7431fc2ae779214c422fafa404947fac5bc54d4d5c646aca7337540ee8a7f25e', 'e8857bd774eff455794bba3ca426f865b125dca5916866140a15916b6f07216a' ]))
             .toBe('taken');
 
     });
 
     it('refused in the words of WWCP_POI3 where they do not hold', () => {
 
-        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '69828f90b3726ff2980323cdf1cf996a37a3311a1bb7d7aca9d0bc3b80e82530') ]))
-            .toBe(`${NOT_FIT}Precondition 0: the ChargingPool 'DE*GEF*P1' changed, it no longer has the ETag json:sha256:hex:69828f90b3726ff2980323cdf1cf996a37a3311a1bb7d7aca9d0bc3b80e82530!`);
+        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '29db04ef6000058af583be364477919fb6fce896b53406cf90eaf627faf03ec4') ]))
+            .toBe(`${NOT_FIT}Precondition 0: the ChargingPool 'DE*GEF*P1' changed, it no longer has the ETag json:sha256:hex:29db04ef6000058af583be364477919fb6fce896b53406cf90eaf627faf03ec4!`);
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL), pre('ChargingStation', 'DE*GEF*S1', POOL) ]))
             .toBe(`${NOT_FIT}Precondition 1: the ChargingStation 'DE*GEF*S1' changed, it no longer has the ETag json:sha256:hex:${POOL}!`);
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P9', POOL) ]))
