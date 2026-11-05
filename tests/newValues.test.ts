@@ -63,7 +63,7 @@ describe('New values, given as the content holds them (4)', () => {
         const tariff = changed(11, change => { newValue(change)['@context'] = 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/chargingTariff/v1'; });
 
         expect(() => applyChangeSet(before(11), tariff, { checkOwnership: false }))
-            .toThrow("Change 0, the ChargingTariff 'DE*GEF*T_AC' to add: it is not given as the content holds it: embedded, an object names no JSON-LD context!");
+            .toThrow("Change 0, the charging tariff 'DE*GEF*T_AC' to add: it is not given as the content holds it: embedded, an object names no JSON-LD context!");
 
     });
 
@@ -87,7 +87,7 @@ describe('New values, given as the content holds them (4)', () => {
         const description = changed(11, change => { newValue(change)['description'] = null; });
 
         expect(() => applyChangeSet(before(11), description, { checkOwnership: false }))
-            .toThrow("Change 0, the ChargingTariff 'DE*GEF*T_AC' to add: 'description' is not given as the content holds it: a property without a value is left out!");
+            .toThrow("Change 0, the charging tariff 'DE*GEF*T_AC' to add: 'description' is not given as the content holds it: a property without a value is left out!");
 
     });
 

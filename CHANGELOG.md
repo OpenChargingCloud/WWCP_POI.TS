@@ -112,6 +112,25 @@
   too, 34 in the same words; the others in the words of the entity read again without `Change N:`, of the change as
   WWCP_POI3 parses it, or of the written form, where WWCP_POI3 names a property of infrastructure a change set may not
   change.
+- A change set changes elements, as WWCP_POI3 applies them (`elements.ts`, `apply.ts`; POIElements.cs and
+  RoamingNetwork.ElementChanges.cs): `AddElement`, `RemoveElement`, `ReplaceElement`, `UpdateElementProperty` and
+  `RemoveElementProperty` address an element of a property of an entity by their element path, e.g.
+  `chargingConnectors['1'].format`, an element of an array by its identification, as the type of the identifications of
+  the property compares them, e.g. `EVSEIds` without case, any other ordinally; an added element where the ordinal order
+  puts it, in `templateIds` at the end; an array left without elements removed. Each amounts to the `UpdateProperty` or
+  `RemoveProperty` of the property its path starts with, checked and owned as that change (4.1), its old value compared
+  with the element, or the property of the element, it addresses; keys and tree hash algorithms are changed as a whole
+  only. Element changes WWCP_POI3 does not make are refused when the change set is read: an element change without an
+  element path, another change with one, a new value of JSON `null`, of each kind of change what it does not take, e.g.
+  an `AddElement` with an old value, a segment of a path without a property name or with an empty identification.
+  0.2.0 refused element changes as not supported. The properties of charging pools, stations, EVSEs, tariffs, groups and
+  templates a change set may change are those of WWCP_POI3 (RoamingNetwork.InfrastructureChanges.cs), refused otherwise
+  in its words, e.g. "the property 'chargingStations' of a charging pool can not be changed!", and an infrastructure
+  entity is named as WWCP_POI3 names it, e.g. "the charging tariff 'DE*GEF*T_AC'". Of 108 element changes probed against
+  WWCP_POI3 at `d1c41ca` (`CreateChangeSet`), the 47 it takes lead to the same content here, and the 61 it refuses are
+  refused here too, 31 in the same words; the others in the words of the entity read again without `Change N:`, of an
+  old value without the value found, or of a change as this library reads it. Of the 107 change sets of embedded
+  entities probed before, 93 are now in the same words.
 - The elements of the prices of a charging tariff in a price statement are written as a charging tariff holds them
   (SPECIFICATION.md 12.1, WWCP_POI3 `5a72313`, D18 of the conformance tests), as a version holds the elements of a tariff:
   an element, a price component or restrictions naming a property their type does not define, a number given as a text,

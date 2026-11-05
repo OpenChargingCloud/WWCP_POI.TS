@@ -23,6 +23,7 @@ import { verifySignature }           from '../crypto/signature.ts';
 import { toHex }                     from '../encoding/text.ts';
 import { parseETags, type ETag }     from '../etags.ts';
 import type { POIPublicKey }         from '../keys.ts';
+import { trimmed }                   from '../network/versionTexts.ts';
 import { POIError }                  from '../errors.ts';
 
 
@@ -125,6 +126,143 @@ export type ChangeKind =
 const KINDS: readonly ChangeKind[] = [ 'Add', 'Remove', 'UpdateProperty', 'RemoveProperty',
                                        'AddElement', 'RemoveElement', 'ReplaceElement', 'UpdateElementProperty', 'RemoveElementProperty' ];
 
+const ELEMENT_KINDS: readonly ChangeKind[] = [ 'AddElement', 'RemoveElement', 'ReplaceElement', 'UpdateElementProperty', 'RemoveElementProperty' ];
+
+/** The context of a segment of an element path, where it is given. */
+export const ELEMENT_PATH_SEGMENT_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/elementPathSegment/v1';
+
+
+/**
+ * One step of an element path (`POIElementPathSegment`): a property of the entity, or of the element the step before
+ * addresses, and the identification of an element of it, which an array needs and one identified object may name.
+ */
+export interface ElementPathSegment {
+    readonly propertyName:  string;
+    readonly elementId:     string | undefined;
+}
+
+/** Whether a change addresses an element of a property of its entity by its element path. */
+export const isElementChange = (change: Change): boolean =>
+    change.elementPath !== undefined;
+
+/** The property of the entity itself a change changes: of an element change the one its path starts with. */
+export const entityPropertyName = (change: Change): string | undefined =>
+    change.elementPath?.[0]?.propertyName ?? change.propertyName;
+
+
+/** Whether a text is empty or whitespace only, as `String.IsNullOrWhiteSpace` tells it. */
+const blank = (text: string): boolean =>
+    trimmed(text) === '';
+
+/** A segment of an element path as WWCP_POI3 reads it (`POIElementPathSegment.TryParse`), or the error. */
+function elementPathSegment(value: JSONValue, index: number): ElementPathSegment {
+
+    if (!isObject(value))
+        throw new POIError(`Change ${index}: an element path segment must be a JSON object!`);
+
+    onlyProperties(value, [ '@context', 'propertyName', 'elementId' ], `Change ${index}: an element path segment`);
+
+    const context = get(value, '@context');
+
+    if (context !== undefined && context !== ELEMENT_PATH_SEGMENT_CONTEXT)
+        throw new POIError(`Change ${index}: invalid element path segment: the JSON-LD context of the element path segment must be '${ELEMENT_PATH_SEGMENT_CONTEXT}'!`);
+
+    const propertyName  = get(value, 'propertyName');
+    const elementId     = get(value, 'elementId');
+
+    if (typeof propertyName !== 'string' || blank(propertyName))
+        throw new POIError(`Change ${index}: invalid element path segment: a schema property name is required!`);
+
+    if (elementId !== undefined && (typeof elementId !== 'string' || blank(elementId)))
+        throw new POIError(`Change ${index}: invalid element path segment: an element identifier must not be empty!`);
+
+    return { propertyName, elementId };
+
+}
+
+/**
+ * Refuses a change WWCP_POI3 does not make of what it names (`RoamingNetworkChange`): an element change without an element
+ * path, another change with one, a new value of JSON `null`, and of each kind what it does not take: `Add` an entity
+ * object, no old value, no property; `Remove` no new value, no property; `UpdateProperty` a property and a new value;
+ * `RemoveProperty` and `RemoveElementProperty` a property and no new value; `AddElement` a new value, no old value, no
+ * property; `RemoveElement` no new value, no property; `ReplaceElement` a new value, no property; `UpdateElementProperty`
+ * a property and a new value.
+ */
+function checkChange(change: Change, index: number): void {
+
+    const refused = (reason: string): never => {
+        throw new POIError(`Change ${index}: ${reason}`);
+    };
+
+    if (blank(change.entityType) || blank(change.entityId))
+        refused('its entity type and identification must not be empty!');
+
+    if ((change.parentEntityType === undefined) !== (change.parentEntityId === undefined))
+        refused('parent type and parent identifier must be supplied together!');
+
+    if (change.newValue === null)
+        refused('a new JSON value must not be null; a property is cleared by RemoveProperty!');
+
+    const elementKind = ELEMENT_KINDS.includes(change.kind);
+
+    if (elementKind && change.elementPath === undefined)
+        refused(`${change.kind} requires a nonempty element path!`);
+
+    if (!elementKind && change.elementPath !== undefined)
+        refused('only element changes may contain an element path!');
+
+    const newValue  = change.newValue !== undefined;
+    const oldValue  = change.oldValue !== undefined;
+    const property  = change.propertyName !== undefined;
+    const named     = change.propertyName !== undefined && !blank(change.propertyName);
+
+    switch (change.kind) {
+
+        case 'Add':
+            if (!isObject(change.newValue) || oldValue || property)
+                refused('Add requires an entity object and no old value or property name!');
+            break;
+
+        case 'Remove':
+            if (newValue || property)
+                refused('Remove must not contain a new value or property name!');
+            break;
+
+        case 'UpdateProperty':
+            if (!newValue || !named)
+                refused('UpdateProperty requires a property name and a new JSON value!');
+            break;
+
+        case 'AddElement':
+            if (!newValue || oldValue || property)
+                refused('AddElement requires a new value and no old value or property name!');
+            break;
+
+        case 'RemoveElement':
+            if (newValue || property)
+                refused('RemoveElement must not contain a new value or property name!');
+            break;
+
+        case 'ReplaceElement':
+            if (!newValue || property)
+                refused('ReplaceElement requires a new value and no property name!');
+            break;
+
+        case 'UpdateElementProperty':
+            if (!newValue || !named)
+                refused('UpdateElementProperty requires a property name and a new value!');
+            break;
+
+        case 'RemoveProperty':
+        case 'RemoveElementProperty':
+            if (newValue || !named)
+                refused('property removal requires a property name and no new value!');
+            break;
+
+    }
+
+}
+
 
 /** One change of a change set. */
 export interface Change {
@@ -137,7 +275,8 @@ export interface Change {
     readonly newValue:          JSONValue | undefined;
     readonly parentEntityType:  string | undefined;
     readonly parentEntityId:    string | undefined;
-    readonly elementPath:       readonly JSONObject[] | undefined;
+    /** The element path of an element change, not empty; `undefined` for every other change. */
+    readonly elementPath:       readonly ElementPathSegment[] | undefined;
     readonly json:              JSONObject;
 }
 
@@ -201,9 +340,15 @@ export class ChangeSet {
             if (!(KINDS as readonly string[]).includes(kind))
                 throw new POIError(`Change ${index}: unknown kind '${kind}'!`);
 
-            const elementPath = get(change, 'elementPath');
+            // An empty element path is none, as WWCP_POI3 takes it.
+            const pathJSON = get(change, 'elementPath');
 
-            return {
+            if (pathJSON !== undefined && !isArray(pathJSON))
+                throw new POIError(`Change ${index}: the element path must be a JSON array!`);
+
+            const elementPath = pathJSON === undefined || pathJSON.length === 0 ? undefined : pathJSON.map(segment => elementPathSegment(segment, index));
+
+            const parsed: Change = {
                 kind:              kind as ChangeKind,
                 entityType:        requireString (change, 'entityType',       `The entity type of change ${index}`),
                 entityId:          requireString (change, 'entityId',         `The entity of change ${index}`),
@@ -212,9 +357,13 @@ export class ChangeSet {
                 newValue:          get(change, 'newValue'),
                 parentEntityType:  optionalString(change, 'parentEntityType', `The parent entity type of change ${index}`),
                 parentEntityId:    optionalString(change, 'parentEntityId',   `The parent entity of change ${index}`),
-                elementPath:       elementPath === undefined ? undefined : requireArray(elementPath, `The element path of change ${index}`).map(segment => requireObject(segment, `A segment of the element path of change ${index}`)),
+                elementPath,
                 json:              change,
             };
+
+            checkChange(parsed, index);
+
+            return parsed;
 
         });
 

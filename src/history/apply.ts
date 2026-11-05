@@ -26,7 +26,8 @@ import { ignoringCase }                   from '../network/identifications.ts';
 import { caseId, evseGroupId, freeId, poolGroupId, stationGroupId, type Id } from '../network/poiJSON.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
 import { notWritten }                     from '../network/writtenForm.ts';
-import type { Change, ChangeSet }         from './changeSet.ts';
+import { entityPropertyName, isElementChange, type Change, type ChangeSet } from './changeSet.ts';
+import { applyElement, pathText }       from './elements.ts';
 import { POIError, required }             from '../errors.ts';
 
 
@@ -359,6 +360,49 @@ const TARIFF_TYPES = new Set([ 'ChargingTariff', 'ChargingTariffTemplate', 'Char
 
 const INFRASTRUCTURE_TYPES = new Set([ ...Object.keys(OPERATOR_CHILD_ARRAYS), 'ChargingPool', 'ChargingStation', 'EVSE' ]);
 
+/** The properties of a charging pool a charging pool template can give its members (`ChargingPoolTemplatePoolProperties`). */
+const POOL_TEMPLATE_PROPERTIES = [ 'dataLicenses', 'address', 'geoLocation', 'parkingType', 'accessibility', 'hotline', 'gridConnectionPointId', 'brands',
+                                   'openingTimes', 'energyMix', 'images', 'timeZone', 'facilities', 'paymentOptions', 'authenticationModes', 'uiFeatures',
+                                   'features', 'locationLanguages', 'entranceAddress', 'entranceLocation', 'exitAddress', 'exitLocation', 'arrivalInstructions',
+                                   'chargingWhenClosed', 'parkingRestrictions', 'relatedLocations', 'services', 'assistanceServiceDetails', 'standards', 'nutsCodes' ];
+
+/** The properties of a charging station a charging station template can give its members (`ChargingStationTemplateStationProperties`). */
+const STATION_TEMPLATE_PROPERTIES = [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision',
+                                      'firmwareVersion', 'transparencySoftwareStatus', 'signatureMethods', 'brands', 'openingTimes', 'images', 'vehicleTypes',
+                                      'euVehicleCategories', 'accessibility', 'features', 'calibrationInfo', 'certificationInfo', 'maxPower', 'parkingSpaceIds',
+                                      'certificateIds' ];
+
+/** The properties of an EVSE an EVSE template can give its members (`EVSETemplateEVSEProperties`). */
+const EVSE_TEMPLATE_PROPERTIES = [ 'physicalReference', 'currentTypes', 'chargingModes', 'maxVoltage', 'maxCurrent', 'maxPower', 'chargingConnectors', 'brands',
+                                   'images', 'geoLocation', 'maxReservationDuration', 'reachDistance', 'operationTimeout', 'extendedOperationTimeout', 'standards',
+                                   'floorLevel', 'acceptedEMobilityProviderIds' ];
+
+/** The properties of a charging tariff a charging tariff template can give its members (`ChargingTariffTemplateTariffProperties`). */
+const TARIFF_TEMPLATE_PROPERTIES = [ 'currency', 'tariffType', 'tariffURL', 'elements', 'minPrice', 'maxPrice', 'paymentMeans', 'paymentBrands', 'validFrom',
+                                     'validUntil', 'energyMix' ];
+
+/**
+ * The infrastructure of a charging station operator a change set can update or remove the properties of, as WWCP_POI3
+ * names it, and those properties (RoamingNetwork.InfrastructureChanges.cs): never its identification, timestamps or
+ * children, e.g. the charging stations of a charging pool, which are changed on their own.
+ */
+const INFRASTRUCTURE: Readonly<Record<string, { readonly what: string, readonly changeable: readonly string[] }>> = {
+    ChargingPool:             { what: 'charging pool',            changeable: [ ...BASE_PROPERTIES, ...POOL_TEMPLATE_PROPERTIES, 'energyMeters', 'templateIds', 'customData' ] },
+    ChargingStation:          { what: 'charging station',         changeable: [ ...BASE_PROPERTIES, ...STATION_TEMPLATE_PROPERTIES, 'serialNumber', 'publicKeys', 'energyMeters',
+                                                                                'templateIds', 'customData' ] },
+    EVSE:                     { what: 'EVSE',                     changeable: [ ...BASE_PROPERTIES, ...EVSE_TEMPLATE_PROPERTIES, 'energyMeter', 'chargingTariffIds', 'iso15118Certificate',
+                                                                                'templateIds', 'customData' ] },
+    ChargingTariff:           { what: 'charging tariff',          changeable: [ ...BASE_PROPERTIES, ...TARIFF_TEMPLATE_PROPERTIES, 'templateIds', 'customData' ] },
+    EVSEGroup:                { what: 'EVSE group',               changeable: [ ...BASE_PROPERTIES, 'EVSEIds', 'customData' ] },
+    ChargingStationGroup:     { what: 'charging station group',   changeable: [ ...BASE_PROPERTIES, 'chargingStationIds', 'customData' ] },
+    ChargingPoolGroup:        { what: 'charging pool group',      changeable: [ ...BASE_PROPERTIES, 'chargingPoolIds', 'customData' ] },
+    ChargingTariffGroup:      { what: 'charging tariff group',    changeable: [ ...BASE_PROPERTIES, 'chargingTariffIds', 'customData' ] },
+    EVSETemplate:             { what: 'EVSE template',            changeable: [ ...BASE_PROPERTIES, 'chargingTariffId', 'customData', ...EVSE_TEMPLATE_PROPERTIES ] },
+    ChargingStationTemplate:  { what: 'charging station template', changeable: [ ...BASE_PROPERTIES, 'chargingTariffId', 'customData', ...STATION_TEMPLATE_PROPERTIES ] },
+    ChargingPoolTemplate:     { what: 'charging pool template',   changeable: [ ...BASE_PROPERTIES, 'chargingTariffId', 'customData', ...POOL_TEMPLATE_PROPERTIES ] },
+    ChargingTariffTemplate:   { what: 'charging tariff template', changeable: [ ...BASE_PROPERTIES, 'customData', ...TARIFF_TEMPLATE_PROPERTIES ] },
+};
+
 
 /**
  * A new value as a change gives it, which is what the content holds (section 4, "New values"): applied as it is, and refused
@@ -484,20 +528,62 @@ function touchParents(operator: JSONObject, parentType: string | undefined, pare
 }
 
 
+/** Whether an old value names the value found, as the C# implementation compares them: JSON `null` expects it absent. */
+const oldValueMatches = (oldValue: JSONValue, current: JSONValue | undefined): boolean =>
+    oldValue === null ? current === undefined : current !== undefined && sameValue(oldValue, current);
+
+
 /** Compares an old value as the C# implementation does: JSON `null` expects the value absent. */
 function checkOldValue(change: Change, current: JSONValue | undefined, index: number, what: string): void {
 
     if (change.oldValue === undefined)
         return;
 
-    const matches = change.oldValue === null
-                        ? current === undefined
-                        : current !== undefined && sameValue(change.oldValue, current);
-
-    if (!matches)
+    if (!oldValueMatches(change.oldValue, current))
         throw new POIError(change.propertyName !== undefined && (change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty')
                                ? `Change ${index}: the property '${change.propertyName}' of the ${what} is no longer the expected old value!`
                                : `Change ${index}: the ${what} is no longer the expected old value${current === undefined ? ': it does not exist' : ''}!`);
+
+}
+
+
+/**
+ * The change of the property of an entity an element change amounts to (`TryResolveElementChange`): the `UpdateProperty`
+ * of the property its path starts with, or its `RemoveProperty` when nothing is left, after its old value is compared with
+ * the element, or the property of the element, it addresses, so that concurrent changes of other elements of the same
+ * property do not conflict with it. It is checked as that change then: as a property a change set can change, and by the
+ * written form of its new value. Keys, and the tree hash algorithms, whose order is content, are changed as a whole. Any
+ * other change stays as it is.
+ */
+function resolveElementChange(change: Change, entity: JSONObject | undefined, what: string, index: number): Change {
+
+    if (!isElementChange(change))
+        return change;
+
+    const property = required(entityPropertyName(change), `Change ${index}: ${change.kind} needs an element path!`);
+
+    if (entity === undefined)
+        throw new POIError(`Change ${index}: the ${what} does not exist!`);
+
+    if (property === 'signingKeys' || property === 'identityKeys' || property === 'treeHashAlgorithms')
+        throw new POIError(`Change ${index}: the ${property} of the ${what} are changed as a whole, not element by element!`);
+
+    const applied = applyElement(change, get(entity, property));
+
+    if (applied.error !== undefined)
+        throw new POIError(`Change ${index}: ${change.kind} of the ${what}: ${applied.error}`);
+
+    if (change.oldValue !== undefined && !oldValueMatches(change.oldValue, applied.current))
+        throw new POIError(`Change ${index}: '${pathText(change.elementPath ?? [], change.propertyName)}' of the ${what} is no longer the expected old value!`);
+
+    return {
+        ...change,
+        kind:          applied.newValue === undefined ? 'RemoveProperty' : 'UpdateProperty',
+        propertyName:  property,
+        oldValue:      undefined,
+        newValue:      applied.newValue,
+        elementPath:   undefined,
+    };
 
 }
 
@@ -548,7 +634,8 @@ function entityToAdd(change: Change, index: number, what: string, createdAt: str
 
 function applyInfrastructureChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
-    const what      = `${change.entityType} '${change.entityId}'`;
+    // Named as WWCP_POI3 names it, e.g. "the charging pool 'DE*GEF*P1'" (`Describe`).
+    const what      = `${INFRASTRUCTURE[change.entityType]?.what ?? change.entityType} '${change.entityId}'`;
     const operator  = operatorOf(content, change.entityId);
 
     if (operator === undefined)
@@ -559,6 +646,9 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
     if (found !== undefined && change.parentEntityType !== undefined &&
        (change.parentEntityType !== found.parentType || change.parentEntityId !== found.parentId))
         throw new POIError(`Change ${index}: the ${what} belongs to ${found.parentType} '${found.parentId}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
+
+    // An element change is applied as the change of the property it amounts to.
+    change = resolveElementChange(change, found?.entity, what, index);
 
     if (change.kind !== 'Add' && found === undefined)
         throw new POIError(`Change ${index}: the ${what} does not exist!`);
@@ -576,9 +666,13 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
     switch (change.kind) {
 
         case 'UpdateProperty':
-        case 'RemoveProperty':
+        case 'RemoveProperty': {
+            const infrastructure = required(INFRASTRUCTURE[change.entityType], change.entityType);
+            if (!infrastructure.changeable.includes(change.propertyName ?? ''))
+                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a ${infrastructure.what} can not be changed!`);
             applyProperty(existing().entity, change, index, what, createdAt);
             break;
+        }
 
         case 'Add': {
 
@@ -659,6 +753,10 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
 
     const array   = get(content, property);
     const entity  = objectsOf(array).find(item => item['@id'] === change.entityId);
+
+    // An element change is applied as the change of the property it amounts to.
+    change = resolveElementChange(change, entity, what, index);
+
     const isProperty = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
 
     if (isProperty && entity === undefined)
@@ -812,6 +910,9 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
 function applyPartyChild(type: PartyChildType, party: JSONObject, found: { children: JSONArray, child: JSONObject } | undefined, change: Change, index: number,
                          what: string, createdAt: string): void {
 
+    // An element change is applied as the change of the property it amounts to.
+    change = resolveElementChange(change, found?.child, what, index);
+
     const isProperty  = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
     const existing    = (): { children: JSONArray, child: JSONObject } => required(found, `Change ${index}: the ${what} does not exist!`);
 
@@ -937,6 +1038,9 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
 
     }
 
+    // An element change is applied as the change of the property it amounts to.
+    change = resolveElementChange(change, found?.child, what, index);
+
     const isProperty  = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
     const existing    = (): EmbeddedFound => required(found, `Change ${index}: the ${what} does not exist!`);
 
@@ -1048,6 +1152,9 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
 
     }
 
+    // An element change is applied as the change of the property it amounts to.
+    change = resolveElementChange(change, found?.child, what, index);
+
     const isProperty  = change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty';
     const existing    = (): { children: JSONArray, child: JSONObject } => required(found, `Change ${index}: the ${what} does not exist!`);
 
@@ -1097,14 +1204,27 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
 }
 
 
+/** The properties of the roaming network itself a change set can update or remove. */
+const NETWORK_PROPERTIES = [ 'name', 'description', 'dataSource', 'dataLicenses', 'treeHashAlgorithms', 'customData' ];
+
 function applyNetworkChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
     const what = `roaming network '${asText(content['@id'])}'`;
 
+    // An element change is applied as the change of the property it amounts to, of the properties of its own only.
+    const property  = entityPropertyName(change) ?? '';
+    const held      = NETWORK_PROPERTIES.includes(property) ? get(content, property) : undefined;
+    const own: JSONObject = {};
+
+    if (held !== undefined)
+        set(own, property, held);
+
+    change = resolveElementChange(change, own, what, index);
+
     if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
         throw new POIError(`Change ${index}: ${change.kind} of the roaming network itself is not possible!`);
 
-    if (![ 'name', 'description', 'dataSource', 'dataLicenses', 'treeHashAlgorithms', 'customData' ].includes(change.propertyName ?? ''))
+    if (!NETWORK_PROPERTIES.includes(change.propertyName ?? ''))
         throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a roaming network can not be changed!`);
 
     checkOldValue(change, get(content, change.propertyName ?? ''), index, what);
@@ -1119,6 +1239,9 @@ function applyOperatorChange(content: JSONObject, change: Change, index: number,
 
     if (!isObject(operator) || operator['@id'] !== change.entityId)
         throw new POIError(`Change ${index}: the roaming network operator '${change.entityId}' is not the one of this roaming network!`);
+
+    // An element change is applied as the change of the property it amounts to.
+    change = resolveElementChange(change, operator, `roaming network operator '${change.entityId}'`, index);
 
     if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
         throw new POIError(`Change ${index}: the roaming network operator is neither added nor removed!`);
@@ -1287,7 +1410,7 @@ function embeddedOwnersOf(content: JSONObject, change: Change, index: number, ea
             throw new POIError(`Change ${index}: the ${change.entityType} '${change.entityId}' belongs to no grid operator!`);
 
         const { gridOperator, maintainer } = point;
-        const ofMaintainer = (change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty') && change.propertyName === 'maintainedBy';
+        const ofMaintainer = change.kind !== 'Remove' && entityPropertyName(change) === 'maintainedBy';
 
         if (change.kind === 'Remove')
             earlier.gridPoints.set(key, null);
@@ -1364,8 +1487,8 @@ function ownerOf(content: JSONObject, change: Change, index: number, earlier: Ea
     if (change.entityType === 'RoamingNetworkOperator')
         return {
             kind:  'rno',
-            keys:  change.propertyName === 'signingKeyCertificates'                                        ? 'signingOrIdentity'
-                 : [ 'signingKeys', 'identityKeys', 'minConsensus' ].includes(change.propertyName ?? '')  ? 'identity'
+            keys:  entityPropertyName(change) === 'signingKeyCertificates'                                        ? 'signingOrIdentity'
+                 : [ 'signingKeys', 'identityKeys', 'minConsensus' ].includes(entityPropertyName(change) ?? '')  ? 'identity'
                  :                                                                                          'signing',
         };
 
@@ -1383,7 +1506,7 @@ function ownerOf(content: JSONObject, change: Change, index: number, earlier: Ea
 
         // The number of a conformity assessment body as a notified body and the legislations it is notified for are the
         // roaming network operator's, which vets it, also once the body has keys: no body declares itself notified (S32).
-        if (change.entityType === 'ConformityAssessmentBody' && (change.propertyName === 'notifiedBodyNumber' || change.propertyName === 'notifiedFor'))
+        if (change.entityType === 'ConformityAssessmentBody' && (entityPropertyName(change) === 'notifiedBodyNumber' || entityPropertyName(change) === 'notifiedFor'))
             return { kind: 'rno', keys: 'signing' };
 
         // As its keys name it: a change may name it in every spelling its identification considers equal.
@@ -1397,9 +1520,9 @@ function ownerOf(content: JSONObject, change: Change, index: number, earlier: Ea
             kind:   'party',
             type:   change.entityType,
             id,
-            usage:  change.entityType === 'ChargingStationOperator' && change.propertyName === 'evTaler' ? KeyUsages.Payments : KeyUsages.Party,
-            keys:   change.propertyName === 'signingKeys'  ? 'signingOrIdentity'
-                  : change.propertyName === 'identityKeys' ? 'identity'
+            usage:  change.entityType === 'ChargingStationOperator' && entityPropertyName(change) === 'evTaler' ? KeyUsages.Payments : KeyUsages.Party,
+            keys:   entityPropertyName(change) === 'signingKeys'  ? 'signingOrIdentity'
+                  : entityPropertyName(change) === 'identityKeys' ? 'identity'
                   :                                          'signing',
         };
 
@@ -1496,7 +1619,8 @@ const isOwnerList = (owned: Owner | readonly Owner[]): owned is readonly Owner[]
 
 /** A change as WWCP_POI names it where it needs signatures: its kind, its entity and the property it changes, if any. */
 function describeChange(change: Change, index: number): string {
-    return `Change ${index}: ${change.kind} of the ${change.entityType} '${change.entityId}'${change.propertyName === undefined ? '' : ` ('${change.propertyName}')`}`;
+    const property = entityPropertyName(change);
+    return `Change ${index}: ${change.kind} of the ${change.entityType} '${change.entityId}'${property === undefined ? '' : ` ('${property}')`}`;
 }
 
 
@@ -1771,9 +1895,6 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     const createdAt  = toTimestamp(changeSet.createdAt);
 
     changeSet.changes.forEach((change, index) => {
-
-        if (change.elementPath !== undefined || change.kind.endsWith('Element') || change.kind.endsWith('ElementProperty'))
-            throw new POIError(`Change ${index}: element changes are not supported by this library yet!`);
 
         if (change.entityType === 'RoamingNetwork' && change.entityId === before.id)
             applyNetworkChange(content, change, index, createdAt);
