@@ -94,6 +94,11 @@
   read as Styx reads it, identified by its RFC 9679 thumbprint over n and e, and taken as WWCP_POI3 takes it; 0.12.0
   refused it, "Invalid COSE key: The curve of a COSE key must be an integer!". POI names no signature algorithm of RSA
   (SPECIFICATION.md 4), so such a key signs nothing this library verifies, as before.
+- `@vanaheimr/cose` 0.15.0, the codec still `@vanaheimr/metrological-cbor` 0.12. It reads and verifies the
+  countersignature of RFC 8152 and holds a key an X.509 certificate writes as `id-RSASSA-PSS` to RSASSA-PSS, as Styx
+  `7642de3d` does. This library uses neither, and reads and verifies its keys and signatures as with 0.14.0. For
+  development, Playwright 1.65.0 and Vite 8.3.6. TypeScript stays at 6.0: typescript-eslint 8.72.1 requires a version
+  below 6.1, and its typed linting needs the compiler API that TypeScript 7 does not ship.
 - `poi-refusals.json` of WWCPPOIConformanceTests `d388929` vendored, of 283 vectors: 10 versions naming a time zone of a
   charging pool or a charging pool template that is none of a region of the IANA time zone database, refused by WWCP_POI3
   since `d1c41ca` and taken by this library, marked as its deviation (D17 there).
