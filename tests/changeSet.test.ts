@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defined } from './helpers.ts';
+import { asText, defined } from './helpers.ts';
 import { commits } from './qa.ts';
 
 import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification } from '../src/history/changeSet.ts';
@@ -58,6 +58,22 @@ describe('Change sets identified by their content (4)', () => {
         const content = without(first, '@id', 'signatures');
         set(content, '@context', CHANGE_SET_CONTEXT);
         expect(first['@id']).toBe(toHex(hash('sha256', utf8(canonicalJSON(content)))));
+
+    });
+
+    it('refuses a signature of an empty algorithm, key or value, as WWCP_POI3 reads it', () => {
+
+        const signed = defined(changeSets.find(changeSet => Array.isArray(changeSet['signatures']) && changeSet['signatures'].length > 0));
+
+        for (const [ property, text ] of [ [ 'algorithm', '' ], [ 'keyId', ' ' ], [ 'value', '\u2028' ] ] as const) {
+
+            const copy       = clone(signed);
+            const signatures = copy['signatures'] as JSONObject[];
+            signatures[0]    = { ...clone(defined(signatures[0])), [property]: text };
+
+            expect(() => ChangeSet.parse(copy)).toThrow(`The ${property} of a signature of the change set '${asText(signed['@id'])}' must not be empty!`);
+
+        }
 
     });
 

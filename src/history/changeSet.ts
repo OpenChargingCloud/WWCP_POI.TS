@@ -375,11 +375,16 @@ export class ChangeSet {
                                : requireArray(get(json, 'signatures'), `The signatures of the change set '${id}'`).map(item => {
                                      const signature = requireObject(item, 'A signature of a change set');
                                      onlyProperties(signature, [ 'algorithm', 'keyId', 'value' ], 'A signature of a change set');
-                                     return {
+                                     const read = {
                                          algorithm:  requireString(signature, 'algorithm'),
                                          keyId:      requireString(signature, 'keyId'),
                                          value:      requireString(signature, 'value'),
                                      };
+                                     // Not empty, nor whitespace alone, as WWCP_POI3 reads them (RoamingNetworkChangeSetSignature).
+                                     for (const [ property, given ] of Object.entries(read))
+                                         if (blank(given))
+                                             throw new POIError(`The ${property} of a signature of the change set '${id}' must not be empty!`);
+                                     return read;
                                  });
 
         return new ChangeSet(id,

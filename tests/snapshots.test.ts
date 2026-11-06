@@ -190,7 +190,7 @@ describe('A snapshot of a checkpoint', () => {
     };
 
     /** Anchored in the trust anchor of epoch 1, its checkpoint taken by whatever signed it: the anchoring is what checks it. */
-    const anchoredAlone = { ...byOperator, verifyCheckpoint: (): void => undefined, trustAnchor: anchor, at: AT };
+    const anchoredAlone = { ...byOperator, verifyCheckpoint: (): undefined => undefined, trustAnchor: anchor, at: AT };
 
     it('is taken anchored in the trust anchor by its checkpoint, signed as the roaming network operator', () => {
 

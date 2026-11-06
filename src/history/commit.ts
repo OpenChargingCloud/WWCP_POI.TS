@@ -15,15 +15,16 @@
  * limitations under the License.
  */
 
-import { checkContext, onlyProperties, optionalString, requireArray, requireInteger, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
+import { checkContext, onlyProperties, optionalString, requireArray, requireInteger, requireObject, requireString, requireTimestamp, toTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }        from '../json/canonical.ts';
-import { asText, get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { get, isArray, isObject, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toHex, isLowerHex }         from '../encoding/text.ts';
 import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
 import { parseETags, type ETag }     from '../etags.ts';
 import { EpochProfiles, type Epoch } from './epoch.ts';
 import { ChangeSet, MERGE_CHANGE_SET_ID_PREFIX } from './changeSet.ts';
+import { trimmed }                   from '../network/versionTexts.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
 
@@ -41,7 +42,7 @@ export const SignatureRoles = {
 } as const;
 
 
-/** A signature of a commit or a checkpoint (5.4, 10.2), its `signedAt` signed as written. */
+/** A signature of a commit or a checkpoint (5.4, 10.2), as WWCP_POI3 reads it: its role, time, algorithm, key and value trimmed. */
 export interface RoleSignature {
     readonly role:       string;
     readonly signer:     string | undefined;
@@ -58,17 +59,43 @@ export function parseRoleSignature(value: JSONValue | undefined, what: string): 
 
     onlyProperties(json, [ 'role', 'signer', 'signedAt', 'algorithm', 'keyId', 'value' ], what);
 
-    return {
-        role:       requireString   (json, 'role',      `The role of ${what.toLowerCase()}`),
-        signer:     optionalString  (json, 'signer',    `The signer of ${what.toLowerCase()}`),
-        signedAt:   requireTimestamp(json, 'signedAt',  `The signedAt of ${what.toLowerCase()}`),
-        algorithm:  requireString   (json, 'algorithm', `The algorithm of ${what.toLowerCase()}`),
-        keyId:      requireString   (json, 'keyId',     `The keyId of ${what.toLowerCase()}`),
-        value:      requireString   (json, 'value',     `The value of ${what.toLowerCase()}`),
-        json,
-    };
+    // Its texts as WWCP_POI3 reads them (RoamingNetworkCommitSignature.TryParse): the role, the time, the algorithm, the
+    // key and the value trimmed (ParseMandatoryText), the signer as given; none of them empty, nor whitespace alone, so
+    // that a role, a signer, a key or a value of nothing is refused when read, before anything counts it. What a signature
+    // signs is its fields as read.
+    const text       = (property: string, label: string): string => trimmed(requireString(json, property, `The ${label} of ${what.toLowerCase()}`));
+    const role       = text('role', 'role');
+    const signer     = optionalString  (json, 'signer',    `The signer of ${what.toLowerCase()}`);
+    const signedAt   = requireTimestamp({ signedAt: text('signedAt', 'signedAt') }, 'signedAt', `The signedAt of ${what.toLowerCase()}`);
+    const algorithm  = text('algorithm', 'algorithm');
+    const keyId      = text('keyId', 'keyId');
+    const signature  = text('value', 'value');
+
+    for (const [ property, given ] of [ [ 'role', role ], [ 'signer', signer ], [ 'algorithm', algorithm ], [ 'keyId', keyId ], [ 'value', signature ] ] as const)
+        if (given !== undefined && trimmed(given) === '')
+            throw new POIError(`The ${property} of ${what.toLowerCase()} must not be empty!`);
+
+    return { role, signer, signedAt, algorithm, keyId, value: signature, json };
 
 }
+
+/** Whether two signatures of a commit or checkpoint are the same: of one role, signer, time, algorithm, key and value. */
+export const sameRoleSignature = (a: RoleSignature, b: RoleSignature): boolean =>
+    a.role === b.role && a.signer === b.signer && a.signedAt === b.signedAt && a.algorithm === b.algorithm && a.keyId === b.keyId && a.value === b.value;
+
+/**
+ * Whether two signatures of a commit or checkpoint are of one key in one role (`IsOfTheSameKeyAndRoleAs` of WWCP_POI):
+ * where a checkpoint is taken, the first of them that verifies is kept (S39).
+ */
+export const ofTheSameKeyAndRole = (a: RoleSignature, b: RoleSignature): boolean =>
+    a.keyId === b.keyId && a.role === b.role;
+
+/**
+ * A signature of a commit or checkpoint as WWCP_POI names it in its messages (`ToString`): its role, its signer if it
+ * names one, its key and when it signed.
+ */
+export const describeRoleSignature = (signature: RoleSignature): string =>
+    `${signature.role}${signature.signer === undefined ? '' : ` ${signature.signer}`} with '${signature.keyId}' at ${toTimestamp(signature.signedAt)}`;
 
 /** The signature input of a commit or checkpoint signature: its own fields, and what it signs under `property`. */
 export function roleSignatureBytes(context: string, signature: RoleSignature, property: string, signed: JSONObject): Uint8Array {
@@ -78,7 +105,7 @@ export function roleSignatureBytes(context: string, signature: RoleSignature, pr
         algorithm:   signature.algorithm,
         keyId:       signature.keyId,
         role:        signature.role,
-        signedAt:    asText(signature.json['signedAt']),
+        signedAt:    toTimestamp(signature.signedAt),
     };
 
     if (signature.signer !== undefined)

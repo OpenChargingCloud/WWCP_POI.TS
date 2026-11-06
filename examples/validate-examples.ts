@@ -87,7 +87,7 @@ const trust      = first.trust;
 /** As example A4: commits signed as the roaming network operator by its quorum, checkpoints as well. */
 const byOperator: HistoryOptions = {
     verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
-    verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust); },
+    verifyCheckpoint:  checkpoint => verifyCheckpointSignatures(checkpoint, trust).verified,
 };
 
 /** As examples A6 and A11: a verifier following the history, its trust following the key statements the commits change. */
@@ -99,7 +99,7 @@ function following(trustAnchor: TrustAnchor, root: RoamingNetwork, trusted: read
             current.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
             current = current.followedBy(after, time);
         },
-        verifyCheckpoint: (checkpoint): void => { verifyCheckpointSignatures(checkpoint, current, { witnesses: trusted, requiredWitnesses: trusted.length }); },
+        verifyCheckpoint: checkpoint => verifyCheckpointSignatures(checkpoint, current, { witnesses: trusted, requiredWitnesses: trusted.length }).verified,
     };
 }
 

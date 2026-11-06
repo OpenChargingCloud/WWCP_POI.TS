@@ -24,7 +24,7 @@ import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { Attestation }                    from '../proofs/attestation.ts';
 import { ChargingStationProof }           from '../proofs/stationProof.ts';
 import type { TrustAnchor }               from '../proofs/trustAnchor.ts';
-import { Commit, SignatureRoles, type RoleSignature } from './commit.ts';
+import { Commit, SignatureRoles, describeRoleSignature, ofTheSameKeyAndRole, sameRoleSignature, type RoleSignature } from './commit.ts';
 import { Checkpoint }                     from './checkpoint.ts';
 import { ChangeSet }                      from './changeSet.ts';
 import { applyChangeSet }                 from './apply.ts';
@@ -81,15 +81,21 @@ export interface HistoryOptions {
      * is the version before, unknown for the commit of a snapshot. Required for a signed commit.
      */
     readonly verifyCommit?:      (commit: Commit, before: RoamingNetwork | undefined, after: RoamingNetwork) => void;
-    /** Refuses a checkpoint whose signatures are not those required. Required for a signed checkpoint. */
-    readonly verifyCheckpoint?:  (checkpoint: Checkpoint) => void;
+    /**
+     * Refuses a checkpoint whose signatures are not those required, e.g. of the roaming network operator by its quorum and
+     * of the witnesses trusted here (`verifyCheckpointSignatures`), and returns those of its signatures that verify: the
+     * checkpoint is taken with them only, the first of each key and role, the others left out, not refused (POI3-ISSUES.md
+     * S39), and the roles it must be signed in are counted among them. Returning `undefined`, every signature verifies.
+     * Required for a signed checkpoint.
+     */
+    readonly verifyCheckpoint?:  (checkpoint: Checkpoint) => readonly RoleSignature[] | undefined;
     /**
      * The roles a commit must be signed in, e.g. `roamingNetworkOperator` or `leader` (`RequiredSignatureRoles` of WWCP_POI
      * 12e993a, POI3-ISSUES.md S24): each by a signature whose key the version the commit leads to lets sign in it, once
      * `verifyCommit` verified the signatures (`keyMaySignIn`).
      */
     readonly requiredSignatureRoles?:            readonly string[];
-    /** The roles a checkpoint must be signed in, e.g. `roamingNetworkOperator` or `witness`, once `verifyCheckpoint` verified it. */
+    /** The roles a checkpoint must be signed in, e.g. `roamingNetworkOperator` or `witness`, by signatures `verifyCheckpoint` verified. */
     readonly requiredCheckpointSignatureRoles?:  readonly string[];
 }
 
@@ -303,7 +309,7 @@ export class History {
             history.checkCheckpointEpoch(checkpoint);
 
             try {
-                history.verifyCheckpointSignatures(checkpoint);
+                checkpoint = history.verifyCheckpointSignatures(checkpoint);
             }
             catch (e) {
                 throw new POIError(`The checkpoint of the snapshot can not be taken: ${e instanceof Error ? e.message : String(e)}`);
@@ -391,20 +397,46 @@ export class History {
     }
 
     /**
-     * Refuses a signed checkpoint without a verifier of checkpoint signatures, as WWCP_POI; verifies it otherwise, and that it
-     * is signed in every required role (`TryAddCheckpoint`).
+     * The checkpoint as it is taken, with the signatures that verify here (`TryAddCheckpoint` and
+     * `TryVerifyCheckpointSignatures` of WWCP_POI 399b7c8, POI3-ISSUES.md S39): a signed one without a verifier of checkpoint
+     * signatures is refused, as WWCP_POI refuses it; otherwise `verifyCheckpoint` verifies it, and of the signatures it
+     * verified the first of each key and role is kept. One it did not verify, invalid or by a key not trusted here, is left
+     * out, not refused, so that nobody blocks a checkpoint by adding a signature, and a witness trusted elsewhere and not
+     * here keeps none from it. Refused when it is not signed in a required role by one that is kept, saying why the first
+     * one was left out.
      */
-    private verifyCheckpointSignatures(checkpoint: Checkpoint): void {
+    private verifyCheckpointSignatures(checkpoint: Checkpoint): Checkpoint {
+
+        let verified: readonly RoleSignature[] = checkpoint.signatures;
 
         if (this.options.verifyCheckpoint !== undefined)
-            this.options.verifyCheckpoint(checkpoint);
+            verified = this.options.verifyCheckpoint(checkpoint) ?? checkpoint.signatures;
 
         else if (checkpoint.signatures.length > 0)
             throw new POIError(`The checkpoint '${checkpoint.id}' is signed, but there is no verifier of checkpoint signatures!`);
 
+        const kept:  RoleSignature[] = [];
+        let leftOut: string | undefined;
+
+        for (const signature of checkpoint.signatures) {
+
+            if (kept.some(held => ofTheSameKeyAndRole(held, signature)))
+                continue;
+
+            if (verified.some(given => sameRoleSignature(given, signature)))
+                kept.push(signature);
+
+            else
+                leftOut ??= `The signature of the checkpoint '${checkpoint.id}' by ${describeRoleSignature(signature)} is invalid, or its key is not trusted!`;
+
+        }
+
         for (const role of this.options.requiredCheckpointSignatureRoles ?? [])
-            if (!checkpoint.signatures.some(signature => signature.role === role))
-                throw new POIError(`The checkpoint '${checkpoint.id}' is not signed in the role '${role}'!`);
+            if (!kept.some(signature => signature.role === role))
+                throw new POIError(`The checkpoint '${checkpoint.id}' is not signed in the role '${role}' by a signature that verifies here!${leftOut === undefined ? '' : ` ${leftOut}`}`);
+
+        // Held with the signatures verified here only.
+        return checkpoint.withSignaturesOnly(kept);
 
     }
 
@@ -585,8 +617,9 @@ export class History {
     /**
      * Takes the next checkpoint of the line (10.1): of this roaming network and epoch, its commit one this history holds
      * with its revision and ETags, following the latest checkpoint taken (sequence one more, naming it), its commits those
-     * since the commit of the previous checkpoint (all since the root for the first one this history takes), carrying the
-     * signatures required. A final checkpoint names the head, or the commit of the checkpoint before it alone (11.2).
+     * since the commit of the previous checkpoint (all since the root for the first one this history takes), signed in the
+     * roles required by signatures that verify here. A final checkpoint names the head, or the commit of the checkpoint
+     * before it alone (11.2). Returns it as taken: with the signatures verified here only (S39).
      */
     public takeCheckpoint(value: JSONValue | Checkpoint): Checkpoint {
 
@@ -640,10 +673,10 @@ export class History {
         if (latest !== undefined || this.root.commit.revision === 0)
             checkpoint.verifyCommits(commits);
 
-        this.verifyCheckpointSignatures(checkpoint);
-        this.checkpointList.push(checkpoint);
+        const taken = this.verifyCheckpointSignatures(checkpoint);
+        this.checkpointList.push(taken);
 
-        return checkpoint;
+        return taken;
 
     }
 

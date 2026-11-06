@@ -18,7 +18,7 @@
 import { requireArray, requireObject, requireString } from '../common.ts';
 import { get, type JSONValue }             from '../json/value.ts';
 import { POIPublicKey }                    from '../keys.ts';
-import { SignatureRoles }                  from '../history/commit.ts';
+import { SignatureRoles, type RoleSignature } from '../history/commit.ts';
 import type { Checkpoint }                 from '../history/checkpoint.ts';
 import type { OperatorTrust }              from './trust.ts';
 import { POIError }                        from '../errors.ts';
@@ -47,6 +47,11 @@ export interface CheckpointSignatures {
     readonly witnessedBy:   readonly string[];
     /** Signatures that did not count: by untrusted keys, in another role, or invalid. */
     readonly ignored:       readonly string[];
+    /**
+     * The signatures that verified, in their order: those a history takes the checkpoint with (`verifyCheckpoint` of
+     * `HistoryOptions`, S39), the others left out.
+     */
+    readonly verified:      readonly RoleSignature[];
 }
 
 
@@ -66,6 +71,7 @@ export function verifyCheckpointSignatures(checkpoint:  Checkpoint,
     const signedBy     = new Set<string>();
     const witnessedBy  = new Set<string>();
     const ignored:     string[] = [];
+    const verified:    RoleSignature[] = [];
 
     for (const signature of checkpoint.signatures) {
 
@@ -83,6 +89,7 @@ export function verifyCheckpointSignatures(checkpoint:  Checkpoint,
             try {
                 checkpoint.verifySignature(signature, key);
                 signedBy.add(holder);
+                verified.push(signature);
             }
             catch (e) {
                 ignored.push(`the signature by '${signature.keyId}' is invalid: ${e instanceof Error ? e.message : String(e)}`);
@@ -104,6 +111,7 @@ export function verifyCheckpointSignatures(checkpoint:  Checkpoint,
             try {
                 checkpoint.verifySignature(signature, witness.key);
                 witnessedBy.add(witness.witness);
+                verified.push(signature);
             }
             catch (e) {
                 ignored.push(`the signature of the witness '${witness.witness}' is invalid: ${e instanceof Error ? e.message : String(e)}`);
@@ -123,7 +131,7 @@ export function verifyCheckpointSignatures(checkpoint:  Checkpoint,
     if (witnessedBy.size < (options.requiredWitnesses ?? 0))
         throw new POIError(`The checkpoint '${checkpoint.id}' is signed by ${witnessedBy.size} of the trusted witnesses, not by ${options.requiredWitnesses}!`);
 
-    return { signedBy: [ ...signedBy ].sort(), witnessedBy: [ ...witnessedBy ], ignored };
+    return { signedBy: [ ...signedBy ].sort(), witnessedBy: [ ...witnessedBy ], ignored, verified };
 
 }
 

@@ -23,7 +23,7 @@ import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../cryp
 import { verifySignature }           from '../crypto/signature.ts';
 import { parseETags, sameETags, type ETag } from '../etags.ts';
 import { leafHash, merkleRootOfLeafHashes, parseAuditPath, parseMerkleTreeHead, rootFromAuditPath, type MerkleTreeHead } from '../merkle.ts';
-import { parseRoleSignature, roleSignatureBytes, type Commit, type RoleSignature } from './commit.ts';
+import { parseRoleSignature, roleSignatureBytes, sameRoleSignature, type Commit, type RoleSignature } from './commit.ts';
 import { parseEpoch, parseEpochLink, type Epoch, type EpochLink } from './epoch.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
@@ -65,6 +65,31 @@ export class Checkpoint {
     /** Whether this is the final checkpoint of its epoch, `"final": true` with the next epoch (11.2). */
     public get isFinal(): boolean {
         return this.next !== undefined;
+    }
+
+    /**
+     * This checkpoint with only those of its signatures that are given, e.g. the ones verified where it is taken
+     * (`WithSignaturesOnly` of WWCP_POI 399b7c8, POI3-ISSUES.md S39): the others left out, its identification the same.
+     * A signature is given when one of the same role, signer, time, algorithm, key and value is, each given one once: of
+     * two exact copies, one given keeps the first alone, as WWCP_POI reads them as one.
+     */
+    public withSignaturesOnly(signatures: readonly RoleSignature[]): Checkpoint {
+
+        const remaining = [ ...signatures ];
+        const kept      = this.signatures.filter(signature => {
+                              const index = remaining.findIndex(given => sameRoleSignature(given, signature));
+                              if (index < 0)
+                                  return false;
+                              remaining.splice(index, 1);
+                              return true;
+                          });
+
+        return kept.length === this.signatures.length
+                   ? this
+                   : new Checkpoint(this.id, this.roamingNetworkId, this.epoch, this.sequence, this.previousId, this.commitId, this.revision, this.eTags,
+                                    this.commits, this.priceStatements, this.createdAt, kept, this.identificationHash, this.next, this.previous,
+                                    { ...this.json, signatures: kept.map(signature => signature.json) });
+
     }
 
 

@@ -31,13 +31,13 @@ export const trust        = OperatorTrust.of(anchor, genesis, AT);
 /** As example A4: commits signed as the roaming network operator by its quorum, checkpoints as well. */
 export const byOperator: HistoryOptions = {
     verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
-    verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust); },
+    verifyCheckpoint:  checkpoint => verifyCheckpointSignatures(checkpoint, trust).verified,
 };
 
 /** As example A6: and by both witnesses a verifier trusts. */
 export const byOperatorAndWitnesses: HistoryOptions = {
     verifyCommit:      defined(byOperator.verifyCommit),
-    verifyCheckpoint:  checkpoint => { verifyCheckpointSignatures(checkpoint, trust, { witnesses, requiredWitnesses: 2 }); },
+    verifyCheckpoint:  checkpoint => verifyCheckpointSignatures(checkpoint, trust, { witnesses, requiredWitnesses: 2 }).verified,
 };
 
 /** A snapshot of a checkpoint started from as the given options check it, anchored in the given trust anchor at AT (10.5). */
@@ -84,9 +84,8 @@ export function following(trustAnchor: TrustAnchor, root: RoamingNetwork, truste
             current.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
             current = current.followedBy(after, AT);
         },
-        verifyCheckpoint: (checkpoint): void => {
-            verifyCheckpointSignatures(checkpoint, current, { witnesses: trustedWitnesses, requiredWitnesses });
-        },
+        verifyCheckpoint: checkpoint =>
+            verifyCheckpointSignatures(checkpoint, current, { witnesses: trustedWitnesses, requiredWitnesses }).verified,
     };
 
 }

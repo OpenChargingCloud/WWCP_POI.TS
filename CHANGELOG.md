@@ -205,8 +205,32 @@
   `requiredCheckpointSignatureRoles`, the roles a checkpoint must be signed in ("The checkpoint '…' is not signed in the
   role '…'!"). A signed commit without a verifier is refused before it is applied, as WWCP_POI does. Signatures of one
   key in one role, e.g. the twin of an ECDSA signature (S11), are kept as given, each verified, and counted once by the
-  holder or witness they are of: WWCP_POI keeps the first alone when it reads a commit, which this library does not
-  follow (sent to the security audit as a finding). `tests/signatureRoles.test.ts`.
+  holder or witness they are of, as WWCP_POI `f7b8643` reads them too (SPECIFICATION.md 5.4): it kept the first alone
+  since `12e993a`, so a forged signature behind a genuine one of its key went unchecked. `tests/signatureRoles.test.ts`.
+- A checkpoint is taken with the signatures that verify here, as WWCP_POI `399b7c8` takes it (POI3-ISSUES.md S39,
+  SPECIFICATION.md 10.2): `verifyCheckpoint` of a history returns those of its signatures that verify, and the history
+  keeps the first of each key and role of them; one that does not verify, invalid or by a key not trusted here, is left
+  out, not refused, so that nobody blocks a checkpoint by adding a signature, and a witness trusted elsewhere and not here
+  keeps none from it. The roles a checkpoint must be signed in are counted among them: before, a role of a signature
+  `verifyCheckpointSignatures` passed over counted ("The checkpoint '…' is not signed in the role '…' by a signature that
+  verifies here!", and why the first one was left out). `takeCheckpoint` and a snapshot of a checkpoint hold it with
+  those only (`Checkpoint.withSignaturesOnly`). `verifyCheckpointSignatures` returns them as `verified`. The type of
+  `verifyCheckpoint` is now `(checkpoint) => readonly RoleSignature[] | undefined`: `undefined`, every signature verifies,
+  as before; a callback of a block without `return` is typed `void` and is no longer one.
+- A signature of a commit or checkpoint is read as WWCP_POI3 reads it (`RoamingNetworkCommitSignature.TryParse`): its role,
+  time, algorithm, key and value trimmed, its signer as given, and what it signs is what was read; refused when its role,
+  signer, algorithm, key or value is empty or whitespace alone (`String.IsNullOrWhiteSpace`), and so is a signature of a
+  change set whose algorithm, key or value is ("The … of a signature of … must not be empty!"). Before, this library took
+  them, and a role padded with whitespace was not the role.
+- Required signature roles probed against WWCP_POI3 at `12e993a`, `f7b8643` and `399b7c8` (`CheckSignatures` of a
+  snapshot, `TryAppend`, `TryAddCheckpoint`), on QA of epoch 2: 1879 cases of roles required of a snapshot, a commit and
+  a checkpoint, signed in every role, by keys of the roaming network operator, of DE*GEF and of nobody, by signers named
+  in every form, with and without a verifier; a second signature of one key in one role, the same, forged or signed
+  later; checkpoints verified by a rule leaving signatures out, forged ones before genuine ones among them; signatures
+  read with texts empty, padded and of other types. At `399b7c8` all are taken and refused alike, the checkpoints held with
+  the same signatures, the roles in the same words, signatures read refused in the words of this library. Stricter than
+  WWCP_POI3, which takes them: a signer given as a number, an `@context` or another property in a signature of a commit
+  or checkpoint, and in the commit of a snapshot an algorithm its epoch does not name.
 - What a proof gives of a child array, as WWCP_POI `d35c780` tells it (S29): `givesCompletely`, whether an entity as a proof
   gives it has a child array completely, as an array or none, or pruned or partially; `sizeOf`, how many children it has,
   also where the proof gives only some or none of them. A size or index beyond what this platform holds, and an object as

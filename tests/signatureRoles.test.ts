@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { asText, defined, readJSON } from './helpers.ts';
-import { anchor, commits, following } from './qa.ts';
+import { anchor, commits, following, witnessesPQ } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
 import { History, type HistoryOptions } from '../src/history/history.ts';
+import { Commit }             from '../src/history/commit.ts';
+import { Checkpoint }         from '../src/history/checkpoint.ts';
 import { ChargingStationProof } from '../src/proofs/stationProof.ts';
 import { givesCompletely, sizeOf } from '../src/network/tree.ts';
 import { clone, get, isArray, type JSONObject, type JSONValue } from '../src/json/value.ts';
@@ -105,18 +107,164 @@ describe('Required signature roles (S24)', () => {
 
     });
 
-    it('refuses a checkpoint not signed in a required role, once its signatures are verified', () => {
+});
 
-        const checkpoint = readJSON('published/QA-epoch-2-checkpoint-0.json') as JSONObject;
-        const upTo       = (history: History): History => {
-            for (const commit of toHead.slice(0, Number(checkpoint['revision'])))
-                history.append(commit);
-            return history;
-        };
 
-        expect(upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'roamingNetworkOperator', 'witness' ] })).takeCheckpoint(checkpoint).id).toBe(checkpoint['@id']);
-        expect(refusal(() => upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'leader' ] })).takeCheckpoint(checkpoint)))
-            .toBe(`The checkpoint '${asText(checkpoint['@id'])}' is not signed in the role 'leader'!`);
+describe('A checkpoint taken with the signatures that verify here (S39)', () => {
+
+    // WWCP_POI 399b7c8, POI3-ISSUES.md S39: a history takes a checkpoint with those of its signatures that verify here, the
+    // first of each key and role, by keys trusted here for their roles; one that does not, invalid or by a key not trusted
+    // here, is left out, not refused, so that nobody blocks a checkpoint by adding a signature, and a witness trusted
+    // elsewhere and not here keeps none from it. The roles it must be signed in are counted among those it is taken with.
+    // The first checkpoint of epoch 2 carries six signatures of the roaming network operator and four of witnesses: a
+    // verifier following epoch 2 from the trust anchor of epoch 1 verifies three of the operator (the keys of the others
+    // no identity key it trusts certifies), and, trusting the ML-DSA keys of both witnesses, two of theirs.
+    const checkpoint  = readJSON('published/QA-epoch-2-checkpoint-0.json') as JSONObject;
+    const id          = asText(checkpoint['@id']);
+    const signatures  = checkpoint['signatures'] as JSONObject[];
+    const upTo        = (history: History): History => {
+        for (const commit of toHead.slice(0, Number(checkpoint['revision'])))
+            history.append(commit);
+        return history;
+    };
+
+    /** A verifier following epoch 2, trusting both witnesses by their ML-DSA keys, both of them required. */
+    const witnessed   = (): HistoryOptions => following(anchor, root, witnessesPQ, 2);
+
+    /** The signatures of a checkpoint, short. */
+    const named       = (taken: Checkpoint): string[] =>
+        taken.signatures.map(signature => `${signature.role} ${signature.signer ?? ''} ${signature.keyId.slice(0, 8)}`);
+
+    const VERIFIED    = [ 'roamingNetworkOperator OCC 2cfca673', 'roamingNetworkOperator OCC b93748c4', 'roamingNetworkOperator OCC b915bcc3',
+                          'witness calibration.example 984dd74a', 'witness association.example d8c15249' ];
+
+    /** Why the first signature not verified here was left out, as WWCP_POI says it: by a key of the operator not trusted here. */
+    const first       = defined(signatures[3]);
+    const LEFT_OUT    = `The signature of the checkpoint '${id}' by roamingNetworkOperator OCC with '${asText(first['keyId'])}' at ${asText(first['signedAt'])} is invalid, or its key is not trusted!`;
+
+    it('takes it with the signatures that verify here only, the others left out', () => {
+
+        expect(asText(first['keyId'])).toMatch(/^d76d4d4e/);
+
+        const taken = upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'roamingNetworkOperator', 'witness' ] }, witnessed())).takeCheckpoint(checkpoint);
+
+        expect([ taken.id, taken.signatures.length, signatures.length ]).toEqual([ id, 5, 10 ]);
+        expect(named(taken)).toEqual(VERIFIED);
+        expect((taken.json['signatures'] as JSONValue[]).length).toBe(5);
+
+    });
+
+    it('refuses it not signed in a required role by a signature that verifies here, saying why the first one was left out', () => {
+
+        // Signed by witnesses, by keys not trusted here: no role of a witness.
+        expect(refusal(() => upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'roamingNetworkOperator', 'witness' ] })).takeCheckpoint(checkpoint)))
+            .toBe(`The checkpoint '${id}' is not signed in the role 'witness' by a signature that verifies here! ${LEFT_OUT}`);
+
+        expect(refusal(() => upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'leader' ] }, witnessed())).takeCheckpoint(checkpoint)))
+            .toBe(`The checkpoint '${id}' is not signed in the role 'leader' by a signature that verifies here! ${LEFT_OUT}`);
+
+        // Every signature verified, as a verifier taking them all tells: nothing left out to say.
+        expect(refusal(() => upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'leader' ] }, { verifyCommit: () => undefined, verifyCheckpoint: () => undefined })).takeCheckpoint(checkpoint)))
+            .toBe(`The checkpoint '${id}' is not signed in the role 'leader' by a signature that verifies here!`);
+
+    });
+
+    it('is blocked by no signature added, a forged one before the genuine one of its key and role included', () => {
+
+        const genuine  = defined(signatures[0]);
+        const forged   = { ...clone(genuine), value: asText(signatures[1]?.['value']) };
+        const stranger = { ...clone(genuine), role: 'witness', signer: 'stranger.example' };
+        const added    = { ...clone(checkpoint), signatures: [ forged, ...clone(signatures), stranger ] };
+
+        const taken    = upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'roamingNetworkOperator', 'witness' ] }, witnessed())).takeCheckpoint(added);
+
+        expect(named(taken)).toEqual(VERIFIED);
+        expect(taken.signatures[0]?.value).toBe(genuine['value']);
+
+    });
+
+    it('starts a history from the snapshot of a checkpoint, held with the signatures that verify here', () => {
+
+        // Verified before the commit of the snapshot, by the trust in the genesis the verifier follows from: there every key
+        // of the operator is certified, so its six signatures verify; the witnesses' by their keys of epoch 1 do not.
+        const history = History.fromSnapshot(readJSON('published/QA-epoch-2-checkpoint-0-snapshot.json'), { ...witnessed(), unanchored: true, requiredCheckpointSignatureRoles: [ 'witness' ] });
+
+        expect(named(defined(history.checkpoints[0]))).toEqual([ ...VERIFIED.slice(0, 3),
+                                                                 'roamingNetworkOperator OCC d76d4d4e', 'roamingNetworkOperator OCC c9f38055', 'roamingNetworkOperator OCC 823d28d5',
+                                                                 ...VERIFIED.slice(3) ]);
+
+    });
+
+});
+
+
+describe('How a signature of a commit or checkpoint is read', () => {
+
+    // As WWCP_POI3 reads it (RoamingNetworkCommitSignature): its role, its signer when it names one, its algorithm, key and
+    // value not empty, nor whitespace alone as String.IsNullOrWhiteSpace tells it, so that no role or signer of nothing is
+    // counted. U+FEFF is no whitespace there: a role of it is only a role nobody requires.
+    const first       = defined(toHead[0]);
+    const checkpoint  = readJSON('published/QA-epoch-2-checkpoint-0.json') as JSONObject;
+
+    /** The given document, its first signature with the given properties. */
+    const withFirst = (document: JSONObject, properties: JSONObject): JSONObject => {
+        const copy       = clone(document);
+        const signatures = copy['signatures'] as JSONObject[];
+        signatures[0]    = { ...clone(defined(signatures[0])), ...properties };
+        return copy;
+    };
+
+    it('refuses an empty role, signer, algorithm, key or value', () => {
+
+        for (const [ property, text ] of [ [ 'role', '' ], [ 'role', ' ' ], [ 'role', '\t' ], [ 'role', '\u00A0' ], [ 'signer', '' ], [ 'signer', '\u3000' ],
+                                           [ 'algorithm', ' ' ], [ 'keyId', '' ], [ 'value', '\n' ] ] as const) {
+
+            expect(refusal(() => Commit.parse(withFirst(first, { [property]: text }))))
+                .toBe(`The ${property} of a signature of a commit must not be empty!`);
+
+            expect(refusal(() => Checkpoint.parse(withFirst(checkpoint, { [property]: text }))))
+                .toBe(`The ${property} of a signature of a checkpoint must not be empty!`);
+
+        }
+
+        // So is the commit of a snapshot.
+        const snapshot = clone(genesis);
+        snapshot['commit'] = withFirst(genesis['commit'] as JSONObject, { signer: ' ' });
+
+        expect(refusal(() => historyOf({}, undefined, snapshot)))
+            .toBe('Invalid commit of the snapshot: The signer of a signature of a commit must not be empty!');
+
+    });
+
+    it('reads its role, time, algorithm, key and value trimmed, its signer as given, and verifies what it read', () => {
+
+        // Whitespace around what the operator signed: read trimmed (ParseMandatoryText), the signature verifies as it was
+        // made, and the role counts for the role required.
+        const signature = defined((first['signatures'] as JSONObject[])[0]);
+        const padded    = withFirst(first, { role:      ' roamingNetworkOperator\t',
+                                             signedAt:  `\n${asText(signature['signedAt'])} `,
+                                             algorithm: ` ${asText(signature['algorithm'])}`,
+                                             keyId:     `${asText(signature['keyId'])}\u00A0`,
+                                             value:     ` ${asText(signature['value'])} ` });
+
+        const read = defined(Commit.parse(padded).signatures[0]);
+
+        expect([ read.role, read.algorithm, read.keyId, read.value ])
+            .toEqual([ 'roamingNetworkOperator', signature['algorithm'], signature['keyId'], signature['value'] ]);
+
+        expect(historyOf({ requiredSignatureRoles: [ 'roamingNetworkOperator' ] }).append(padded).commit.id).toBe(first['@id']);
+
+        // The signer is read as given: around it whitespace stays, so it names no operator that may sign as one.
+        expect(Commit.parse(withFirst(first, { signer: ' OCC ' })).signatures[0]?.signer).toBe(' OCC ');
+
+    });
+
+    it('takes a role of U+FEFF, which is no whitespace, as a role nobody requires', () => {
+
+        expect(Commit.parse(withFirst(first, { role: '\uFEFF' })).signatures[0]?.role).toBe('\uFEFF');
+
+        // Its role counted for nobody: by a verifier taking every signature, a history takes the commit.
+        expect(refusal(() => historyOf({}, { verifyCommit: () => undefined, verifyCheckpoint: () => undefined }).append(withFirst(first, { role: '\uFEFF' })))).toBe('taken');
 
     });
 
