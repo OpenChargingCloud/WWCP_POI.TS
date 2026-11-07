@@ -234,8 +234,16 @@
   later; checkpoints verified by a rule leaving signatures out, forged ones before genuine ones among them; signatures
   read with texts empty, padded and of other types. At `399b7c8` all are taken and refused alike, the checkpoints held with
   the same signatures, the roles in the same words, signatures read refused in the words of this library. Stricter than
-  WWCP_POI3, which takes them: a signer given as a number, an `@context` or another property in a signature of a commit
-  or checkpoint, and in the commit of a snapshot an algorithm its epoch does not name.
+  WWCP_POI3 there, which took them: a signer given as a number, an `@context` or another property in a signature of a
+  commit or checkpoint, and in the commit of a snapshot an algorithm its epoch does not name. WWCP_POI `b43ff1a` refuses
+  them too (POI3-ISSUES.md S40), and `7c6f91c` refuses a signature read in the words of this library, a snapshot naming
+  why its commit is refused: probed again at `7c6f91c`, all 1879 alike, word for word.
+- `poi-refusals.json` and `poi-histories.json` of WWCPPOIConformanceTests `215023a` vendored, 806 vectors there, 13 of
+  them new: 8 refusals of a signature of the genesis commit or of checkpoint 1 not in its one form (another property,
+  `@context`, a signer as a number, a role of whitespace, a signedAt without milliseconds); a replay starting from the
+  snapshot of the genesis of epoch 3, its commit signed with Ed448, which the epoch does not name; 4 snapshots of
+  checkpoint 0 anchored with a signature that does not verify or a witness the trust anchor does not know (taken, S39), a
+  key of one holder signing twice (refused) and with the other holder too (taken). None deviates.
 - What a proof gives of a child array, as WWCP_POI `d35c780` tells it (S29): `givesCompletely`, whether an entity as a proof
   gives it has a child array completely, as an array or none, or pruned or partially; `sizeOf`, how many children it has,
   also where the proof gives only some or none of them. A size or index beyond what this platform holds, and an object as
