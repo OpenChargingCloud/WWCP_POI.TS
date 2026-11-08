@@ -30,13 +30,12 @@ migration requirements: versions, change sets and signatures 0.2.0 took are refu
 remain experimental; a package release does not establish production witness services or independently verified
 actual measurement time.
 
-**Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A14 of
+**Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A15 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
 examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations the C#
-implementation makes: in the tests from the run of WWCP_POI `045e180` vendored here, which also holds the EV Taler
-merchant of example A15, and every night from a new run of WWCP_POI master, with new keys. EV Taler phase 2, which
-example A16 shows, is checked on the proof of example A15 and probed against WWCP_POI3; what example A16 publishes is not
-checked yet. See [Tests](#tests).
+implementation makes: in the tests from the run of WWCP_POI `045e180` vendored here, and every night from a new run of
+WWCP_POI master, with new keys. EV Taler phase 2, which example A16 shows, is checked on the proof of example A15 and
+probed against WWCP_POI3; what example A16 publishes is not checked yet. See [Tests](#tests).
 
 What a review of the C# implementation found while porting it is in
 [docs/csharp-review.md of WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/csharp-review.md),

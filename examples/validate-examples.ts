@@ -1,13 +1,14 @@
 /*
- * Checks what the C# examples A1 to A14 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
+ * Checks what the C# examples A1 to A15 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
  *   npx tsx examples/validate-examples.ts <dir> --at 2026-10-27T17:23:00.000Z
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
- * same. Attestations end 15 minutes after they are signed: the station proof of example A13 is checked at the time of its
- * attestations unless `--at` names another, the evidence of example A10 at the time charging began, as the app does.
+ * same. Attestations end 15 minutes after they are signed: the station proofs of examples A13 and A15 are checked at the
+ * time of their attestations unless `--at` names another, the evidence of example A10 at the time charging began, as the
+ * app does.
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -16,11 +17,13 @@ import { join }                     from 'node:path';
 import {
     ArchiveSegment, Checkpoint, CheckpointProof, DigitalCalibrationCertificate, DigitalCertificateOfConformity,
     DigitalDeclarationOfConformity, History, OperatorTrust, POIPublicKey, PriceStatement, PriceStatementProof, QIDigitalItem,
-    RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, get, isArray, isObject, parseArchiveSegmentInfo,
-    parseEvidence, parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, toTimestamp,
-    verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence,
-    verifyPriceStatements, verifySegmentLine, verifyVersion,
-    type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type QIDigitalI18NText, type TrustedWitness,
+    RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, evTalerExchangesAt, evTalerMerchantOf,
+    evTalerTariffOf, get, isArray, isObject, parseArchiveSegmentInfo, parseEvidence, parseFrame, parseJSON,
+    parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, paymentOptionName, toTimestamp, verifyChargingStation,
+    verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence, verifyPriceStatements,
+    verifySegmentLine, verifyVersion,
+    type EVTalerExchange, type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type QIDigitalI18NText,
+    type TrustedWitness,
 } from '../src/index.ts';
 
 
@@ -34,6 +37,15 @@ function defined<T>(value: T | null | undefined, what: string): T {
 /** A value of a document as text: a string or a number as it is, an object or an array as JSON. */
 function show(value: JSONValue | undefined): string {
     return isObject(value) || isArray(value) ? JSON.stringify(value) : String(value);
+}
+
+/** The objects within the given value, at any depth, that name the given property. */
+function objectsNaming(value: JSONValue | undefined, property: string): JSONObject[] {
+    if (isArray(value))
+        return value.flatMap(item => objectsNaming(item, property));
+    if (!isObject(value))
+        return [];
+    return [ ...(property in value ? [ value ] : []), ...Object.values(value).flatMap(item => objectsNaming(item, property)) ];
 }
 
 
@@ -545,6 +557,53 @@ if (has('published/EM-LAB-DCC-2026-0815.json'))
         const dcMeter = QIDigitalItem.ofEnergyMeter(meterOf('DE*GEF*E1*1'));
         refused(`${typeExamination.id} for the meter of DE*GEF*E1*1`, () => { typeExamination.cover(dcMeter); });
         refused(`${qualitySystem.id} for the meter of DE*GEF*E1*1`,   () => { qualitySystem.cover(dcMeter); });
+
+    });
+
+
+if (has('published/QA-DE-GEF-E1-1-evTaler-proof.json'))
+    step('Example A15: EV Taler, what the app shows and the merchant of every offer', () => {
+
+        // The station proof of DE*GEF*E1*1 the app gets, checked against the trust anchor of epoch 2 as example A13 checks
+        // its own, giving the EV Taler merchant of DE*GEF.
+        const evseId    = 'DE*GEF*E1*1';
+        const anchorPQ  = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const proof     = json('published/QA-DE-GEF-E1-1-evTaler-proof.json') as JSONObject;
+        const attested  = at ?? show(defined((proof['attestations'] as JSONObject[])[0], 'attestation in the station proof')['signedAt']);
+        const station   = verifyChargingStation(anchorPQ, proof, { at: attested, evseId });
+        console.log(`The station proof, revision ${station.revision}, at ${attested}: attested by ${station.attestedBy.join(', ')}`);
+
+        const merchant  = evTalerMerchantOf(defined(station.operator['evTaler'], 'EV Taler merchant of DE*GEF in the station proof'));
+        if (typeof merchant === 'string')
+            throw new Error(merchant);
+
+        const pool      = station.chargingPool;
+        console.log(`${show(pool['@id'])}, ${show((pool['name'] as JSONObject)['en'])}: payment options ${((pool['paymentOptions'] as JSONArray | undefined) ?? []).map(show).join(', ')}`);
+
+        // The EV Taler tariff of the EVSE, and the exchanges of the merchant in its currency: what the app shows as
+        // "EV Taler (provider)".
+        const tariff    = defined(evTalerTariffOf(station, evseId), `EV Taler tariff of ${evseId}`);
+        const currency  = show(tariff['currency']);
+        const nameOf    = (exchange: EVTalerExchange): string => paymentOptionName(exchange)[0]?.[1] ?? '';
+        console.log(`${evseId}: its EV Taler tariff ${show(tariff['@id'])}, in ${currency}`);
+
+        for (const exchange of evTalerExchangesAt(station, evseId))
+            console.log(`  ${nameOf(exchange)}: coins of the exchange ${exchange.masterPublicKey} at ${exchange.baseURL}`);
+        console.log(`  not offered there: ${merchant.exchanges.filter(exchange => exchange.currency !== currency).map(nameOf).join(', ')}`);
+
+        // What every offer for this EVSE must name: the merchant base URL in its taler://pay URI, the merchant_pub of its
+        // contract terms.
+        console.log(`An offer for ${evseId} is DE*GEF's when its taler://pay URI names ${merchant.merchantBaseURL} and its contract terms are signed by ${merchant.merchantPublicKey}`);
+
+        // A merchant changed on the way, e.g. to send the payments elsewhere, its key that of the exchange not offered there:
+        // the proof is no longer one of the version the attestations name.
+        const changed   = json('published/QA-DE-GEF-E1-1-evTaler-proof.json') as JSONObject;
+        const naming    = objectsNaming(changed, 'evTaler');
+        if (naming.length !== 1)
+            throw new Error(`the station proof names ${naming.length} EV Taler merchants`);
+        const other     = defined(merchant.exchanges.find(exchange => exchange.currency !== currency), 'exchange in another currency');
+        (defined(naming[0], 'EV Taler merchant')['evTaler'] as JSONObject)['merchantPublicKey'] = other.masterPublicKey;
+        refused('Another merchant key', () => verifyChargingStation(anchorPQ, changed, { at: attested, evseId }));
 
     });
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `examples/validate-examples.ts` checks example A15 as its `Validate()` does: the station proof of DE*GEF*E1*1 the app
+  gets, against the trust anchor of epoch 2, with the EV Taler merchant of DE*GEF; the EV Taler tariff of the EVSE and
+  the exchanges in its currency the app shows, those in another currency not offered there; the merchant base URL and
+  the merchant key every offer must name; and the proof refused once its merchant key is changed to the key of an
+  exchange, the root its attestations do not attest the one WWCP_POI names. What it prints is what the C# example
+  printed in the run `csharp-045e180`, line for line.
+
 
 ## 0.3.0 (2026-11-08)
 
