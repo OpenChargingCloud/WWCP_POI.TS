@@ -3,7 +3,7 @@
 ## Unreleased
 
 
-## 0.3.0 (prepared; not yet published)
+## 0.3.0 (2026-11-08)
 
 WWCP_POI3 as the measure: a roaming network is read as WWCP_POI3 reads it and refused in its words, change sets apply
 what WWCP_POI3 applies (the entities a party embeds, element changes, preconditions, no lastChange going back),

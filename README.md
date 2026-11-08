@@ -24,11 +24,11 @@ ML-DSA-44/65/87.
 
 ## Status
 
-**0.3.0 is prepared, not yet published to npm.** It reads, refuses and applies versions, change sets and histories as
-WWCP_POI3 does, in its words, and adds EV Taler phase 2. See [the changelog](CHANGELOG.md#030-prepared-not-yet-published)
-for the changes and migration requirements: versions, change sets and signatures 0.2.0 took are refused. Until then
-0.2.0, published to npm on 2 November 2026, is the latest release. The experimental profiles below remain experimental;
-a package release does not establish production witness services or independently verified actual measurement time.
+**0.3.0 was published to npm on 8 November 2026.** It reads, refuses and applies versions, change sets and histories as
+WWCP_POI3 does, in its words, and adds EV Taler phase 2. See [the changelog](CHANGELOG.md) for the changes and
+migration requirements: versions, change sets and signatures 0.2.0 took are refused. The experimental profiles below
+remain experimental; a package release does not establish production witness services or independently verified
+actual measurement time.
 
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A14 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
@@ -492,8 +492,9 @@ signature encodings nor changed tariff definitions reuse another original's rece
 
 ## Publishing
 
-Version 0.3.0 is prepared locally. Preparation does not publish to npm, create a release tag or change a consumer's
-dependency. Published versions are immutable. Validate the source and inspect the package before approving a release:
+Version 0.3.0 is available on npm. The commands below record its release procedure. For a future release, choose a new
+version and replace the version, tag and archive names below; published versions are immutable. Update package.json,
+package-lock.json and the release notes, then validate the source and inspect the package before approving a release:
 
 ```bash
 npm ci
@@ -504,9 +505,9 @@ npm pack --dry-run
 npm pack
 ```
 
-After release approval, replace the prepared-release markers in this README and the changelog with the actual release
-status and date, rebuild and check the final archive. Commit the reviewed release files, then tag and push that exact
-commit to each configured remote:
+After release approval, finalize this README and the changelog with the actual release status and date, rebuild and
+check the final archive. Commit the reviewed release files, then tag and push that exact commit to each configured
+remote:
 
 ```bash
 git tag -s v0.3.0 -m "v0.3.0"
@@ -523,8 +524,8 @@ npm whoami
 npm publish ./open-charging-cloud-wwcp-poi-0.3.0.tgz --access public
 ```
 
-After publication, consumers read [Migration](CHANGELOG.md#migration) and move to `@open-charging-cloud/wwcp-poi@^0.3.0`,
-which a range of `^0.2.0` does not take, then refresh their lockfile and verify a clean install.
+Consumers read [Migration](CHANGELOG.md#migration) and move to `@open-charging-cloud/wwcp-poi@^0.3.0`, which a range of
+`^0.2.0` does not take, then refresh their lockfile and verify a clean install.
 
 
 ## License
