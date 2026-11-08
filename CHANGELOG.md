@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+
+## 0.3.0 (prepared; not yet published)
+
+WWCP_POI3 as the measure: a roaming network is read as WWCP_POI3 reads it and refused in its words, change sets apply
+what WWCP_POI3 applies (the entities a party embeds, element changes, preconditions, no lastChange going back),
+histories require the signature roles WWCP_POI requires and take a checkpoint with the signatures that verify, and EV
+Taler phase 2 checks the steps and the settlement of a session. Each of them is probed against WWCP_POI3, what differs
+named below, and the vectors of WWCPPOIConformanceTests `215023a` hold, none deviating. See [Migration](#migration)
+before upgrading: versions, change sets and signatures 0.2.0 took are refused, and the types of three properties change.
+
 - A roaming network is read as WWCP_POI3 reads it (`RoamingNetwork.TryParse` and the TryParse of every entity) and
   refused in its words and its order: JSON types, mandatory properties, values, identifications, names of enumerations,
   currencies, URLs, timestamps, texts in languages, data licenses, and what the constructor of each entity refuses of
@@ -297,6 +307,38 @@
 - A charging pool or a charging pool template naming its time zone by a Windows name, an abbreviation or in another case
   than the IANA time zone database, which 0.2.0 took, is refused: it names it as the database writes it, e.g.
   `Europe/Berlin`.
+- `HistoryOptions.verifyCheckpoint` returns the signatures of the checkpoint that verified, `readonly RoleSignature[]`,
+  or `undefined` for all of them, e.g. `checkpoint => verifyCheckpointSignatures(checkpoint, trust, options).verified`.
+  A callback of a block without `return` no longer compiles; one that throws still refuses the checkpoint. A history,
+  `takeCheckpoint` and a snapshot of a checkpoint hold it with those signatures only, its identification the same: what
+  an app keeps of a checkpoint it took may hold fewer signatures than it was given (S39).
+- `Change.elementPath` is an array of `ElementPathSegment`, `{propertyName, elementId}`, in place of the JSON objects
+  given, and `ChangeSet.preconditions` an array of `Precondition`, `{entityType, entityId, eTag}`, both read as WWCP_POI3
+  reads them; the JSON of a change and of a change set stays in its `json`. Both types are exported, and so are
+  `MerkleTreeHead`, `PrunedTree` and `TreeNodeKind`, which the API used already.
+- A signature of a commit or checkpoint is read in its one form: its role, signedAt, algorithm, key and value trimmed,
+  and refused where one of them or its signer is empty or whitespace alone, where its signer is not a text, or where it
+  names an `@context` or another property; so is a signature of a change set whose algorithm, key or value is empty.
+  Producers write each signature in this form, as WWCP_POI `7c6f91c` reads it too.
+- A change set created before the `lastChange` of the version it is applied to is stamped with that `lastChange`, not
+  with its `createdAt` (S5): the version it leads to, and so its after ETags, differ from those 0.2.0 calculated, and a
+  producer calculates them as WWCP_POI `12e993a` does. A change set created after its version, the usual case, is stamped
+  with its `createdAt` as before.
+- A transparency software release is identified under its manufacturer, `{manufacturer}:{name}`, and a certificate
+  under the body issuing it, `{body}:{name}`, e.g. `GraphDefined:chargy-1.5.0` (S36): a version or change set
+  identifying one otherwise, which 0.2.0 took, is refused.
+- The prices of a charging tariff in a price statement are written as a tariff holds them (D18): a statement naming a
+  property their type does not define, e.g. the OCPI restriction `max_kwh`, is refused before its signature, and the
+  price evidence of a session holding one has invalid signatures. A version naming a restriction outside `startTime` to
+  `reservation`, e.g. `maxStateOfCharge`, is refused.
+- A snapshot whose `effectiveLastChanges` WWCP_POI3 does not read, which 0.2.0 took, is refused. Change sets 0.2.0
+  refused as not supported, of the entities a party embeds, with element changes or preconditions, are applied now.
+- Reading a version takes two to three times as long as with 0.2.0, about a second for 12816 EVSEs. The package is
+  larger, 3.7 MB unpacked where 0.2.0 was 2.2 MB, of it `dist/index.js` 0.9 MB and its source map 2.3 MB.
+- `@vanaheimr/cose` requires ^0.15.0 and `@vanaheimr/metrological-cbor` still ^0.12.0: keep both ranges aligned in
+  consumers that use them directly. The minimum runtime remains Node 22.18, and the package remains ESM-only. Without
+  Temporal, on Node 22 and 24, a time zone Intl names by another name is taken in any case, e.g. `Asia/KOLKATA`, which
+  it names `Asia/Calcutta`; Node 26 takes it only as the database writes it.
 
 
 ## 0.2.0 (2026-11-02)

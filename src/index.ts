@@ -46,13 +46,13 @@ export { hash, type HashAlgorithm }                          from './crypto/hash
 export { SIGNATURE_ALGORITHMS, verifySignature, type SignatureAlgorithm } from './crypto/signature.ts';
 export { KeyUsages, POIPublicKey, type KeyUsage }            from './keys.ts';
 export { cborETag, etagToJSON, etagToText, jsonETag, parseETag, parseETags, sameETag, sameETags, type ETag, type ETagFormat } from './etags.ts';
-export { auditPath, leafHash, merkleRoot, merkleRootOfLeafHashes, nodeHash, rootFromAuditPath } from './merkle.ts';
+export { auditPath, leafHash, merkleRoot, merkleRootOfLeafHashes, nodeHash, rootFromAuditPath, type MerkleTreeHead } from './merkle.ts';
 
 // Roaming networks
 export { RoamingNetwork, RoamingNetworkOperator, ROAMING_NETWORK_CONTEXT } from './network/roamingNetwork.ts';
 export { EV_TALER_EXCHANGE_CONTEXT, EV_TALER_MERCHANT_CONTEXT, EV_TALER_PAYMENT_MEANS, EV_TALER_PAYMENT_OPTION, evTalerMerchantOf, isTalerPublicKey, paymentOptionName, type EVTalerExchange, type EVTalerMerchant } from './network/evTaler.ts';
 export { effectiveContent, effectiveChargingStationOperator } from './network/effective.ts';
-export { CHILD_ARRAYS, effectiveTreeETag, entityDigest, givesCompletely, prunedTree, sizeOf, skeleton } from './network/tree.ts';
+export { CHILD_ARRAYS, effectiveTreeETag, entityDigest, givesCompletely, prunedTree, sizeOf, skeleton, type PrunedTree, type TreeNodeKind } from './network/tree.ts';
 
 // Proofs, statements and trust anchors
 export { TrustContext, type TrustEvaluation, type TrustEvaluationOptions } from './proofs/trustContext.ts';
@@ -65,7 +65,8 @@ export { MAX_PRICE_STATEMENT_SEQUENCE, PriceStatement, PriceStatementProof, pars
 
 // History
 export { Commit, SignatureRoles, COMMIT_CONTEXT, type RoleSignature } from './history/commit.ts';
-export { ChangeSet, CHANGE_SET_CONTEXT, MERGE_CHANGE_SET_ID_PREFIX, changeSetIdentification, type Change, type ChangeKind, type ChangeSetSignature } from './history/changeSet.ts';
+export { ChangeSet, CHANGE_SET_CONTEXT, MERGE_CHANGE_SET_ID_PREFIX, changeSetIdentification, type Change, type ChangeKind, type ChangeSetSignature, type ElementPathSegment } from './history/changeSet.ts';
+export { type Precondition }                                 from './history/preconditions.ts';
 export { applyChangeSet, checkOwnership }                    from './history/apply.ts';
 export { Checkpoint, CheckpointProof, commitsRoot, CHECKPOINT_CONTEXT } from './history/checkpoint.ts';
 export { History, keyMaySignIn, type EpochStatus, type HistoryOptions, type SnapshotOptions, type Version } from './history/history.ts';
