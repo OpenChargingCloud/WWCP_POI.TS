@@ -18,7 +18,7 @@
 import { get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { ordinal }       from '../json/canonical.ts';
 import { compactJSON }   from '../qidigital/json.ts';
-import { onlyProperties } from '../common.ts';
+import { onlyProperties, withArticle } from '../common.ts';
 import { POIPublicKey }  from '../keys.ts';
 import { POIError }      from '../errors.ts';
 
@@ -94,7 +94,7 @@ export function checkPartyKeys(keys: PartyKeys, name: string): string | undefine
     for (const [ list, description ] of [ [ keys.signingKeys, 'signing key' ], [ keys.identityKeys, 'identity key' ] ] as const) {
         const ids = list.map(key => key.id);
         if (new Set(ids).size !== ids.length)
-            return `An ${description} of ${name} must not be given twice!`;
+            return `${withArticle(`${description} of ${name}`)} must not be given twice!`;
     }
 
     const signingIds  = keys.signingKeys.map(key => key.id).sort(ordinal);

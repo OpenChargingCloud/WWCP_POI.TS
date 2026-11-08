@@ -27,6 +27,7 @@ import { caught, children, context, contextOf, eMailAddressError, entityContext,
          interpolated, languagesOf, mandatoryId, nonEmpty, phoneNumber, Refused, styxText, text,
          textError, texts, Thrown, timestampOf, url, valueText, withoutTimestamps, type Checked } from './poiJSON.ts';
 import { trimmed }                from './versionTexts.ts';
+import { ignoringCase }           from './identifications.ts';
 
 
 // The values WWCP_POI3 reads within its entities, as Styx, Hermod and WWCP_POI read them, in their words: addresses, geo
@@ -352,10 +353,10 @@ export function dataLicenses(json: JSONObject): Checked {
             if (id instanceof Refused)
                 return `Invalid data license: ${id.error}`;
 
-            if (given.has(id))
+            if (given.has(ignoringCase(id)))
                 return `The data license '${id}' must not be given twice!`;
 
-            given.add(id);
+            given.add(ignoringCase(id));
 
         }
 
@@ -376,10 +377,10 @@ export function dataLicenses(json: JSONObject): Checked {
             if (!KNOWN_DATA_LICENSES.includes(id.toUpperCase()))
                 return `The data license '${id}' is not well-known, so it must be given completely!`;
 
-            if (given.has(id))
+            if (given.has(ignoringCase(id)))
                 return `The data license '${id}' must not be given twice!`;
 
-            given.add(id);
+            given.add(ignoringCase(id));
 
         }
 
@@ -491,7 +492,7 @@ export function hourMin(given: string): readonly [ number, number ] | undefined 
 export const hhmm = ([ hour, minute ]: readonly [ number, number ]): string =>
     `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-/** Opening times as `OpeningTimes.TryParse` of Styx reads them; what its constructors throw named by it once more. */
+/** Opening times as `OpeningTimes.TryParse` of Styx reads them, what its constructors throw in their own words; whoever reads them says where. */
 export function openingTimes(json: JSONObject): Checked {
 
     const unknown = Object.keys(json).find(key => ![ '24/7', 'regularOpenings', 'exceptionalOpenings', 'exceptionalClosings', 'freeText' ].includes(key));
@@ -531,7 +532,7 @@ export function openingTimes(json: JSONObject): Checked {
                     return `Invalid regular hours '${interpolated(period)}' on ${day}!`;
 
                 if ((end[0] < begin[0] && end[0] !== 0) || (end[0] === begin[0] && end[1] < begin[1] && end[1] !== 0))
-                    return `Invalid opening times: The end period '${hhmm(end)}h' must be after the start period '${hhmm(begin)}h'! (Parameter 'PeriodEnd')`;
+                    return `The end period '${hhmm(end)}h' must be after the start period '${hhmm(begin)}h'! (Parameter 'PeriodEnd')`;
 
             }
 

@@ -116,11 +116,19 @@ export class KeyStatement {
 
         onlyProperties(json, [ '@context', 'roamingNetworkId', 'roamingNetworkOperatorId', 'identityKeys', 'minConsensus', 'signedAt', 'validUntil', 'signatures' ], 'A key statement');
 
+        // As POIPublicKey.Ordered of its constructor refuses them, before their order is looked at.
+        if (new Set(identityKeys.map(key => key.id)).size !== identityKeys.length)
+            throw new POIError('Invalid key statement: An identity key of a key statement must not be given twice!');
+
         if (identityKeys.some((key, index) => { const before = identityKeys[index - 1]; return before !== undefined && before.id >= key.id; }))
             throw new POIError('The identity keys of a key statement are written in the order of their @ids!');
 
         if (validUntil < signedAt)
-            throw new POIError('A key statement is not valid until before it was signed!');
+            throw new POIError("Invalid key statement: A key statement is not valid until before it was signed. (Parameter 'ValidUntil')");
+
+        // As its constructor refuses them, after its validity.
+        if (new Set(signatures.map(signature => signature.keyId)).size !== signatures.length)
+            throw new POIError("Invalid key statement: An identity key signs a key statement once. (Parameter 'Signatures')");
 
         return new KeyStatement(roamingNetworkId, roamingNetworkOperatorId, identityKeys, minConsensus, signedAt, validUntil, signatures, json);
 

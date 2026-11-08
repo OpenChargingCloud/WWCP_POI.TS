@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { toTimestamp }   from '../common.ts';
+import { toTimestamp, withArticle } from '../common.ts';
 import { Decimal }       from '../json/decimal.ts';
 import { get, isArray, isNumber, isObject, normalizeNumber, set, toDecimal, type JSONObject, type JSONValue } from '../json/value.ts';
 import { isText, trimmed } from '../network/versionTexts.ts';
@@ -497,7 +497,7 @@ export const sameText = (left: string | undefined, right: string | undefined): b
 /** The given values in their given order, none twice by its key, compared ordinally (`POIJSON.Distinct`). */
 export function distinct<T>(values: readonly T[], key: (value: T) => string, description: string): T[] {
     if (new Set(values.map(key)).size !== values.length)
-        throw new POIError(`An ${description} must not be given twice!`);
+        throw new POIError(`${withArticle(description)} must not be given twice!`);
     return [ ...values ];
 }
 

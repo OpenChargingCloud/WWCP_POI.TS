@@ -3802,7 +3802,7 @@
       "kind": "version",
       "basis": "libs/WWCP_POI/docs/ChargingPool.md",
       "description": "DE*GEF*P1 is open on Mondays from 20:00 to 08:00, a period ending before it begins.",
-      "reason": "Invalid opening times: Invalid opening times: The end period '08:00h' must be after the start period '20:00h'!",
+      "reason": "Invalid opening times: The end period '08:00h' must be after the start period '20:00h'!",
       "document": {
         "file": "published/QA.json",
         "pointer": "",
@@ -4592,7 +4592,7 @@
       "kind": "version",
       "basis": "libs/WWCP_POI/docs/ChargingTariff.md",
       "description": "The price component of DE*GEF*T_AC with a VAT of 120 percent.",
-      "reason": "The VAT of a ENERGY price component must be between 0 and 100 percent!",
+      "reason": "The VAT of an ENERGY price component must be between 0 and 100 percent!",
       "document": {
         "file": "published/QA.json",
         "pointer": "",
@@ -4615,7 +4615,7 @@
       "kind": "version",
       "basis": "libs/WWCP_POI/docs/ChargingTariff.md",
       "description": "The price component of DE*GEF*T_AC, of energy, without its step size.",
-      "reason": "A ENERGY price component needs a positive step size!",
+      "reason": "An ENERGY price component needs a positive step size!",
       "document": {
         "file": "published/QA.json",
         "pointer": "",
@@ -6047,7 +6047,7 @@
       "kind": "version",
       "basis": "libs/WWCP_POI/docs/GridOperator.md",
       "description": "The grid connection point gcp-1 of DE*NET maintained by DE*NET, a grid operator. (QA with an entity of every kind WWCP_POI3 reads)",
-      "reason": "The given JSON representation of a grid connection point is invalid: The grid connection point 'gcp-1' can only be maintained by its grid operator, a charging station operator or a parking operator, not by the GridOperator 'DE*NET'!",
+      "reason": "The given JSON representation of a grid connection point is invalid: Besides its grid operator, the grid connection point 'gcp-1' can only be maintained by a charging station operator or a parking operator, not by the GridOperator 'DE*NET'!",
       "document": {
         "file": "published/QA.json",
         "pointer": "",

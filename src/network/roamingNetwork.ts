@@ -131,14 +131,14 @@ export class RoamingNetworkOperator {
         const certifications = certificates.map(certificate => `${certificate.signingKey.id}/${certificate.keyId}`);
 
         if (new Set(certifications).size !== certifications.length)
-            throw invalid(`An certificate of a signing key of the roaming network operator '${id}' must not be given twice!`);
+            throw invalid(`A certificate of a signing key of the roaming network operator '${id}' must not be given twice!`);
 
         const certified = new Map<string, POIPublicKey>();
 
         for (const certificate of certificates) {
             const before = certified.get(certificate.signingKey.id);
             if (before !== undefined && !sameValue(without(before.json, '@context'), without(asRead(certificate.signingKey.json, 'signingKey') as JSONObject, '@context')))
-                throw invalid(`An signing key of the roaming network operator '${id}' must not be given twice!`);
+                throw invalid(`A signing key of the roaming network operator '${id}' must not be given twice!`);
             certified.set(certificate.signingKey.id, certificate.signingKey);
         }
 

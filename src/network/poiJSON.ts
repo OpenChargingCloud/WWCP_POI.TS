@@ -16,6 +16,7 @@
  */
 
 import { Decimal }                 from '../json/decimal.ts';
+import { withArticle }             from '../common.ts';
 import { get, isArray, isNumber, isObject, toDecimal, type JSONObject, type JSONValue } from '../json/value.ts';
 import { compactJSON, LANGUAGES, tokenText } from '../qidigital/json.ts';
 import { COUNTRIES }               from './countries.ts';
@@ -923,9 +924,12 @@ export function twice<T extends { readonly key: string }>(items: readonly T[]): 
     return undefined;
 }
 
-/** The error of `POIJSON.OrderedIds`, `UniqueIds` and `Distinct`, of the given description, e.g. "A facility of the charging pool 'X'". */
+/**
+ * The error of `POIJSON.OrderedIds`, `UniqueIds` and `Distinct`, of the given description with its article, e.g. "A facility
+ * of the charging pool 'X'" of "facility of the charging pool 'X'".
+ */
 export const givenTwice = (items: readonly { readonly key: string }[], description: string): Thrown | undefined =>
-    twice(items) === undefined ? undefined : new Thrown(`${description} must not be given twice!`);
+    twice(items) === undefined ? undefined : new Thrown(`${withArticle(description)} must not be given twice!`);
 
 /** Throws the given exception, if any. */
 export function raise(error: Thrown | undefined): void {

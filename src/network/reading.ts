@@ -16,6 +16,7 @@
  */
 
 import { Decimal }                from '../json/decimal.ts';
+import { numberText, withArticle } from '../common.ts';
 import { canonicalJSON }          from '../json/canonical.ts';
 import { asText, get, isArray, isNumber, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { caseId, caught, children, context, contextOf, currency, eMailAddressError, entityContext, enumeration, errorOf,
@@ -169,11 +170,11 @@ export const energyMeter = (json: JSONObject): Checked =>
 
         const of = `the energy meter '${id.text}'`;
 
-        raise(givenTwice(idsAt(json, 'templateIds', freeId),      `A template of ${of}`));
-        raise(givenTwice(releasesAt(json),                         `A transparency software release of ${of}`));
-        raise(givenTwice(namesAt(json, 'signatureMethods'),        `A signature method of ${of}`));
-        raise(givenTwice(publicKeysAt(json),                       `An public key of ${of}`));
-        raise(givenTwice(idsAt(json, 'certificateIds', freeId),    `A certificate of ${of}`));
+        raise(givenTwice(idsAt(json, 'templateIds', freeId),      `template of ${of}`));
+        raise(givenTwice(releasesAt(json),                         `transparency software release of ${of}`));
+        raise(givenTwice(namesAt(json, 'signatureMethods'),        `signature method of ${of}`));
+        raise(givenTwice(publicKeysAt(json),                       `public key of ${of}`));
+        raise(givenTwice(idsAt(json, 'certificateIds', freeId),    `certificate of ${of}`));
 
         return undefined;
 
@@ -219,9 +220,9 @@ export const energyMeterTemplate = (json: JSONObject): Checked =>
 
         const of = `the energy meter template '${id.text}'`;
 
-        raise(givenTwice(releasesAt(json),                       `A transparency software release of ${of}`));
-        raise(givenTwice(namesAt(json, 'signatureMethods'),      `A signature method of ${of}`));
-        raise(givenTwice(idsAt(json, 'certificateIds', freeId),  `A certificate of ${of}`));
+        raise(givenTwice(releasesAt(json),                       `transparency software release of ${of}`));
+        raise(givenTwice(namesAt(json, 'signatureMethods'),      `signature method of ${of}`));
+        raise(givenTwice(idsAt(json, 'certificateIds', freeId),  `certificate of ${of}`));
 
         return undefined;
 
@@ -261,7 +262,7 @@ const group = (kind: GroupKind) => (json: JSONObject): Checked =>
         if (error !== undefined)
             return error;
 
-        raise(givenTwice(idsAt(json, kind.members, kind.member), `A member of the ${kind.what} '${id.text}'`));
+        raise(givenTwice(idsAt(json, kind.members, kind.member), `member of the ${kind.what} '${id.text}'`));
 
         return undefined;
 
@@ -316,9 +317,9 @@ const chargingConnector = (json: JSONObject): Checked =>
 
         const of = `the charging connector '${id.text}'`;
 
-        raise(givenTwice(namesAt(json, 'standards'),                     `A standard of ${of}`));
-        raise(givenTwice(imagesAt(json),                                 `An image of ${of}`));
-        raise(givenTwice(idsAt(json, 'chargingTariffIds', tariffId),     `A charging tariff of ${of}`));
+        raise(givenTwice(namesAt(json, 'standards'),                     `standard of ${of}`));
+        raise(givenTwice(imagesAt(json),                                 `image of ${of}`));
+        raise(givenTwice(idsAt(json, 'chargingTariffIds', tariffId),     `charging tariff of ${of}`));
 
         if (cableLength instanceof Decimal && signOf(cableLength) <= 0)
             return `The cable length of ${of} must be positive!`;
@@ -402,13 +403,13 @@ const evse = (json: JSONObject): Checked =>
 
         const of = `the EVSE '${id.text}'`;
 
-        raise(givenTwice(idsAt(json, 'templateIds', evseTemplateId), `A template of ${of}`));
+        raise(givenTwice(idsAt(json, 'templateIds', evseTemplateId), `template of ${of}`));
         evseConstruction(json, of);
-        raise(givenTwice(idsAt(json, 'chargingTariffIds', tariffId), `A charging tariff of ${of}`));
+        raise(givenTwice(idsAt(json, 'chargingTariffIds', tariffId), `charging tariff of ${of}`));
         collection(objectsOf(get(json, 'brands')), freeId, 'brand', of);
-        raise(givenTwice(imagesAt(json), `An image of ${of}`));
-        raise(givenTwice(namesAt(json, 'standards'), `A standard of ${of}`));
-        raise(givenTwice(idsAt(json, 'acceptedEMobilityProviderIds', providerId), `A accepted e-mobility provider of ${of}`));
+        raise(givenTwice(imagesAt(json), `image of ${of}`));
+        raise(givenTwice(namesAt(json, 'standards'), `standard of ${of}`));
+        raise(givenTwice(idsAt(json, 'acceptedEMobilityProviderIds', providerId), `accepted e-mobility provider of ${of}`));
 
         return undefined;
 
@@ -447,9 +448,9 @@ const evseTemplate = (json: JSONObject): Checked =>
 
         evseConstruction(json, of);
         collection(objectsOf(get(json, 'brands')), freeId, 'brand', of);
-        raise(givenTwice(imagesAt(json), `An image of ${of}`));
-        raise(givenTwice(namesAt(json, 'standards'), `A standard of ${of}`));
-        raise(givenTwice(idsAt(json, 'acceptedEMobilityProviderIds', providerId), `A accepted e-mobility provider of ${of}`));
+        raise(givenTwice(imagesAt(json), `image of ${of}`));
+        raise(givenTwice(namesAt(json, 'standards'), `standard of ${of}`));
+        raise(givenTwice(idsAt(json, 'acceptedEMobilityProviderIds', providerId), `accepted e-mobility provider of ${of}`));
 
         return undefined;
 
@@ -482,12 +483,12 @@ const stationLists = (json: JSONObject): Checked =>
 /** What the constructors of a charging station and a charging station template refuse of their lists, from the brands on. */
 function stationListsConstruction(json: JSONObject, of: string): void {
     collection(objectsOf(get(json, 'brands')), freeId, 'brand', of);
-    raise(givenTwice(imagesAt(json),                            `An image of ${of}`));
-    raise(givenTwice(namesAt(json, 'vehicleTypes'),             `A vehicle type of ${of}`));
-    raise(givenTwice(namesAt(json, 'euVehicleCategories'),      `A EU vehicle category of ${of}`));
-    raise(givenTwice(namesAt(json, 'features'),                 `A feature of ${of}`));
-    raise(givenTwice(idsAt(json, 'parkingSpaceIds', freeId),    `A parking space of ${of}`));
-    raise(givenTwice(idsAt(json, 'certificateIds', freeId),     `A certificate of ${of}`));
+    raise(givenTwice(imagesAt(json),                            `image of ${of}`));
+    raise(givenTwice(namesAt(json, 'vehicleTypes'),             `vehicle type of ${of}`));
+    raise(givenTwice(namesAt(json, 'euVehicleCategories'),      `EU vehicle category of ${of}`));
+    raise(givenTwice(namesAt(json, 'features'),                 `feature of ${of}`));
+    raise(givenTwice(idsAt(json, 'parkingSpaceIds', freeId),    `parking space of ${of}`));
+    raise(givenTwice(idsAt(json, 'certificateIds', freeId),     `certificate of ${of}`));
 }
 
 /**
@@ -507,11 +508,8 @@ export function powerSumError(station: JSONObject, evses: readonly JSONObject[],
         return new Decimal(left.mantissa * 10n ** BigInt(scale - left.scale) + right.mantissa * 10n ** BigInt(scale - right.scale), scale);
     }, new Decimal(0n, 0));
 
-    const watt = (value: Decimal): string =>
-        value.mantissa === 0n ? '0' : value.toString();
-
     return maxPower.compareTo(sum) > 0
-               ? thrown(`The maximum power of the charging station '${id}', ${watt(maxPower)} W, must not exceed the ${watt(sum)} W of all its EVSEs together!`, 'MaxPower')
+               ? thrown(`The maximum power of the charging station '${id}', ${numberText(maxPower)} W, must not exceed the ${numberText(sum)} W of all its EVSEs together!`, 'MaxPower')
                : undefined;
 
 }
@@ -549,7 +547,7 @@ const chargingStation = (json: JSONObject): Checked =>
         const evses     = objectsOf(get(json, 'EVSEs'));
         const operator  = id.text.slice(0, 6);
 
-        raise(givenTwice(idsAt(json, 'templateIds', stationTemplateId), `A template of ${of}`));
+        raise(givenTwice(idsAt(json, 'templateIds', stationTemplateId), `template of ${of}`));
 
         if (isNegative(optionalDecimal(json, 'maxPower', '')))
             throw thrown(`The maximum power of ${of} must not be negative!`, 'MaxPower');
@@ -561,9 +559,9 @@ const chargingStation = (json: JSONObject): Checked =>
         }
 
         raise(powerSumError(json, evses, id.text));
-        raise(givenTwice(releasesAt(json),                       `A transparency software release of ${of}`));
-        raise(givenTwice(namesAt(json, 'signatureMethods'),      `A signature method of ${of}`));
-        raise(givenTwice(publicKeysAt(json),                     `An public key of ${of}`));
+        raise(givenTwice(releasesAt(json),                       `transparency software release of ${of}`));
+        raise(givenTwice(namesAt(json, 'signatureMethods'),      `signature method of ${of}`));
+        raise(givenTwice(publicKeysAt(json),                     `public key of ${of}`));
         collection(evses, evseId, 'EVSE', of);
 
         if (twice(objectsOf(get(json, 'energyMeters')).flatMap(meter => idOf(meter, freeId) ?? [])) !== undefined)
@@ -606,8 +604,8 @@ const chargingStationTemplate = (json: JSONObject): Checked =>
         if (isNegative(optionalDecimal(json, 'maxPower', '')))
             throw thrown(`The maximum power of ${of} must not be negative!`, 'MaxPower');
 
-        raise(givenTwice(releasesAt(json),                   `A transparency software release of ${of}`));
-        raise(givenTwice(namesAt(json, 'signatureMethods'),  `A signature method of ${of}`));
+        raise(givenTwice(releasesAt(json),                   `transparency software release of ${of}`));
+        raise(givenTwice(namesAt(json, 'signatureMethods'),  `signature method of ${of}`));
         stationListsConstruction(json, of);
 
         return undefined;
@@ -645,19 +643,19 @@ function poolListsConstruction(json: JSONObject, of: string): void {
     const authenticationModes = objectsOf(get(json, 'authenticationModes')).map(mode => ({ text: asText(mode['type']), key: asText(mode['type']) }));
     const relatedLocations    = objectsOf(get(json, 'relatedLocations')).map(location => ({ text: '', key: canonicalJSON([ location['geoLocation'] ?? null, location['name'] ?? null ]) }));
 
-    raise(givenTwice(imagesAt(json),                              `An image of ${of}`));
+    raise(givenTwice(imagesAt(json),                              `image of ${of}`));
     raise(timeZoneError(json, of));
-    raise(givenTwice(namesAt(json, 'facilities'),                 `A facility of ${of}`));
-    raise(givenTwice(namesAt(json, 'paymentOptions'),             `A payment option of ${of}`));
-    raise(givenTwice(authenticationModes,                         `An authentication mode of ${of}`));
-    raise(givenTwice(namesAt(json, 'uiFeatures'),                 `A user interface feature of ${of}`));
-    raise(givenTwice(namesAt(json, 'features'),                   `A feature of ${of}`));
-    raise(givenTwice(keyed(idsByNameAt(json, 'locationLanguages'), name => name), `A language of ${of}`));
-    raise(givenTwice(namesAt(json, 'parkingRestrictions'),        `A parking restriction of ${of}`));
-    raise(givenTwice(relatedLocations,                            `An related location of ${of}`));
-    raise(givenTwice(namesAt(json, 'services'),                   `A service of ${of}`));
-    raise(givenTwice(namesAt(json, 'standards'),                  `A standard of ${of}`));
-    raise(givenTwice(keyed(idsAt(json, 'nutsCodes', freeId).map(code => code.text.toUpperCase()), name => name), `A NUTS code of ${of}`));
+    raise(givenTwice(namesAt(json, 'facilities'),                 `facility of ${of}`));
+    raise(givenTwice(namesAt(json, 'paymentOptions'),             `payment option of ${of}`));
+    raise(givenTwice(authenticationModes,                         `authentication mode of ${of}`));
+    raise(givenTwice(namesAt(json, 'uiFeatures'),                 `user interface feature of ${of}`));
+    raise(givenTwice(namesAt(json, 'features'),                   `feature of ${of}`));
+    raise(givenTwice(keyed(idsByNameAt(json, 'locationLanguages'), name => name), `language of ${of}`));
+    raise(givenTwice(namesAt(json, 'parkingRestrictions'),        `parking restriction of ${of}`));
+    raise(givenTwice(relatedLocations,                            `related location of ${of}`));
+    raise(givenTwice(namesAt(json, 'services'),                   `service of ${of}`));
+    raise(givenTwice(namesAt(json, 'standards'),                  `standard of ${of}`));
+    raise(givenTwice(keyed(idsAt(json, 'nutsCodes', freeId).map(code => code.text.toUpperCase()), name => name), `NUTS code of ${of}`));
 
 }
 
@@ -713,7 +711,7 @@ const chargingPool = (json: JSONObject): Checked =>
         const stations = objectsOf(get(json, 'chargingStations'));
         const operator = id.text.slice(0, 6);
 
-        raise(givenTwice(idsAt(json, 'templateIds', poolTemplateId), `A template of ${of}`));
+        raise(givenTwice(idsAt(json, 'templateIds', poolTemplateId), `template of ${of}`));
 
         for (const station of stations) {
             const stationOf = idOf(station, stationId);
@@ -859,15 +857,15 @@ function priceComponent(json: JSONObject): Checked {
         return stepSize.error;
 
     if (price !== undefined && price.mantissa < 0n)
-        return `The price of a ${asText(type)} price component must not be negative!`;
+        return `The price of ${withArticle(`${asText(type)} price component`, false)} must not be negative!`;
 
     if (vat !== undefined && (vat.mantissa < 0n || vat.compareTo(new Decimal(100n, 0)) > 0))
-        return `The VAT of a ${asText(type)} price component must be between 0 and 100 percent!`;
+        return `The VAT of ${withArticle(`${asText(type)} price component`, false)} must be between 0 and 100 percent!`;
 
     if (type === 'FLAT')
         return isGiven(get(json, 'stepSize')) ? 'A FLAT price component has no step size!' : undefined;
 
-    return stepSize === undefined || signOf(stepSize) <= 0 ? `A ${asText(type)} price component needs a positive step size!` : undefined;
+    return stepSize === undefined || signOf(stepSize) <= 0 ? `${withArticle(`${asText(type)} price component`)} needs a positive step size!` : undefined;
 
 }
 
@@ -1107,10 +1105,10 @@ const tariff = (template: boolean) => (json: JSONObject): Checked =>
             return error;
 
         if (!template)
-            raise(givenTwice(idsAt(json, 'templateIds', tariffTemplateId), `A template of the ${of}`));
+            raise(givenTwice(idsAt(json, 'templateIds', tariffTemplateId), `template of the ${of}`));
 
-        raise(givenTwice(namesAt(json, 'paymentMeans'),   `A payment means of the ${of}`));
-        raise(givenTwice(namesAt(json, 'paymentBrands'),  `A payment brand of the ${of}`));
+        raise(givenTwice(namesAt(json, 'paymentMeans'),   `payment means of the ${of}`));
+        raise(givenTwice(namesAt(json, 'paymentBrands'),  `payment brand of the ${of}`));
 
         return undefined;
 
@@ -1174,7 +1172,7 @@ function discount(json: JSONObject): Checked {
     const value = percent instanceof Decimal ? percent : new Decimal(BigInt(percent), 0);
 
     if (value.mantissa <= 0n || value.compareTo(new Decimal(100n, 0)) > 0)
-        return `The percentage of a discount must be above 0 and at most 100, not ${value.toString()}! (Parameter 'Percent')`;
+        return `The percentage of a discount must be above 0 and at most 100, not ${numberText(value)}! (Parameter 'Percent')`;
 
     const dimensions = idsByName(json, 'dimensions', '', []) as string[];
 
@@ -1222,11 +1220,11 @@ export const chargingTariffOffer = (json: JSONObject): Checked =>
         if ((price === undefined) === (reduction === undefined))
             throw thrown(`The charging tariff offer '${id.text}' must have exactly one of a price of its own and a discount!`, 'ChargingTariff');
 
-        raise(givenTwice(idsAt(json, 'EVSEGroupIds', evseGroupId),                   `A EVSE group of ${owner}`));
-        raise(givenTwice(idsAt(json, 'chargingStationGroupIds', stationGroupId),     `A charging station group of ${owner}`));
-        raise(givenTwice(idsAt(json, 'chargingPoolGroupIds', poolGroupId),           `A charging pool group of ${owner}`));
-        raise(givenTwice(idsAt(json, 'chargingStationOperatorIds', operatorId),      `A charging station operator of ${owner}`));
-        raise(givenTwice(idsAt(json, 'eMobilityProviderIds', providerId),            `A e-mobility provider of ${owner}`));
+        raise(givenTwice(idsAt(json, 'EVSEGroupIds', evseGroupId),                   `EVSE group of ${owner}`));
+        raise(givenTwice(idsAt(json, 'chargingStationGroupIds', stationGroupId),     `charging station group of ${owner}`));
+        raise(givenTwice(idsAt(json, 'chargingPoolGroupIds', poolGroupId),           `charging pool group of ${owner}`));
+        raise(givenTwice(idsAt(json, 'chargingStationOperatorIds', operatorId),      `charging station operator of ${owner}`));
+        raise(givenTwice(idsAt(json, 'eMobilityProviderIds', providerId),            `e-mobility provider of ${owner}`));
 
         if ([ 'EVSEGroupIds', 'chargingStationGroupIds', 'chargingPoolGroupIds', 'chargingStationOperatorIds' ].every(property => idsAt(json, property, freeId).length === 0))
             throw thrown(`The charging tariff offer '${id.text}' must name at least one EVSE group, charging station group, charging pool group or charging station operator!`, 'EVSEGroupIds');
@@ -1281,12 +1279,12 @@ export const parkingSpace = (json: JSONObject): Checked =>
 
         const of = `the parking space '${id.text}'`;
 
-        raise(givenTwice(idsAt(json, 'templateIds', freeId),              `A template of ${of}`));
-        raise(givenTwice(idsAt(json, 'parkingSensorIds', freeId),         `A parking sensor of ${of}`));
-        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId),    `A charging station of ${of}`));
-        raise(givenTwice(idsAt(json, 'parkingProductIds', caseId),        `A parking product of ${of}`));
-        raise(givenTwice(namesAt(json, 'parkingRestrictions'),            `A parking restriction of ${of}`));
-        raise(givenTwice(namesAt(json, 'euVehicleCategories'),            `A EU vehicle category of ${of}`));
+        raise(givenTwice(idsAt(json, 'templateIds', freeId),              `template of ${of}`));
+        raise(givenTwice(idsAt(json, 'parkingSensorIds', freeId),         `parking sensor of ${of}`));
+        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId),    `charging station of ${of}`));
+        raise(givenTwice(idsAt(json, 'parkingProductIds', caseId),        `parking product of ${of}`));
+        raise(givenTwice(namesAt(json, 'parkingRestrictions'),            `parking restriction of ${of}`));
+        raise(givenTwice(namesAt(json, 'euVehicleCategories'),            `EU vehicle category of ${of}`));
 
         if (notPositive(json, 'maxVehicleWeight'))
             throw thrown(`The maximum vehicle weight of ${of} must be positive!`, 'MaxVehicleWeight');
@@ -1295,9 +1293,9 @@ export const parkingSpace = (json: JSONObject): Checked =>
             if (notPositive(json, property))
                 throw thrown(`The ${property} of ${of} must be positive!`, property.charAt(0).toUpperCase() + property.slice(1));
 
-        raise(givenTwice(namesAt(json, 'vehicleTypes'),  `A vehicle type of ${of}`));
-        raise(givenTwice(namesAt(json, 'standards'),     `A standard of ${of}`));
-        raise(givenTwice(imagesAt(json),                 `An image of ${of}`));
+        raise(givenTwice(namesAt(json, 'vehicleTypes'),  `vehicle type of ${of}`));
+        raise(givenTwice(namesAt(json, 'standards'),     `standard of ${of}`));
+        raise(givenTwice(imagesAt(json),                 `image of ${of}`));
 
         return undefined;
 
@@ -1359,14 +1357,14 @@ const parkingSpaceTemplate = (json: JSONObject): Checked =>
         if ([ 'maxVehicleWeight', ...dimensions ].some(property => notPositive(json, property)))
             throw thrown(`The vehicle limits and dimensions of ${of} must be positive!`);
 
-        raise(givenTwice(idsAt(json, 'parkingProductIds', caseId),        `A parking product of ${of}`));
-        raise(givenTwice(idsAt(json, 'parkingSensorIds', freeId),         `A parking sensor of ${of}`));
-        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId),    `A charging station of ${of}`));
-        raise(givenTwice(namesAt(json, 'parkingRestrictions'),            `A parking restriction of ${of}`));
-        raise(givenTwice(namesAt(json, 'euVehicleCategories'),            `A EU vehicle category of ${of}`));
-        raise(givenTwice(namesAt(json, 'vehicleTypes'),                   `A vehicle type of ${of}`));
-        raise(givenTwice(namesAt(json, 'standards'),                      `A standard of ${of}`));
-        raise(givenTwice(imagesAt(json),                                  `An image of ${of}`));
+        raise(givenTwice(idsAt(json, 'parkingProductIds', caseId),        `parking product of ${of}`));
+        raise(givenTwice(idsAt(json, 'parkingSensorIds', freeId),         `parking sensor of ${of}`));
+        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId),    `charging station of ${of}`));
+        raise(givenTwice(namesAt(json, 'parkingRestrictions'),            `parking restriction of ${of}`));
+        raise(givenTwice(namesAt(json, 'euVehicleCategories'),            `EU vehicle category of ${of}`));
+        raise(givenTwice(namesAt(json, 'vehicleTypes'),                   `vehicle type of ${of}`));
+        raise(givenTwice(namesAt(json, 'standards'),                      `standard of ${of}`));
+        raise(givenTwice(imagesAt(json),                                  `image of ${of}`));
 
         return undefined;
 
@@ -1397,9 +1395,9 @@ const parkingGarage = (json: JSONObject): Checked =>
 
         const of = `the parking garage '${id.text}'`;
 
-        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId),  `A charging station of ${of}`));
-        raise(givenTwice(imagesAt(json),                                `An image of ${of}`));
-        raise(givenTwice(idsAt(json, 'parkingProductIds', caseId),      `A parking product of ${of}`));
+        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId),  `charging station of ${of}`));
+        raise(givenTwice(imagesAt(json),                                `image of ${of}`));
+        raise(givenTwice(idsAt(json, 'parkingProductIds', caseId),      `parking product of ${of}`));
 
         return undefined;
 
@@ -1424,7 +1422,7 @@ const parkingSensor = (json: JSONObject): Checked =>
         if (error !== undefined)
             return error;
 
-        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId), `A charging station of the parking sensor '${id.text}'`));
+        raise(givenTwice(idsAt(json, 'chargingStationIds', stationId), `charging station of the parking sensor '${id.text}'`));
 
         return undefined;
 
@@ -1448,7 +1446,7 @@ const parkingSpaceGroup = (json: JSONObject): Checked =>
         if (error !== undefined)
             return error;
 
-        raise(givenTwice(idsAt(json, 'parkingSpaceIds', freeId), `A member of the parking space group '${id.text}'`));
+        raise(givenTwice(idsAt(json, 'parkingSpaceIds', freeId), `member of the parking space group '${id.text}'`));
 
         return undefined;
 
@@ -1585,8 +1583,8 @@ const model = (meter: boolean) => (json: JSONObject): Checked =>
         if (versions !== undefined)
             throw new Thrown(versions);
 
-        raise(givenTwice(imagesAt(json), `An image of ${of}`));
-        raise(givenTwice(namesAt(json, meter ? 'signatureMethods' : 'connectorTypes'), `A ${meter ? 'signature method' : 'connector type'} of ${of}`));
+        raise(givenTwice(imagesAt(json), `image of ${of}`));
+        raise(givenTwice(namesAt(json, meter ? 'signatureMethods' : 'connectorTypes'), `${meter ? 'signature method' : 'connector type'} of ${of}`));
 
         return undefined;
 
@@ -1946,7 +1944,7 @@ const gridConnectionPoint = (json: JSONObject): Checked =>
         const of = `the grid connection point '${id.text}'`;
 
         if (isObject(by) && by['entityType'] !== 'ChargingStationOperator' && by['entityType'] !== 'ParkingOperator')
-            throw thrown(`The grid connection point '${id.text}' can only be maintained by its grid operator, a charging station operator or a parking operator, not by ${partyText(by)}!`);
+            throw thrown(`Besides its grid operator, the grid connection point '${id.text}' can only be maintained by a charging station operator or a parking operator, not by ${partyText(by)}!`);
 
         if ([ 'nominalVoltage', 'nominalFrequency' ].some(property => notPositive(json, property)))
             throw thrown(`The nominal voltage and frequency of ${of} must be positive!`);

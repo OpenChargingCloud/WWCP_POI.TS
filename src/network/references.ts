@@ -16,6 +16,7 @@
  */
 
 import { Decimal }                from '../json/decimal.ts';
+import { numberText }             from '../common.ts';
 import { canonicalJSON }          from '../json/canonical.ts';
 import { asText, get, isArray, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { evseGroupId, evseId, evseTemplateId, freeId, idOf, idsOf, operatorId, operatorOf, optionalDecimal, poolGroupId, poolId,
@@ -505,10 +506,8 @@ function powerSum(station: JSONObject, evses: readonly JSONObject[], id: string)
         return new Decimal(left.mantissa * 10n ** BigInt(scale - left.scale) + right.mantissa * 10n ** BigInt(scale - right.scale), scale);
     }, new Decimal(0n, 0));
 
-    const watt = (value: Decimal): string => value.mantissa === 0n ? '0' : value.toString();
-
     return maxPower.compareTo(sum) > 0
-               ? `The maximum power of the charging station '${id}', ${watt(maxPower)} W, must not exceed the ${watt(sum)} W of all its EVSEs together! (Parameter 'MaxPower')`
+               ? `The maximum power of the charging station '${id}', ${numberText(maxPower)} W, must not exceed the ${numberText(sum)} W of all its EVSEs together! (Parameter 'MaxPower')`
                : undefined;
 
 }
@@ -875,7 +874,8 @@ function paymentOptionError(operator: JSONObject): string | undefined {
 
 /**
  * What the constructor of a charging station operator of the given identification refuses of what it read, thrown as WWCP_POI3
- * throws it, in its order: charging pools and charging tariffs of another operator or given twice, tariffs of EVSEs and
+ * throws it, in its order: charging pools of another operator or given twice, charging stations, EVSEs and energy meters
+ * given twice in them; charging tariffs of another operator or given twice, tariffs of EVSEs and
  * connectors unknown; groups and templates given twice or of another operator, tariffs and templates they name unknown;
  * offers given twice or naming another operator; tariffs without a currency or elements, also of their templates; stations
  * whose templates give them more power than their EVSEs have; members of groups and groups of offers unknown; the payment
@@ -907,6 +907,18 @@ function construct(operator: JSONObject, id: string, of: 'version' | 'change set
             fail(`The charging pool '${textOf(pool, poolId)}' does not belong to the operator '${id}'!`, 'ChargingPools');
 
     ofOperator(objectsAt(operator, 'chargingPools'), poolId, 'charging pool');
+
+    // A charging station in two of its charging pools, an EVSE in two of its charging stations, an energy meter given twice
+    // in them: proofs, price statements and evidence name them by their identifications alone.
+    const stations = poolsOf(operator).flatMap(stationsOf);
+
+    for (const [ entities, parser, description ] of [ [ stations,                    stationId, 'charging station' ],
+                                                      [ stations.flatMap(evsesOf),   evseId,    'EVSE' ],
+                                                      [ metersOfOperator(operator),  freeId,    'energy meter' ] ] as const) {
+        const later = laterTwice(entities, parser);
+        if (later !== undefined)
+            fail(`The ${description} '${later}' of the operator '${id}' must not be given twice!`, 'ChargingPools');
+    }
 
     // Charging tariffs, in their order, then each once; then those of every EVSE and its connectors.
     for (const tariff of objectsAt(operator, 'chargingTariffs'))

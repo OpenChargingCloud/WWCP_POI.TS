@@ -70,13 +70,13 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
         const invalid = (kind: string, message: string): string => `The given JSON representation of ${kind} is invalid: ${message}`;
 
         expect(refusal(qa(n => { keys(gef(n), 'signingKeys').push(clone(key(gef(n), 'signingKeys'))); })))
-            .toBe(invalid('a charging station operator', "An signing key of the charging station operator 'DE*GEF' must not be given twice!"));
+            .toBe(invalid('a charging station operator', "A signing key of the charging station operator 'DE*GEF' must not be given twice!"));
         expect(refusal(qa(n => { keys(gef(n), 'identityKeys').push(clone(key(gef(n), 'identityKeys'))); })))
             .toBe(invalid('a charging station operator', "An identity key of the charging station operator 'DE*GEF' must not be given twice!"));
 
         // Twice by its identification, also in another form.
         expect(refusal(qa(n => { const other = clone(key(gef(n), 'signingKeys')); other['usages'] = [ 'tariffs' ]; keys(gef(n), 'signingKeys').push(other); })))
-            .toBe(invalid('a charging station operator', "An signing key of the charging station operator 'DE*GEF' must not be given twice!"));
+            .toBe(invalid('a charging station operator', "A signing key of the charging station operator 'DE*GEF' must not be given twice!"));
 
         expect(refusal(qa(n => { keys(gef(n), 'signingKeys').push(clone(key(gef(n), 'identityKeys'))); })))
             .toBe(invalid('a charging station operator', "The key '833d4ad6af8df31032c77e9473bc459d523fffca05e39837d346a32acbc53c8a' of the charging station operator 'DE*GEF' must not be both a signing and an identity key!"));
@@ -84,7 +84,7 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
             .toBe(invalid('a charging station operator', "The identity key '833d4ad6af8df31032c77e9473bc459d523fffca05e39837d346a32acbc53c8a' of the charging station operator 'DE*GEF' names no usages: they are of signing keys!"));
 
         expect(refusal(qa(n => { const body = party(n, 'conformityAssessmentBodies', 'EM-LAB'); keys(body, 'signingKeys').push(clone(key(body, 'signingKeys'))); })))
-            .toBe(invalid('a conformity assessment body', "An signing key of the conformity assessment body 'EM-LAB' must not be given twice!"));
+            .toBe(invalid('a conformity assessment body', "A signing key of the conformity assessment body 'EM-LAB' must not be given twice!"));
         expect(refusal(qa(n => { const meters = party(n, 'energyMeterManufacturers', 'KERNBERG'); keys(meters, 'identityKeys').push(clone(key(meters, 'identityKeys'))); })))
             .toBe(invalid('an energy meter manufacturer', "An identity key of the energy meter manufacturer 'KERNBERG' must not be given twice!"));
         expect(refusal(qa(n => { key(party(n, 'transparencySoftwareManufacturers', 'GraphDefined'), 'identityKeys')['usages'] = [ 'software' ]; })))

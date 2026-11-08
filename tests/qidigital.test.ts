@@ -617,7 +617,7 @@ describe('QI-Digital: refused documents', () => {
         expect(refused(typeExaminationJSON({ validUntil: '2026-10-26T00:00:00.000Z' }), parseDCoC)).toBe("The digital certificate of conformity 'DE-26-M-PTB-0108' must be valid until after it is valid from!");
         expect(refused(typeExaminationJSON({ revision: parseJSON('1.0') }), parseDCoC)).toBe('The revision of a digital certificate of conformity must be an integer from 0!');
         expect(refused(typeExaminationJSON({ conditions: [ {} ] }), parseDCoC)).toBe("A condition of the digital certificate of conformity 'DE-26-M-PTB-0108' must not be empty!");
-        expect(refused(typeExaminationJSON({ standards: [ { reference: 'EN 50470-3:2022' }, { reference: 'EN 50470-3:2022' } ] }), parseDCoC)).toBe('An standard of a certificate of conformity must not be given twice!');
+        expect(refused(typeExaminationJSON({ standards: [ { reference: 'EN 50470-3:2022' }, { reference: 'EN 50470-3:2022' } ] }), parseDCoC)).toBe('A standard of a certificate of conformity must not be given twice!');
         expect(refused(typeExaminationJSON({ documentURL: 'ftp://www.ptb.example/x.pdf' }), parseDCoC)).toBe("Invalid document URL 'ftp://www.ptb.example/x.pdf'!");
         expect(refused(typeExaminationJSON({ model: { ...MODEL, firmwareVersions: [] } }), parseDCoC)).toBe("Invalid model: A document of conformity of the energy meter model 'SM-3' names at least one firmware version of it!");
         expect(refused(typeExaminationJSON({ model: { ...MODEL, hardwareRevisions: [ '1.4', '1.4' ] } }), parseDCoC)).toBe("Invalid model: A hardware revision of the energy meter model 'SM-3' must not be given twice!");
@@ -631,7 +631,7 @@ describe('QI-Digital: refused documents', () => {
             .toBe("Invalid manufacturer: A category of the scope of the energy meter manufacturer 'SAALE' must not be given twice!");
 
         expect(refused(declarationJSON({ legislations: [] }), parseDDoC)).toBe("The digital declaration of conformity 'DoC-SM-3-2026-01' names at least one Union harmonisation legislation!");
-        expect(refused(declarationJSON({ legislations: [ MID, MID ] }), parseDDoC)).toBe('An legislation of a declaration of conformity must not be given twice!');
+        expect(refused(declarationJSON({ legislations: [ MID, MID ] }), parseDDoC)).toBe('A legislation of a declaration of conformity must not be given twice!');
         expect(refused(declarationJSON({ placeOfIssue: ' ' }), parseDDoC)).toBe("The digital declaration of conformity 'DoC-SM-3-2026-01' requires its place of issue!");
         expect(refused(declarationJSON({ notifiedBodies: [ { conformityAssessmentBodyId: 'PTB', notifiedBodyNumber: '102' } ] }), parseDDoC))
             .toBe('Invalid notified body \'{"conformityAssessmentBodyId":"PTB","notifiedBodyNumber":"102"}\': The number of a notified body must be four digits!');

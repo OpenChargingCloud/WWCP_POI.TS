@@ -34,6 +34,22 @@ describe('Reading', () => {
         expect(refusal(qa(({ network }) => { delete (network['operator'] as JSONObject)['created']; }))).toBe("The creation timestamp 'created' of 'OCC' is missing!");
         expect(refusal(qa(({ network }) => { (network['operator'] as JSONObject)['homepage'] = 'https://x_y.org'; }))).toBe("Invalid homepage 'https://x_y.org'!");
 
+        // Data licenses are the same without case (Hermod f7b00ef2), given completely or by their identifications.
+        const own = (id: string): JSONObject => ({ '@id': id, description: { en: 'Our own license' } });
+        expect(refusal(qa(({ gef }) => { gef['dataLicenses'] = [ own('OWN-1.0'), own('own-1.0') ]; }))).toBe("The data license 'own-1.0' must not be given twice!");
+        expect(refusal(qa(({ gef }) => { gef['dataLicenseIds'] = [ 'CC BY 4.0', 'cc by 4.0' ]; }))).toBe("The data license 'cc by 4.0' must not be given twice!");
+
+        // The key statement of the operator, as its constructor refuses it: an identity key given twice before their
+        // order, a signature by one identity key twice after its validity.
+        const statement = (network: JSONObject): JSONObject => (network['operator'] as JSONObject)['keyStatement'] as JSONObject;
+        const twice = (json: JSONObject, property: string): void => { json[property] = [ ...json[property] as JSONObject[], firstOf(json, property) ]; };
+        expect(refusal(qa(({ network }) => { twice(statement(network), 'identityKeys'); twice(statement(network), 'signatures'); })))
+            .toBe('Invalid key statement: An identity key of a key statement must not be given twice!');
+        expect(refusal(qa(({ network }) => { twice(statement(network), 'signatures'); })))
+            .toBe("Invalid key statement: An identity key signs a key statement once. (Parameter 'Signatures')");
+        expect(refusal(qa(({ network }) => { const json = statement(network); [ json['signedAt'], json['validUntil'] ] = [ json['validUntil'] as string, json['signedAt'] as string ]; twice(json, 'signatures'); })))
+            .toBe("Invalid key statement: A key statement is not valid until before it was signed. (Parameter 'ValidUntil')");
+
     });
 
     it('of the charging station operator, its charging pools, stations, EVSEs, connectors and energy meters', () => {
@@ -45,7 +61,7 @@ describe('Reading', () => {
         expect(refusal(qa(({ pool }) => { (pool['geoLocation'] as JSONObject)['lat'] = 91; }))).toBe("Invalid geo location: Invalid 'latitude' value!");
         expect(refusal(qa(({ pool }) => { pool['address'] = { postalCode: '07745', city: { en: 'Jena' }, country: 'DE' }; }))).toBe("Invalid address: Missing property 'street'!");
         expect(refusal(qa(({ pool }) => { pool['openingTimes'] = { regularOpenings: [ { monday: [ { begin: '20:00', end: '08:00' } ] } ] }; })))
-            .toBe("Invalid opening times: Invalid opening times: The end period '08:00h' must be after the start period '20:00h'! (Parameter 'PeriodEnd')");
+            .toBe("Invalid opening times: The end period '08:00h' must be after the start period '20:00h'! (Parameter 'PeriodEnd')");
         expect(refusal(qa(({ pool }) => { pool['images'] = [ { url: 'https://example.org/p.png', category: 'photo' } ]; })))
             .toBe(`Invalid images '{"url":"https://example.org/p.png","category":"photo"}': Missing JSON property 'type'!`);
         expect(refusal(qa(({ pool }) => { pool['authenticationModes'] = [ { type: ' RFID' } ]; })))
@@ -56,6 +72,16 @@ describe('Reading', () => {
         expect(refusal(qa(({ station }) => { station['EVSEs'] = 'x'; }))).toBe('The EVSEs must be a JSON array!');
         expect(refusal(qa(({ station, evse }) => { station['maxPower'] = 999999; for (const item of station['EVSEs'] as JSONObject[]) item['maxPower'] = 1; evse['maxPower'] = 1; })))
             .toBe("The given JSON representation of a charging station is invalid: The maximum power of the charging station 'DE*GEF*S1', 999999 W, must not exceed the 2 W of all its EVSEs together! (Parameter 'MaxPower')");
+        expect(refusal(qa(({ station }) => { station['maxPower'] = Decimal.parse('22000.50'); for (const item of station['EVSEs'] as JSONObject[]) item['maxPower'] = Decimal.parse('1000.250'); })))
+            .toBe("The given JSON representation of a charging station is invalid: The maximum power of the charging station 'DE*GEF*S1', 22000.5 W, must not exceed the 2000.5 W of all its EVSEs together! (Parameter 'MaxPower')");
+
+        // Spoken with their articles: "An" before A, E, I and O, "A" before any other letter.
+        expect(refusal(qa(({ station }) => { station['euVehicleCategories'] = [ 'M1', 'M1' ]; })))
+            .toBe("The given JSON representation of a charging station is invalid: An EU vehicle category of the charging station 'DE*GEF*S1' must not be given twice!");
+        expect(refusal(qa(({ station, evse }) => { const key = firstOf(evse['energyMeter'] as JSONObject, 'publicKeys'); station['publicKeys'] = [ key, key ]; })))
+            .toBe("The given JSON representation of a charging station is invalid: A public key of the charging station 'DE*GEF*S1' must not be given twice!");
+        expect(refusal(qa(({ evse }) => { evse['acceptedEMobilityProviderIds'] = [ 'DE-ABC', 'DE-ABC' ]; })))
+            .toBe("The given JSON representation of an EVSE is invalid: An accepted e-mobility provider of the EVSE 'DE*GEF*E1*1' must not be given twice!");
         expect(refusal(qa(({ evse }) => { evse['maxPower'] = 'x'; }))).toBe("Invalid value for 'maximum power'!");
         expect(refusal(qa(({ evse }) => { evse['currentTypes'] = [ 'dc' ]; }))).toBe("Invalid current type 'dc'!");
         expect(refusal(qa(({ evse }) => { evse['energyMeter'] = 'x'; }))).toBe('The energy meter must be a JSON object!');
@@ -92,8 +118,8 @@ describe('Reading', () => {
         expect(refusal(qa(({ gef }) => { delete component(gef)['type']; }))).toBe('A price component needs its type!');
         expect(refusal(qa(({ gef }) => { delete component(gef)['price']; }))).toBe("Missing JSON property 'price'!");
         expect(refusal(qa(({ gef }) => { component(gef)['stepSize'] = 'x'; }))).toBe("Invalid value for 'step size'!");
-        expect(refusal(qa(({ gef }) => { component(gef)['vat'] = 120; }))).toBe('The VAT of a ENERGY price component must be between 0 and 100 percent!');
-        expect(refusal(qa(({ gef }) => { delete component(gef)['stepSize']; }))).toBe('A ENERGY price component needs a positive step size!');
+        expect(refusal(qa(({ gef }) => { component(gef)['vat'] = 120; }))).toBe('The VAT of an ENERGY price component must be between 0 and 100 percent!');
+        expect(refusal(qa(({ gef }) => { delete component(gef)['stepSize']; }))).toBe('An ENERGY price component needs a positive step size!');
         expect(refusal(qa(({ gef }) => { firstOf(tariff(gef), 'elements')['restrictions'] = { startTime: '9:00' }; }))).toBe("Invalid startTime '9:00', expected HH:mm!");
         expect(refusal(qa(({ gef }) => { firstOf(tariff(gef), 'elements')['restrictions'] = { minPower: 50, maxPower: 10 }; })))
             .toBe('Invalid charging tariff restrictions: The minimum power of a charging tariff restriction must not exceed its maximum!');
@@ -129,7 +155,7 @@ describe('Reading', () => {
         expect(refusal(rich(({ network }) => { firstOf(firstOf(network, 'eMobilityProviders'), 'EVSEGroups')['@id'] = 'DE*XYZ*EG_FAV'; })))
             .toBe("The given JSON representation of an e-mobility provider is invalid: The group 'DE*XYZ*EG_FAV' does not belong to the e-mobility provider 'DE-GDF'! (Parameter 'EVSEGroups')");
         expect(refusal(rich(({ network }) => { firstOf(firstOf(network, 'gridOperators'), 'gridConnectionPoints')['maintainedBy'] = { entityType: 'GridOperator', entityId: 'DE*NET' }; })))
-            .toBe("The given JSON representation of a grid connection point is invalid: The grid connection point 'gcp-1' can only be maintained by its grid operator, a charging station operator or a parking operator, not by the GridOperator 'DE*NET'!");
+            .toBe("The given JSON representation of a grid connection point is invalid: Besides its grid operator, the grid connection point 'gcp-1' can only be maintained by a charging station operator or a parking operator, not by the GridOperator 'DE*NET'!");
         expect(refusal(rich(({ network }) => { firstOf(firstOf(network, 'gridOperators'), 'energyMeterGroups')['energyMeterIds'] = [ 'nope' ]; })))
             .toBe("The given JSON representation of a grid operator is invalid: The member 'nope' of the group 'net-meters' is unknown at the grid operator 'DE*NET'! (Parameter 'EnergyMeterGroups')");
         expect(refusal(rich(({ network }) => { firstOf(firstOf(network, 'parkingOperators'), 'parkingGarages')['parkingProductIds'] = [ 'p1' ]; })))
@@ -163,6 +189,16 @@ describe('Reading', () => {
             .toBe("The given JSON representation of a charging station operator is invalid: The parking space 'gef-space-1' of the operator 'DE*GEF' can be in no parking garage, and have no parking sensors or parking products: only those of a parking operator can! (Parameter 'ParkingSpaces')");
         expect(refusal(qa(({ gef }) => { (gef['chargingTariffs'] as JSONObject[]).push({ ...byId(gef['chargingTariffs'], 'DE*GEF*T_AC'), '@id': 'DE*GEF*T_A*C' }); })))
             .toBe("The given JSON representation of a charging station operator is invalid: The charging tariff 'DE*GEF*T_A*C' of the operator 'DE*GEF' must not be given twice! (Parameter 'Children')");
+
+        // A charging station, EVSE or energy meter once in all its charging pools: proofs name them by their identifications.
+        const p2 = (gef: JSONObject): JSONObject => byId(gef['chargingPools'], 'DE*GEF*P2');
+        const s3 = (gef: JSONObject): JSONObject => byId(p2(gef)['chargingStations'], 'DE*GEF*S3');
+        expect(refusal(qa(({ gef, station }) => { p2(gef)['chargingStations'] = [ station, ...p2(gef)['chargingStations'] as JSONObject[] ]; })))
+            .toBe("The given JSON representation of a charging station operator is invalid: The charging station 'DE*GEF*S1' of the operator 'DE*GEF' must not be given twice! (Parameter 'ChargingPools')");
+        expect(refusal(qa(({ gef, evse }) => { s3(gef)['EVSEs'] = [ evse, ...s3(gef)['EVSEs'] as JSONObject[] ]; })))
+            .toBe("The given JSON representation of a charging station operator is invalid: The EVSE 'DE*GEF*E1*1' of the operator 'DE*GEF' must not be given twice! (Parameter 'ChargingPools')");
+        expect(refusal(qa(({ gef, evse }) => { s3(gef)['energyMeters'] = [ { ...evse['energyMeter'] as JSONObject, '@id': 'de*gef*m1*1' } ]; })))
+            .toBe("The given JSON representation of a charging station operator is invalid: The energy meter 'de*gef*m1*1' of the operator 'DE*GEF' must not be given twice! (Parameter 'ChargingPools')");
 
     });
 

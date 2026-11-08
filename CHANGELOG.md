@@ -8,6 +8,22 @@
   the merchant key every offer must name; and the proof refused once its merchant key is changed to the key of an
   exchange, the root its attestations do not attest the one WWCP_POI names. What it prints is what the C# example
   printed in the run `csharp-045e180`, line for line.
+- A charging station, EVSE or energy meter given twice within one charging station operator is refused, as WWCP_POI
+  `e76e5d0` refuses it: "The charging station 'DE*GEF*S1' of the operator 'DE*GEF' must not be given twice!", the same
+  for an EVSE and an energy meter. Before, a station in two of its pools, or an EVSE in two of its stations, was taken,
+  by WWCP_POI3 too; proofs, price statements and evidence name them by their identifications alone.
+- Data licenses that differ in case only are given twice (Hermod `f7b00ef2`): "OWN-1.0" and "own-1.0", "CC BY 4.0" and
+  "cc by 4.0".
+- Refusals speak as WWCP_POI `74f1d8e` and Styx `21d00134` speak them: "An" before A, E, I and O, "A" before any other
+  letter ("A public key of …", "An EU vehicle category of …", "An ENERGY price component needs a positive step size!");
+  numbers without trailing zeros ("22000.5 W", not "22000.50 W"); "Invalid opening times: " once, not twice; "Besides
+  its grid operator, the grid connection point '…' can only be maintained by a charging station operator or a parking
+  operator, not by …!".
+- The key statement of the roaming network operator is refused as its constructor in WWCP_POI3 refuses it: an identity
+  key given twice ("An identity key of a key statement must not be given twice!") before the order of its identity keys
+  is looked at, and a signature by one identity key given twice ("An identity key signs a key statement once."), which
+  was taken before; its validity in C#'s words. Probed against WWCP_POI `74f1d8e` on 36 versions of QA, the same
+  verdict and words for each. Four vectors of `poi-refusals.json` follow the new words.
 
 
 ## 0.3.0 (2026-11-08)

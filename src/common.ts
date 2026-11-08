@@ -191,3 +191,22 @@ export function firstText(i18n: JSONValue | undefined): string | undefined {
     const first = Object.values(i18n)[0];
     return typeof first === 'string' ? first : undefined;
 }
+
+
+/**
+ * The given noun phrase with its indefinite article, as it is spoken before its first letter: "An EVSE group", "An
+ * e-mobility provider", "An ENERGY price component", "A public key", "A user interface feature". A, E, I and O take
+ * "an", every other letter "a" (`POIJSON.WithArticle` of WWCP_POI3).
+ */
+export const withArticle = (nounPhrase: string, capitalized = true): string =>
+    (/^[aeio]/iu.test(nounPhrase) ? (capitalized ? 'An ' : 'an ') : (capitalized ? 'A ' : 'a ')) + nounPhrase;
+
+
+/**
+ * A number, to say it in an error: without trailing zeros, e.g. "22000.5", not "22000.50" (`POIJSON.NumberText` of
+ * WWCP_POI3).
+ */
+export function numberText(value: Decimal): string {
+    const text = value.toString();
+    return text.includes('.') ? text.replace(/\.?0+$/u, '') : text;
+}

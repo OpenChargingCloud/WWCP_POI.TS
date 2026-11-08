@@ -67,7 +67,7 @@ describe('The roaming network and its operator, in the words of WWCP_POI3', () =
 
         // A certificate by the same identity key twice.
         expect(refusal(qa((_, operator, __, certificate) => { (operator['signingKeyCertificates'] as JSONArray).push(certificate); })))
-            .toBe("The given JSON representation of a roaming network operator is invalid: An certificate of a signing key of the roaming network operator 'OCC' must not be given twice!");
+            .toBe("The given JSON representation of a roaming network operator is invalid: A certificate of a signing key of the roaming network operator 'OCC' must not be given twice!");
 
         expect(refusal(qa((_, operator) => { operator['keyStatement'] = 'statement'; }))).toBe('The key statement must be a JSON object!');
 
