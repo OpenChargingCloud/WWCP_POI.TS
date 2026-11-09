@@ -17,7 +17,7 @@
 
 import { ordinal }                        from '../json/canonical.ts';
 import { asText, clone, get, isArray, isObject, sameValue, set, unset, without, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
-import { toTimestamp }                    from '../common.ts';
+import { toTimestamp, withArticle }       from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
@@ -595,7 +595,7 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
     const property = change.propertyName;
 
     if (property === undefined || property === '@id' || property === 'created' || property === 'lastChange')
-        throw new POIError(`Change ${index}: the property '${property ?? ''}' of a ${what} can not be changed!`);
+        throw new POIError(`Change ${index}: the property '${property ?? ''}' of ${withArticle(what, false)} can not be changed!`);
 
     if (change.kind === 'RemoveProperty') {
         if (get(entity, property) === undefined)
@@ -670,7 +670,7 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
         case 'RemoveProperty': {
             const infrastructure = required(INFRASTRUCTURE[change.entityType], change.entityType);
             if (!infrastructure.changeable.includes(change.propertyName ?? ''))
-                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a ${infrastructure.what} can not be changed!`);
+                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of ${withArticle(infrastructure.what, false)} can not be changed!`);
             applyProperty(existing().entity, change, index, what, createdAt);
             break;
         }
@@ -691,7 +691,7 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
 
             if (OPERATOR_CHILD_ARRAYS[change.entityType] !== undefined || change.entityType === 'ChargingPool') {
                 if (parentType !== 'ChargingStationOperator' || parentId !== operator['@id'])
-                    throw new POIError(`Change ${index}: the ${what} is added to its charging station operator '${asText(operator['@id'])}', not to ${parentType} '${parentId}'!`);
+                    throw new POIError(`Change ${index}: ${withArticle(what, false)} belongs to ChargingStationOperator '${asText(operator['@id'])}', not to ${parentType} '${parentId}'!`);
                 holder   = operator;
                 property = OPERATOR_CHILD_ARRAYS[change.entityType] ?? 'chargingPools';
             }
@@ -733,7 +733,7 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
         }
 
         default:
-            throw new POIError(`Change ${index}: ${change.kind} of a ${change.entityType} is not supported by this library yet!`);
+            throw new POIError(`Change ${index}: ${change.kind} of ${withArticle(INFRASTRUCTURE[change.entityType]?.what ?? change.entityType, false)} is not supported by this library yet!`);
 
     }
 
@@ -800,7 +800,7 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
         }
 
         default:
-            throw new POIError(`Change ${index}: ${change.kind} of a ${change.entityType} is not supported by this library yet!`);
+            throw new POIError(`Change ${index}: ${change.kind} of ${registry.article} ${registry.what} is not supported by this library yet!`);
 
     }
 
@@ -931,7 +931,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             if (!type.changeable.includes(property))
                 throw new POIError(type.keepsVersion === true && property === 'version'
                                        ? `Change ${index}: the version of the ${what} can not be changed: a new version is a new release!`
-                                       : `Change ${index}: the property '${property}' of a ${type.what} can not be changed!`);
+                                       : `Change ${index}: the property '${property}' of ${withArticle(type.what, false)} can not be changed!`);
 
             if (change.kind === 'RemoveProperty') {
                 if (get(child, property) === undefined)
@@ -976,7 +976,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
         }
 
         default:
-            throw new POIError(`Change ${index}: ${change.kind} of a ${type.what} is not supported by this library yet!`);
+            throw new POIError(`Change ${index}: ${change.kind} of ${withArticle(type.what, false)} is not supported by this library yet!`);
 
     }
 
@@ -1052,7 +1052,7 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
         case 'UpdateProperty':
         case 'RemoveProperty':
             if (!type.changeable.includes(change.propertyName ?? ''))
-                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a ${type.what} can not be changed!`);
+                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of ${withArticle(type.what, false)} can not be changed!`);
             applyProperty(existing().child, change, index, what, type.timestamps ? createdAt : undefined);
             break;
 
@@ -1088,7 +1088,7 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
         }
 
         default:
-            throw new POIError(`Change ${index}: ${change.kind} of a ${type.what} is not supported by this library yet!`);
+            throw new POIError(`Change ${index}: ${change.kind} of ${withArticle(type.what, false)} is not supported by this library yet!`);
 
     }
 
@@ -1166,7 +1166,7 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
         case 'UpdateProperty':
         case 'RemoveProperty':
             if (!type.changeable.includes(change.propertyName ?? ''))
-                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of an ${type.what} can not be changed!`);
+                throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of ${withArticle(type.what, false)} can not be changed!`);
             applyProperty(existing().child, change, index, what, createdAt);
             break;
 
@@ -1195,7 +1195,7 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
         }
 
         default:
-            throw new POIError(`Change ${index}: ${change.kind} of an ${type.what} is not supported by this library yet!`);
+            throw new POIError(`Change ${index}: ${change.kind} of ${withArticle(type.what, false)} is not supported by this library yet!`);
 
     }
 

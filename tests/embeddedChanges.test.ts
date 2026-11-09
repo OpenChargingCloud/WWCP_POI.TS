@@ -143,9 +143,46 @@ describe('Changes of the groups of e-mobility providers', () => {
                 [ 'cfc67d79bc88a6f7d1b226402b60ae06770c57e7b1ab2c38415905a350131302', '48db8948c3fc1c870e7190f95e7d7a3954603a848d56b96f712aef7dac6897df' ]);
 
         expect(refusal([ update('EVSEGroup', 'DE*GDF*EG_FAV', 'chargingStationIds', [ 'DE*GEF*S1' ]) ]))
-            .toBe("Change 0: the property 'chargingStationIds' of a EVSE group can not be changed!");
+            .toBe("Change 0: the property 'chargingStationIds' of an EVSE group can not be changed!");
         expect(refusal([ add('EVSEGroup', 'DE*GDF*EG_NEW', { '@id': 'DE*GDF*EG_NEW', name: { en: 'New' } }, 'EMobilityProvider', 'DE-XXX') ]))
             .toBe("Change 0: the EVSE group 'DE*GDF*EG_NEW' to add needs its EMobilityProvider, an existing one!");
+
+    });
+
+});
+
+
+describe('The refusal of a property no change set changes', () => {
+
+    // "a" or "an" as the description begins, as WWCP_POI 8b0580f says it (POIJSON.WithArticle).
+    it('names what it belongs to with its article', () => {
+
+        expect(refusal([ update('EVSEGroup', 'DE*GEF*EG_AC', 'maxPower', 22000) ]))
+            .toBe("Change 0: the property 'maxPower' of an EVSE group can not be changed!");
+        expect(refusal([ update('EVSETemplate', 'DE*GEF*ET_AC', 'created', AT) ]))
+            .toBe("Change 0: the property 'created' of an EVSE template can not be changed!");
+        expect(refusal([ update('EVSE', 'DE*GEF*E1*1', 'created', AT) ]))
+            .toBe("Change 0: the property 'created' of an EVSE can not be changed!");
+        expect(refusal([ update('ChargingPool', 'DE*GEF*P1', 'created', AT) ]))
+            .toBe("Change 0: the property 'created' of a charging pool can not be changed!");
+        expect(refusal([ update('EnergyMeterModel', 'KDM-500', 'manufacturerId', 'ACME', { parentEntityType: 'EnergyMeterManufacturer', parentEntityId: 'KERNBERG' }) ]))
+            .toBe("Change 0: the property 'manufacturerId' of an energy meter model can not be changed!");
+        expect(refusal([ update('ChargingStationModel', 'GD-AC44', 'manufacturerId', 'ACME', { parentEntityType: 'ChargingStationManufacturer', parentEntityId: 'GraphDefined' }) ]))
+            .toBe("Change 0: the property 'manufacturerId' of a charging station model can not be changed!");
+        expect(refusal([ update('EnergyMeterTemplate', 'net-meter-template', 'created', AT) ]))
+            .toBe("Change 0: the property 'created' of an energy meter template can not be changed!");
+        expect(refusal([ update('EnergyMeterGroup', 'net-meters', 'created', AT) ]))
+            .toBe("Change 0: the property 'created' of an energy meter group can not be changed!");
+
+    });
+
+    // A group, a template, a tariff or a pool belongs to its operator, and is refused in the words of its siblings.
+    it('and of what belongs to its operator, added below another parent', () => {
+
+        expect(refusal([ add('EVSEGroup', 'DE*GEF*EG9', { '@id': 'DE*GEF*EG9' }, 'ChargingPool', 'DE*GEF*P1') ]))
+            .toBe("Change 0: an EVSE group 'DE*GEF*EG9' belongs to ChargingStationOperator 'DE*GEF', not to ChargingPool 'DE*GEF*P1'!");
+        expect(refusal([ add('ChargingPool', 'DE*GEF*P9', { '@id': 'DE*GEF*P9' }, 'ChargingStationOperator', 'DE*XXX') ]))
+            .toBe("Change 0: a charging pool 'DE*GEF*P9' belongs to ChargingStationOperator 'DE*GEF', not to ChargingStationOperator 'DE*XXX'!");
 
     });
 

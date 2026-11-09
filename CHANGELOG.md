@@ -20,6 +20,14 @@
   numbers without trailing zeros ("22000.5 W", not "22000.50 W"); "Invalid opening times: " once, not twice; "Besides
   its grid operator, the grid connection point '…' can only be maintained by a charging station operator or a parking
   operator, not by …!".
+- The refusals of changes say their articles as WWCP_POI `8b0580f` says them: "the property 'maxPower' of an EVSE
+  group can not be changed!", "of an energy meter model", "of an EVSE template", not "of a EVSE group". A group, a
+  template, a tariff or a charging pool added below another parent than its charging station operator is refused in
+  WWCP_POI's words: "Change 0: an EVSE group 'DE*GEF*EG9' belongs to ChargingStationOperator 'DE*GEF', not to
+  ChargingPool 'DE*GEF*P1'!", not "the EVSE group … is added to its charging station operator 'DE*GEF', …". Probed
+  against WWCP_POI `8b0580f` on 29 change sets of every kind of entity: 27 in the same verdict and words. WWCP_POI
+  refuses one change when it reads the change set, in other words, and takes the parent 'de*gef' for 'DE*GEF', which
+  this library does not yet (as it takes no other spelling of an infrastructure identification in a change).
 - The key statement of the roaming network operator is refused as its constructor in WWCP_POI3 refuses it: an identity
   key given twice ("An identity key of a key statement must not be given twice!") before the order of its identity keys
   is looked at, and a signature by one identity key given twice ("An identity key signs a key statement once."), which
