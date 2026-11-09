@@ -70,7 +70,7 @@ const RNO_PROPERTIES           = [ ...REGISTRY_PROPERTIES, 'identityKeys', 'eMai
  */
 const PARTY_REGISTRIES: Readonly<Record<string, { readonly what: string, readonly article: string, readonly changeable: readonly string[] }>> = {
     RoamingNetworkOperator:            { what: 'roaming network operator',            article: 'a',  changeable: RNO_PROPERTIES },
-    ChargingStationOperator:           { what: 'charging station operator',           article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'evTaler', 'brands' ] },
+    ChargingStationOperator:           { what: 'charging station operator',           article: 'a',  changeable: [ ...MANUFACTURER_PROPERTIES, 'webPaymentURL', 'evTaler', 'brands' ] },
     EMobilityProvider:                 { what: 'e-mobility provider',                 article: 'an', changeable: MANUFACTURER_PROPERTIES },
     GridOperator:                      { what: 'grid operator',                       article: 'a',  changeable: PARTY_PROPERTIES },
     ParkingOperator:                   { what: 'parking operator',                    article: 'a',  changeable: PARTY_PROPERTIES },
@@ -388,13 +388,13 @@ function operatorIdOf(entityType: string, entityId: string): string | undefined 
 }
 
 /** The properties of a charging pool a charging pool template can give its members (`ChargingPoolTemplatePoolProperties`). */
-const POOL_TEMPLATE_PROPERTIES = [ 'dataLicenses', 'address', 'geoLocation', 'parkingType', 'accessibility', 'hotline', 'gridConnectionPointId', 'brands',
+const POOL_TEMPLATE_PROPERTIES = [ 'dataLicenses', 'address', 'geoLocation', 'parkingType', 'accessibility', 'hotline', 'webPaymentURL', 'gridConnectionPointId', 'brands',
                                    'openingTimes', 'energyMix', 'images', 'timeZone', 'facilities', 'paymentOptions', 'authenticationModes', 'uiFeatures',
                                    'features', 'locationLanguages', 'entranceAddress', 'entranceLocation', 'exitAddress', 'exitLocation', 'arrivalInstructions',
                                    'chargingWhenClosed', 'parkingRestrictions', 'relatedLocations', 'services', 'assistanceServiceDetails', 'standards', 'nutsCodes' ];
 
 /** The properties of a charging station a charging station template can give its members (`ChargingStationTemplateStationProperties`). */
-const STATION_TEMPLATE_PROPERTIES = [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision',
+const STATION_TEMPLATE_PROPERTIES = [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'webPaymentURL', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision',
                                       'firmwareVersion', 'transparencySoftwareStatus', 'signatureMethods', 'brands', 'openingTimes', 'images', 'vehicleTypes',
                                       'euVehicleCategories', 'accessibility', 'features', 'calibrationInfo', 'certificationInfo', 'maxPower', 'parkingSpaceIds',
                                       'certificateIds' ];
@@ -1381,6 +1381,52 @@ interface PartyRef {
     readonly id:    string;
 }
 
+/** Whether a signing key names all the usages given (`MaySign`). */
+const mayAll = (key: POIPublicKey, usages: readonly KeyUsage[]): boolean =>
+    usages.every(usage => key.maySign(usage));
+
+/** What has a web payment page: a charging station operator, a charging pool, a charging station and their templates. */
+const WEB_PAYMENT_PAGES = new Set([ 'ChargingStationOperator', 'ChargingPool', 'ChargingStation', 'ChargingPoolTemplate', 'ChargingStationTemplate' ]);
+
+/** Whether a property is given, as `JObject` gives it: neither left out nor null. */
+const isGiven = (value: JSONValue | undefined): boolean =>
+    value !== undefined && value !== null;
+
+/**
+ * Whether a change adds a charging pool, a charging station or their templates naming a web payment page, a pool by one of
+ * its stations as well (`POIKeyUsages.AddsWebPaymentURL`). A charging station operator is added by the roaming network
+ * operator, with its web payment page as with its EV Taler merchant.
+ */
+function addsWebPaymentURL(change: Change): boolean {
+
+    if (change.kind !== 'Add' || !isObject(change.newValue))
+        return false;
+
+    const entity   = change.newValue;
+    const stations = entity['chargingStations'];
+
+    switch (change.entityType) {
+        case 'ChargingPool':             return isGiven(entity['webPaymentURL']) ||
+                                                (isArray(stations) && stations.some(station => isObject(station) && isGiven(station['webPaymentURL'])));
+        case 'ChargingStation':
+        case 'ChargingPoolTemplate':
+        case 'ChargingStationTemplate':  return isGiven(entity['webPaymentURL']);
+        default:                         return false;
+    }
+
+}
+
+/**
+ * The usages a signing key names, all of them, to sign a change (`POIKeyUsages.Of`), given the usage of what it changes:
+ * "payments" for the web payment page of a charging station operator, a pool, a station or their templates, as whoever
+ * changes it redirects payments; "payments" besides the usage of what it adds where a change adds a pool, a station or a
+ * template naming one.
+ */
+const usagesOf = (change: Change, usage: KeyUsage): readonly KeyUsage[] =>
+    WEB_PAYMENT_PAGES.has(change.entityType) && entityPropertyName(change) === 'webPaymentURL' ? [ KeyUsages.Payments ]
+  : usage !== KeyUsages.Payments && addsWebPaymentURL(change)                                 ? [ usage, KeyUsages.Payments ]
+  :                                                                                             [ usage ];
+
 /**
  * Who owns what the earlier changes of a change set added or removed, as applying them decides (`EarlierChanges`): what
  * they added, the parent of its `Add`; what they removed, alone or with the party embedding it, nobody.
@@ -1841,26 +1887,28 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         valid.has(key.id) && key.isValidAt(createdAt);
 
     // The holders of the roaming network operator signing with keys of the kinds named, its signing keys only those that may
-    // sign what it owns, `party`, or one of the usages given.
-    const rnoHolders = (keys: OwnerKeys, ...usages: KeyUsage[]): Set<string> =>
-        new Set([ ...(keys !== 'identity' ? rnoSigning.filter(key => [ KeyUsages.Party, ...usages ].some(usage => key.maySign(usage))) : []),
-                  ...(keys !== 'signing'  ? rnoIdentity                                                                             : []) ]
+    // sign what it owns, `party`, or all of the usages given (`UsagesOf`).
+    const rnoHolders = (keys: OwnerKeys, usages: readonly KeyUsage[] = []): Set<string> =>
+        new Set([ ...(keys !== 'identity' ? rnoSigning.filter(key => key.maySign(KeyUsages.Party) || (usages.length > 0 && mayAll(key, usages))) : []),
+                  ...(keys !== 'signing'  ? rnoIdentity                                                                                       : []) ]
                     .filter(signedValid)
                     .map(key => key.holderOrUnnamed));
 
-    // Whether an owner signed: by as many holders of its keys of the kinds named as its quorum needs.
-    const signs = (owner: Owner): boolean => {
+    // Whether an owner signed a change: by as many holders of its keys of the kinds named as its quorum needs, its signing
+    // keys naming all usages of the change.
+    const signs = (owner: Owner, change: Change): boolean => {
 
         if (owner.kind === 'rno')
             return rno !== undefined && rnoHolders(owner.keys).size >= minConsensus;
 
-        const party = parties.get(`${owner.type}:${owner.id}`);
+        const party  = parties.get(`${owner.type}:${owner.id}`);
+        const usages = usagesOf(change, owner.usage);
 
         return party !== undefined &&
-              ((owner.keys !== 'identity' && party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key))) ||
+              ((owner.keys !== 'identity' && party.signingKeys.some(key => mayAll(key, usages) && signedValid(key))) ||
                (owner.keys !== 'signing'  && party.identityKeys.some(signedValid)) ||
                (owner.keys !== 'signing'  && rnoHolders('identity').size >= minConsensus && rnoIdentity.some(signedValid)) ||
-               (owner.keys === 'signing'  && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus));
+               (owner.keys === 'signing'  && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', usages).size >= minConsensus));
 
     };
 
@@ -1902,7 +1950,7 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
 
         // One of several owners signs it, e.g. of a grid connection point its grid operator or its maintainer.
         if (owners.length > 1) {
-            if (!owners.some(signs))
+            if (!owners.some(owner => signs(owner, change)))
                 throw new POIError(`${describeChange(change, index)} needs ${signaturesOf(owners)}!`);
             return;
         }
@@ -1935,21 +1983,25 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
                                    : `${describeChange(change, index)} needs a signature by a signing key of the ${owner.type} '${owner.id}'!`);
 
         // A party without signing keys is changed by the roaming network operator in its place (`SignerOf`), by signing
-        // keys that may sign `party`, as all it owns, or the usage of the change; identity keys of the roaming network
+        // keys that may sign `party`, as all it owns, or all usages of the change; identity keys of the roaming network
         // operator recover both kinds of keys of every party, and nothing else of it.
-        const bySigningKey   = owner.keys !== 'identity'  && party.signingKeys.some(key => key.maySign(owner.usage) && signedValid(key));
+        const usages         = usagesOf(change, owner.usage);
+        const bySigningKey   = owner.keys !== 'identity'  && party.signingKeys.some(key => mayAll(key, usages) && signedValid(key));
         const byIdentityKey  = owner.keys !== 'signing'   && party.identityKeys.some(signedValid);
         const byRecovery     = owner.keys !== 'signing'   && rnoHolders('identity').size >= minConsensus && rnoIdentity.some(signedValid);
-        const byRNO          = owner.keys === 'signing'   && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus;
+        const byRNO          = owner.keys === 'signing'   && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', usages).size >= minConsensus;
 
         if (!bySigningKey && !byIdentityKey && !byRecovery && !byRNO) {
+
+            // The usages a key must name all of, in words: "'infrastructure' and 'payments'".
+            const allOf = usages.map(usage => `'${usage}'`).join(' and ');
 
             // Named as the roaming network operator signing in its place, with the usages its signing key may sign where one
             // of its signing keys signed that may sign neither (`UsagesOf`).
             if (inPlaceOf(owner)) {
-                const usages = owner.usage === KeyUsages.Party ? `'${KeyUsages.Party}'` : `'${owner.usage}' or '${KeyUsages.Party}'`;
-                const named  = rnoSigning.some(key => signedValid(key) && !key.maySign(owner.usage) && !key.maySign(KeyUsages.Party));
-                throw new POIError(`${describeChange(change, index)} needs ${signaturesOf([ owner ])}${named ? ` that may sign ${usages}` : ''}!`);
+                const anyOf = usages.length === 1 && usages[0] === KeyUsages.Party ? allOf : `${allOf} or '${KeyUsages.Party}'`;
+                const named = rnoSigning.some(key => signedValid(key) && !mayAll(key, usages) && !key.maySign(KeyUsages.Party));
+                throw new POIError(`${describeChange(change, index)} needs ${signaturesOf([ owner ])}${named ? ` that may sign ${anyOf}` : ''}!`);
             }
 
             const mayAnyway = party.signingKeys.some(signedValid);
@@ -1957,7 +2009,7 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
             throw new POIError(owner.keys === 'identity'
                                    ? `${describeChange(change, index)} needs a signature by an identity key of the ${owner.type} '${owner.id}'!`
                                    : mayAnyway
-                                         ? `${describeChange(change, index)} needs a signature by a signing key of the ${owner.type} '${owner.id}' that may sign '${owner.usage}'!`
+                                         ? `${describeChange(change, index)} needs a signature by a signing key of the ${owner.type} '${owner.id}' that may sign ${allOf}!`
                                          : `${describeChange(change, index)} needs a signature by a signing key of the ${owner.type} '${owner.id}'!`);
 
         }

@@ -78,7 +78,7 @@ const EVSE_RULES: MemberRules = {
  * that signs measurements itself belong to the single device, as those of an energy meter do.
  */
 const CHARGING_STATION_RULES: MemberRules = {
-    singles: [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'modelURL',
+    singles: [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'webPaymentURL', 'manufacturerId', 'modelId', 'modelURL',
                'hardwareRevision', 'firmwareVersion', 'openingTimes', 'accessibility', 'calibrationInfo', 'certificationInfo',
                'maxPower' ],
     unions:  {
@@ -96,7 +96,7 @@ const CHARGING_STATION_RULES: MemberRules = {
 
 /** Effective(ChargingPool, …) of ChargingStationOperator.Effective.cs. */
 const CHARGING_POOL_RULES: MemberRules = {
-    singles: [ 'address', 'geoLocation', 'parkingType', 'accessibility', 'hotline', 'gridConnectionPointId', 'openingTimes',
+    singles: [ 'address', 'geoLocation', 'parkingType', 'accessibility', 'hotline', 'webPaymentURL', 'gridConnectionPointId', 'openingTimes',
                'energyMix', 'timeZone', 'entranceAddress', 'entranceLocation', 'exitAddress', 'exitLocation',
                'arrivalInstructions', 'chargingWhenClosed', 'assistanceServiceDetails' ],
     unions:  {

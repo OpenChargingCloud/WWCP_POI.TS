@@ -271,7 +271,7 @@ const byRelease = (value: JSONValue): string => isObject(value) && typeof value[
 
 const METER_SINGLES   = [ 'role', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision', 'firmwareVersion' ];
 const METER_UNIONS    = { transparencySoftwareStatus: byRelease, signatureMethods: byText, certificateIds: byText };
-const STATION_SINGLES = [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision',
+const STATION_SINGLES = [ 'physicalReference', 'address', 'geoLocation', 'hotline', 'webPaymentURL', 'manufacturerId', 'modelId', 'modelURL', 'hardwareRevision',
                           'firmwareVersion', 'openingTimes', 'accessibility', 'calibrationInfo', 'certificationInfo', 'maxPower' ];
 const STATION_UNIONS  = { transparencySoftwareStatus: byRelease, vehicleTypes: byText, euVehicleCategories: byText, features: byText,
                           parkingSpaceIds: byText, certificateIds: byText, signatureMethods: byText };

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- The web payment page of a charging station operator, a charging pool, a charging station and their templates, as
+  WWCP_POI `848cc52` has it (`webPaymentURL`): the URL where an EV driver pays ad hoc, without an e-mobility provider,
+  and starts a session, found in the static data before standing in front of a station; not the URL in the dynamic QR
+  code of a station, which is of one EVSE and never part of them. Read and written as WWCP_POI reads and writes it,
+  refused when no text or no URL ("Invalid web payment URL '42'!"); taken by the members of a template without their
+  own (effective pools and stations); changed and removed by change sets. Whoever changes it redirects payments: a
+  change of it needs a signing key that may sign `payments`, and a pool, a station or a template added with one, a pool
+  by one of its stations as well, a key that may sign `infrastructure` and `payments`, "… that may sign
+  'infrastructure' and 'payments'!". The usage of a change is now a set of usages a key names all of; the roaming
+  network operator still signs everything it owns by a key for `party`. Commits with a web payment page were refused
+  before. Probed against WWCP_POI `8b0580f` on the network of its `WebPaymentURLTests` and 23 change sets, unsigned and
+  signed by keys for `payments`, `infrastructure`, `party` and both: the same verdict and the same signers for each, the
+  same content after each of the 19 taken. Two invalid values are refused without "Change 0: " in front, as every
+  invalid value of a pool or a station is (a hotline, a model URL).
 - `examples/validate-examples.ts` checks example A15 as its `Validate()` does: the station proof of DE*GEF*E1*1 the app
   gets, against the trust anchor of epoch 2, with the EV Taler merchant of DE*GEF; the EV Taler tariff of the EVSE and
   the exchanges in its currency the app shows, those in another currency not offered there; the merchant base URL and

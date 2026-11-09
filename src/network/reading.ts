@@ -459,6 +459,7 @@ const evseTemplate = (json: JSONObject): Checked =>
 /** What a charging station and a charging station template both read, of their model, before their own lists. */
 const stationModel = (json: JSONObject, serialNumber: boolean): Checked =>
     textError(json, 'hotline', 'hotline phone number', phoneNumber) ??
+    textError(json, 'webPaymentURL', 'web payment URL', url) ??
     textError(json, 'manufacturerId', 'manufacturer identification', nonEmpty) ??
     textError(json, 'modelId', 'model identification', nonEmpty) ??
     textError(json, 'modelURL', 'model URL', url) ??
@@ -688,6 +689,7 @@ const chargingPool = (json: JSONObject): Checked =>
                       textError(json, 'parkingType', 'parking type', nonEmpty) ??
                       textError(json, 'accessibility', 'accessibility', nonEmpty) ??
                       textError(json, 'hotline', 'hotline phone number', phoneNumber) ??
+                      textError(json, 'webPaymentURL', 'web payment URL', url) ??
                       dataLicenses(json) ??
                       children(json, 'chargingStations', 'chargingStationIds', 'charging stations', chargingStation) ??
                       (get(json, 'gridConnectionPoint') !== undefined
@@ -749,6 +751,7 @@ const chargingPoolTemplate = (json: JSONObject): Checked =>
                       textError(json, 'parkingType', 'parking type', nonEmpty) ??
                       textError(json, 'accessibility', 'accessibility', nonEmpty) ??
                       textError(json, 'hotline', 'hotline phone number', phoneNumber) ??
+                      textError(json, 'webPaymentURL', 'web payment URL', url) ??
                       dataLicenses(json) ??
                       textError(json, 'gridConnectionPointId', 'grid connection point identification', nonEmpty) ??
                       brands(json) ??
@@ -2158,6 +2161,7 @@ const chargingStationOperator = (of: 'version' | 'change set') => (json: JSONObj
                       textError(json, 'homepage', 'homepage', url) ??
                       textError(json, 'hotline', 'hotline phone number', phoneNumber) ??
                       textError(json, 'termsAndConditions', 'terms and conditions URL', url) ??
+                      textError(json, 'webPaymentURL', 'web payment URL', url) ??
                       (merchant === undefined ? undefined : ((): Checked => { const read = evTalerMerchantOf(merchant); return typeof read === 'string' ? read : undefined; })()) ??
                       children(json, 'chargingPools',            'chargingPoolIds',            'charging pools',              chargingPool) ??
                       children(json, 'EVSEGroups',               'EVSEGroupIds',               'EVSEGroups',                  group(EVSE_GROUP)) ??
