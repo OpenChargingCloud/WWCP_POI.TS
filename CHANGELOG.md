@@ -11,7 +11,8 @@
 - A charging station, EVSE or energy meter given twice within one charging station operator is refused, as WWCP_POI
   `e76e5d0` refuses it: "The charging station 'DE*GEF*S1' of the operator 'DE*GEF' must not be given twice!", the same
   for an EVSE and an energy meter. Before, a station in two of its pools, or an EVSE in two of its stations, was taken,
-  by WWCP_POI3 too; proofs, price statements and evidence name them by their identifications alone.
+  by WWCP_POI3 too; proofs, price statements and evidence name them by their identifications alone. Three refusals of
+  `poi-refusals.json` of WWCPPOIConformanceTests `bfc8fa0` hold them, one of each, in the words both give.
 - Data licenses that differ in case only are given twice (Hermod `f7b00ef2`): "OWN-1.0" and "own-1.0", "CC BY 4.0" and
   "cc by 4.0".
 - Refusals speak as WWCP_POI `74f1d8e` and Styx `21d00134` speak them: "An" before A, E, I and O, "A" before any other

@@ -822,6 +822,93 @@
     },
     {
       "expected": "refused",
+      "id": "version-twice-station-of-operator",
+      "kind": "version",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 2",
+      "description": "DE*GEF has its charging station DE*GEF*S1 in DE*GEF*P1 and again in DE*GEF*P2, the second time without its EVSEs.",
+      "reason": "The charging station 'DE*GEF*S1' of the operator 'DE*GEF' must not be given twice!",
+      "document": {
+        "file": "published/QA.json",
+        "pointer": "",
+        "patch": [
+          {
+            "op": "remove",
+            "path": "/eTags"
+          },
+          {
+            "op": "add",
+            "path": "/chargingStationOperators/0/chargingPools/1/chargingStations/0",
+            "value": {
+              "@id": "DE*GEF*S1",
+              "templateIds": [
+                "DE*GEF*ST_DC"
+              ],
+              "created": "2026-11-05T19:43:31.952Z",
+              "lastChange": "2026-11-05T19:43:31.952Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "expected": "refused",
+      "id": "version-twice-evse-of-operator",
+      "kind": "version",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 2",
+      "description": "DE*GEF has its EVSE DE*GEF*E1*1 in DE*GEF*S1 and again in DE*GEF*S2, the second time without its energy meter.",
+      "reason": "The EVSE 'DE*GEF*E1*1' of the operator 'DE*GEF' must not be given twice!",
+      "document": {
+        "file": "published/QA.json",
+        "pointer": "",
+        "patch": [
+          {
+            "op": "remove",
+            "path": "/eTags"
+          },
+          {
+            "op": "add",
+            "path": "/chargingStationOperators/0/chargingPools/0/chargingStations/1/EVSEs/0",
+            "value": {
+              "@id": "DE*GEF*E1*1",
+              "currentTypes": [
+                "DC"
+              ],
+              "maxPower": 150000,
+              "templateIds": [
+                "DE*GEF*ET_DC"
+              ],
+              "created": "2026-11-05T19:43:31.950Z",
+              "lastChange": "2026-11-05T19:43:31.950Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "expected": "refused",
+      "id": "version-twice-energy-meter-of-operator",
+      "kind": "version",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 2",
+      "description": "The EVSE DE*GEF*E2*1 of DE*GEF has the energy meter DE*GEF*M1*1, which its EVSE DE*GEF*E1*1 has.",
+      "reason": "The energy meter 'DE*GEF*M1*1' of the operator 'DE*GEF' must not be given twice!",
+      "document": {
+        "file": "published/QA.json",
+        "pointer": "",
+        "patch": [
+          {
+            "op": "remove",
+            "path": "/eTags"
+          },
+          {
+            "op": "replace",
+            "path": "/chargingStationOperators/0/chargingPools/0/chargingStations/1/EVSEs/0/energyMeter/@id",
+            "value": "DE*GEF*M1*1"
+          }
+        ]
+      }
+    },
+    {
+      "expected": "refused",
       "id": "version-twice-release",
       "kind": "version",
       "basis": "libs/WWCP_POI/docs/TransparencySoftwareManufacturer.md",
