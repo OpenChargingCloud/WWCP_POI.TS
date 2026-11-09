@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- A change whose old value is no longer there is refused naming the value it found, as WWCP_POI3 names it
+  (`POIJSON.ContentText`): its canonical JSON, "absent" for none. "Change 0: the property 'name' of the charging pool
+  'DE*GEF*P1' is no longer the expected old value, but '{"en":"Jena Paradies"}'!", of every kind of entity, its
+  embedded objects and the roaming network operator; "…'chargingConnectors['3'].format' of the EVSE 'DE*GEF*E1*1' is no
+  longer the expected old value, but '"CABLE"'!" of an element change; "Change 0: the property 'name' is no longer the
+  expected old value, but '{"en":"Quality Assurance"}'!" of the roaming network itself, which is no entity named, as
+  WWCP_POI3 names it, where this library named it "the property 'name' of the roaming network 'QA'". A change of a
+  complete entity names, as before, only whether it exists. Probed against WWCP_POI `8b0580f` with 59 change sets on
+  the QA network, one with connectors on an EVSE, of every kind of entity, of properties there and absent, of an old
+  value expecting one absent, of the roaming network itself and of the second change of a change set: the same words
+  for each. The earlier probes: the same verdicts and words as before, now also the old values.
 - What a change set changes is read again right after each change, as WWCP_POI3 reads it (`TryApplyRegistryChange`,
   `TryApplyInfrastructureChange`, …): the party the change changed, a charging station operator for its
   infrastructure, templates, groups, tariffs, offers, parking spaces and energy meter templates and groups, the party
@@ -20,7 +31,8 @@
   QA network with 88 change sets, every kind of party and of what it embeds, invalid values, invalid values made valid
   again, two of them in either order: the same verdict for each, the same words for each but two, which this library
   words otherwise for every kind of entity, not as it reads them again: an old value no longer there, which WWCP_POI3
-  names, "…, but '{"en":"Quality Assurance"}'!", and a new value the content does not hold. The 116 change sets of the
+  names, "…, but '{"en":"Quality Assurance"}'!" (named so since, see above), and a new value the content does not
+  hold. The 116 change sets of the
   spellings probe: four more in WWCP_POI3's words, the rest as before. The reading again costs about 1 s of the 80-odd
   seconds of the conformance tests.
 - The web payment page of a charging station operator, a charging pool, a charging station and their templates, as

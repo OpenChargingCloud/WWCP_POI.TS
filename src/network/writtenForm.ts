@@ -618,9 +618,14 @@ function writtenValueOf(property: string, value: JSONValue, holder: string | und
 
 }
 
-/** A value as its canonical JSON, as WWCP_POI names it in a message (`POIJSON.ContentText`); a coordinate as its double. */
-const contentText = (value: JSONValue): string =>
-    typeof value === 'number' && !Number.isSafeInteger(value) ? String(value) : canonicalJSON(value);
+/**
+ * A value as its canonical JSON, as WWCP_POI names it in a message (`POIJSON.ContentText`); a coordinate as its double;
+ * "absent" for none.
+ */
+export const contentText = (value: JSONValue | undefined): string =>
+    value === undefined                                       ? 'absent'
+  : typeof value === 'number' && !Number.isSafeInteger(value) ? String(value)
+  :                                                             canonicalJSON(value);
 
 
 /**

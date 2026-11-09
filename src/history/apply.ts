@@ -28,7 +28,7 @@ import { ignoringCase }                   from '../network/identifications.ts';
 import { caseId, evseGroupId, evseId, evseTemplateId, freeId, operatorId, operatorOf as operatorOfId, poolGroupId, poolId, poolTemplateId, stationGroupId, stationId,
          stationTemplateId, tariffGroupId, tariffId, tariffTemplateId, timestampOf, type Id } from '../network/poiJSON.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
-import { notWritten }                     from '../network/writtenForm.ts';
+import { contentText, notWritten }        from '../network/writtenForm.ts';
 import { entityPropertyName, isElementChange, type Change, type ChangeSet } from './changeSet.ts';
 import { applyElement, pathText }       from './elements.ts';
 import { brokenPrecondition }           from './preconditions.ts';
@@ -591,7 +591,10 @@ const oldValueMatches = (oldValue: JSONValue, current: JSONValue | undefined): b
     oldValue === null ? current === undefined : current !== undefined && sameValue(oldValue, current);
 
 
-/** Compares an old value as the C# implementation does: JSON `null` expects the value absent. */
+/**
+ * Compares an old value as the C# implementation does: JSON `null` expects the value absent. A property change names the
+ * value it found, "absent" for none, every other change whether the entity exists.
+ */
 function checkOldValue(change: Change, current: JSONValue | undefined, index: number, what: string): void {
 
     if (change.oldValue === undefined)
@@ -599,7 +602,7 @@ function checkOldValue(change: Change, current: JSONValue | undefined, index: nu
 
     if (!oldValueMatches(change.oldValue, current))
         throw new POIError(change.propertyName !== undefined && (change.kind === 'UpdateProperty' || change.kind === 'RemoveProperty')
-                               ? `Change ${index}: the property '${change.propertyName}' of the ${what} is no longer the expected old value!`
+                               ? `Change ${index}: the property '${change.propertyName}' of the ${what} is no longer the expected old value, but '${contentText(current)}'!`
                                : `Change ${index}: the ${what} is no longer the expected old value${current === undefined ? ': it does not exist' : ''}!`);
 
 }
@@ -632,7 +635,7 @@ function resolveElementChange(change: Change, entity: JSONObject | undefined, wh
         throw new POIError(`Change ${index}: ${change.kind} of the ${what}: ${applied.error}`);
 
     if (change.oldValue !== undefined && !oldValueMatches(change.oldValue, applied.current))
-        throw new POIError(`Change ${index}: '${pathText(change.elementPath ?? [], change.propertyName)}' of the ${what} is no longer the expected old value!`);
+        throw new POIError(`Change ${index}: '${pathText(change.elementPath ?? [], change.propertyName)}' of the ${what} is no longer the expected old value, but '${contentText(applied.current)}'!`);
 
     return {
         ...change,
@@ -1363,7 +1366,9 @@ function applyNetworkChange(content: JSONObject, change: Change, index: number, 
     const property = change.propertyName ?? '';
     const current  = ownValue(property);
 
-    checkOldValue(change, current, index, what);
+    // Named as the property of no entity, whatever the change.
+    if (change.oldValue !== undefined && !oldValueMatches(change.oldValue, current))
+        throw new POIError(`Change ${index}: the property '${property}' is no longer the expected old value, but '${contentText(current)}'!`);
 
     switch (change.kind) {
 

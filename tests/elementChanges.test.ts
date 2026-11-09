@@ -142,11 +142,13 @@ describe('Element changes of an array of identified objects', () => {
         expect(refused(element('AddElement', 'EVSE', 'DE*GEF*E9*1', [ seg('chargingConnectors', '1') ], { newValue: C1 })))
             .toBe("Change 0: the EVSE 'DE*GEF*E9*1' does not exist!");
 
-        // The old value compared with the element, or the property of the element, the change addresses.
+        // The old value compared with the element, or the property of the element, the change addresses, which is named.
         expect(refused(evse('RemoveElement', [ seg('chargingConnectors', '1') ], { oldValue: C3 })))
-            .toBe("Change 0: 'chargingConnectors['1']' of the EVSE 'DE*GEF*E1*1' is no longer the expected old value!");
+            .toBe(`Change 0: 'chargingConnectors['1']' of the EVSE 'DE*GEF*E1*1' is no longer the expected old value, but '{"@id":"1","format":"CABLE","type":"IEC_62196_T2_COMBO"}'!`);
         expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'format', oldValue: 'SOCKET', newValue: 'SOCKET' })))
-            .toBe("Change 0: 'chargingConnectors['3'].format' of the EVSE 'DE*GEF*E1*1' is no longer the expected old value!");
+            .toBe(`Change 0: 'chargingConnectors['3'].format' of the EVSE 'DE*GEF*E1*1' is no longer the expected old value, but '"CABLE"'!`);
+        expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'maxPower', oldValue: 5, newValue: 22000 })))
+            .toBe("Change 0: 'chargingConnectors['3'].maxPower' of the EVSE 'DE*GEF*E1*1' is no longer the expected old value, but 'absent'!");
 
         // Its new value as the content holds it, and the entity read again.
         expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'colour', newValue: 'red' })))
