@@ -17,7 +17,8 @@
 
 import { canonicalJSON, ordinal } from '../json/canonical.ts';
 import { Decimal }    from '../json/decimal.ts';
-import { asText, isArray, isNumber, isObject, toDecimal, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, clone, isArray, isNumber, isObject, toDecimal, without, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
+import { toTimestamp } from '../common.ts';
 import { LANGUAGES }  from '../qidigital/json.ts';
 import { countryOf }  from './countries.ts';
 import { hermodURL }  from './evTaler.ts';
@@ -75,8 +76,17 @@ const LEFT_OUT_WHEN_EMPTY = new Set([
     'parkingSensors', 'parkingSpaceGroups', 'parkingSpaceIds', 'parkingSpaceTemplates', 'parkingSpaces', 'paymentBrands',
     'paymentMeans', 'paymentOptions', 'publicKeys', 'relatedLocations', 'services', 'signatureMethods', 'signingKeys',
     'standards', 'templateIds', 'transparencySoftware', 'transparencySoftwareManufacturers', 'transparencySoftwareStatus',
-    'uiFeatures', 'usages', 'vehicleTypes', 'regularOpenings', 'exceptionalOpenings', 'exceptionalClosings',
+    'uiFeatures', 'usages', 'vehicleTypes', 'regularOpenings', 'exceptionalOpenings', 'exceptionalClosings', 'dataLicenses',
 ]);
+
+/**
+ * The flags of the content, which WWCP_POI writes by their names in the order of their values, each once
+ * (`POIJSON.FlagsToJSON`).
+ */
+const FLAGS: Readonly<Record<string, readonly string[]>> = {
+    currentTypes:   [ 'AC_OnePhase', 'AC_ThreePhases', 'DC' ],
+    chargingModes:  [ 'Mode_1', 'Mode_2', 'Mode_3', 'Mode_4', 'CHAdeMO' ],
+};
 
 /**
  * The texts WWCP_POI writes only where they are not empty, by the kind of object holding them: of an address but its
@@ -359,10 +369,10 @@ const PROPERTY_SETS = new Map(Object.entries(PROPERTIES_OF).map(([ kind, propert
 
 /**
  * The texts WWCP_POI reads by their types, which write them trimmed: identifications and references, currencies,
- * versions, an e-mail address, the URLs of a release and a certificate (refused without a scheme).
+ * versions, an e-mail address, the URLs of a release and a certificate (refused without a scheme), a hotline.
  */
 const TRIMMED = new Set([
-    '@id', 'currency', 'chargingTariffId', 'manufacturerId', 'modelId', 'transparencySoftwareId', 'version', 'vulnerabilityContact',
+    '@id', 'currency', 'chargingTariffId', 'manufacturerId', 'modelId', 'transparencySoftwareId', 'version', 'vulnerabilityContact', 'hotline',
     'energyMeterManufacturerId', 'energyMeterModel', 'roamingNetworkId', 'roamingNetworkOperatorId', 'sourceCodeRepository',
     'declarationOfConformity', 'softwareBillOfMaterials', 'documentURL', 'street', 'postalCode', 'timeZone',
 ]);
@@ -521,6 +531,10 @@ function orderKeys(items: JSONArray, property: string | undefined): string[] | u
     if (property === 'daysOfWeek')
         return items.map(item => String(DAYS_OF_WEEK.indexOf(typeof item === 'string' ? item : '')).padStart(2, '0'));
 
+    const flags = property === undefined ? undefined : FLAGS[property];
+    if (flags !== undefined)
+        return items.map(item => String(flags.indexOf(typeof item === 'string' ? item : '')).padStart(2, '0'));
+
     if (items.length > 0 && items.every(item => isObject(item) && typeof item['@id'] === 'string'))
         return items.map(idOf);
 
@@ -531,18 +545,37 @@ function orderKeys(items: JSONArray, property: string | undefined): string[] | u
 
 }
 
+/** The languages Styx reads, in the order of their numbers. */
+const LANGUAGE_NAMES = [ ...LANGUAGES ];
+
 /**
- * The languages of a text in languages as Styx writes them, of those it reads: in lower case; by its number one of its
- * languages, by its name then (here unequal to the number); another number as given.
+ * A language of a text in languages as Styx writes it, of one it reads (`Enum.TryParse`): in lower case; by its number, also
+ * with a sign, one of its languages by its name, another number as the number; undefined for one it does not read.
  */
+function languageOf(language: string): string | undefined {
+
+    if (LANGUAGES.has(language.toLowerCase()))
+        return language.toLowerCase();
+
+    if (!/^[+-]?\d+$/u.test(language))
+        return undefined;
+
+    const number = Number(language);
+
+    return number >= 0 && number < LANGUAGE_NAMES.length ? LANGUAGE_NAMES[number] : String(number);
+
+}
+
+/** The texts of a text in languages as Styx writes them, of the languages it reads (`languageOf`). */
+const textsOf = (text: JSONObject): JSONObject =>
+    Object.fromEntries(Object.entries(text).
+                           filter(([ , value ]) => typeof value === 'string').
+                           map(([ language, value ]) => [ languageOf(language), value ] as const).
+                           filter((entry): entry is readonly [ string, JSONValue ] => entry[0] !== undefined));
+
+/** The languages of a text in languages as Styx writes them, of those it reads. */
 const languagesOf = (text: JSONObject): string[] =>
-    [ ...new Set(Object.entries(text).
-                     filter(([ , value ]) => typeof value === 'string').
-                     map(([ language ]) => LANGUAGES.has(language.toLowerCase())                      ? language.toLowerCase()
-                                         : /^\d+$/u.test(language) && Number(language) < LANGUAGES.size  ? `(language ${language})`
-                                         : /^[+-]?\d+$/u.test(language)                                 ? language
-                                         :                                                                 undefined).
-                     filter(language => language !== undefined)) ];
+    Object.keys(textsOf(text));
 
 /**
  * The value WWCP_POI writes of the given one of the given property, of an object held by the given property or list,
@@ -649,10 +682,33 @@ export function asRead(value: JSONValue, kind: string): JSONValue {
 }
 
 
-/** Where a value is not written as the content holds it, e.g. "chargingPools[1].paymentOptions", and how it is held. */
+/**
+ * Where a value is not written as the content holds it, e.g. "chargingPools[1].paymentOptions", and how it is held; where
+ * this library tells it, what the content holds there instead (`held`): at the given keys and indexes of the value, `undefined`
+ * for nothing, where the content leaves it out.
+ */
 export interface NotWritten {
     readonly path:    string;
     readonly reason:  string;
+    readonly held?:   Held;
+}
+
+/** What the content holds at a place of a value: `undefined` for nothing. */
+interface Held {
+    readonly at:     readonly (string | number)[];
+    readonly value:  JSONValue | undefined;
+}
+
+/** A value as the content holds it, where a value as JavaScript holds it is none: a double as its decimal. */
+function heldNumber(value: JSONValue): JSONValue | undefined {
+    if (typeof value !== 'number' || Number.isSafeInteger(value))
+        return value;
+    try {
+        return Decimal.parse(String(value));
+    }
+    catch {
+        return undefined;
+    }
 }
 
 /**
@@ -664,7 +720,11 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
 
     const eachOnce  = of === 'new value';
     const join      = (at: string, key: string): string => at === '' ? key : `${at}.${key}`;
-    const holdsAs   = (at: string, written: JSONValue): NotWritten => ({ path: at, reason: `the content holds it as '${contentText(written)}'` });
+    const heldAt    = (place: readonly (string | number)[], held: JSONValue | undefined): Held => ({ at: place, value: held });
+    const holdsAs   = (at: string, place: readonly (string | number)[], written: JSONValue): NotWritten => {
+        const held = heldNumber(written);
+        return { path: at, reason: `the content holds it as '${contentText(written)}'`, ...(held === undefined ? {} : { held: heldAt(place, held) }) };
+    };
 
     /** Whether WWCP_POI leaves the given property of an object out, of a kind holding it, as it writes the object again. */
     const leftOut = (key: string, element: JSONValue, kind: string | undefined, keepsEmptyName: boolean): string | undefined => {
@@ -697,7 +757,26 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
 
     };
 
-    const check = (item: JSONValue, name: string | undefined, holder: string | undefined, at: string, root = false): NotWritten | undefined => {
+    /** Whether the given value of the given property, of an object of the given kind, is written otherwise as a value. */
+    const writtenOtherwise = (key: string, element: JSONValue, kind: string | undefined, at: string, place: readonly (string | number)[]): NotWritten | undefined => {
+
+        if (typeof element === 'string' && TIMESTAMP_PROPERTIES.has(key) && !TIMESTAMP.test(element)) {
+            const time = timestampOf(element);
+            return { path: at, reason: 'a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ',
+                     ...(time === undefined ? {} : { held: heldAt(place, toTimestamp(time)) }) };
+        }
+
+        const written = key === 'customData' ? undefined : writtenValueOf(key, element, kind);
+
+        // Two texts are written alike exactly where they are alike.
+        if (written !== undefined && (typeof written === 'string' && typeof element === 'string' ? written !== element : contentText(written) !== contentText(element)))
+            return holdsAs(at, place, written);
+
+        return undefined;
+
+    };
+
+    const check = (item: JSONValue, name: string | undefined, holder: string | undefined, at: string, place: readonly (string | number)[], root = false): NotWritten | undefined => {
 
         if (name === 'customData')
             return undefined;
@@ -710,21 +789,39 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
             const differs = written?.findIndex((text, index) => text !== item[index]) ?? -1;
 
             if (written !== undefined && differs >= 0)
-                return holdsAs(`${at}[${String(differs)}]`, written[differs] ?? '');
+                return { ...holdsAs(`${at}[${String(differs)}]`, place, written[differs] ?? ''), held: heldAt(place, written) };
 
             if (name !== undefined && ORDERED_TEXTS.has(name) && item.some(element => typeof element === 'string' && trimmed(element) !== element))
-                return { path: at, reason: 'the texts of its elements are trimmed' };
+                return { path: at, reason: 'the texts of its elements are trimmed',
+                         held: heldAt(place, item.map(element => typeof element === 'string' ? trimmed(element) : element)) };
 
             const keys = orderKeys(item, name);
 
-            if (keys?.some((key, index) => index > 0 && ordinal(keys[index - 1] ?? '', key) >= (eachOnce ? 0 : 1)) === true)
+            if (keys?.some((key, index) => index > 0 && ordinal(keys[index - 1] ?? '', key) >= (eachOnce ? 0 : 1)) === true) {
+
+                // In the order of their keys, the first of each key once, of a new value.
+                const seen    = new Set<string>();
+                const firsts  = ({ key }: { readonly key: string }): boolean => {
+                    if (seen.has(key))
+                        return false;
+                    seen.add(key);
+                    return true;
+                };
+                const ordered = keys.map((key, index) => ({ key, index })).
+                                     sort((left, right) => ordinal(left.key, right.key) || left.index - right.index).
+                                     filter(entry => !eachOnce || firsts(entry)).
+                                     map(({ index }) => item[index] ?? null);
+
                 return { path: at, reason: eachOnce ? 'its elements are in the order the content holds them in, each once'
-                                                    : 'its elements are in the order the content holds them in' };
+                                                    : 'its elements are in the order the content holds them in',
+                         held: heldAt(place, ordered) };
+
+            }
 
             for (const [ index, element ] of item.entries()) {
 
                 const elementAt = `${at}[${String(index)}]`;
-                const found     = check(element, undefined, name, elementAt);
+                const found     = check(element, undefined, name, elementAt, [ ...place, index ]);
                 if (found !== undefined)
                     return found;
 
@@ -740,10 +837,11 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
             const party           = name === undefined && holder !== undefined ? PARTY_NAMES[holder] : undefined;
             const keepsEmptyName  = name === undefined && holder === 'chargingStationOperators';
 
-            // The languages of a text in languages, as Styx writes them.
+            // The languages of a text in languages, as Styx writes them: in lower case, of those it reads, with a text.
             if (name !== undefined && TEXTS_IN_LANGUAGES.has(name) &&
                 [ ...Object.keys(item) ].sort(ordinal).join('\u0000') !== languagesOf(item).sort(ordinal).join('\u0000'))
-                return { path: at, reason: 'a text in languages names each language as Styx writes it, in lower case, with a text' };
+                return { path: at, reason: 'a text in languages names each language as Styx writes it, in lower case, with a text',
+                         held: heldAt(place, textsOf(item)) };
 
             // What it gives, in the order it gives it.
             for (const [ key, element ] of Object.entries(item)) {
@@ -751,25 +849,17 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
                 if (key === '@context') {
                     if (root)
                         continue;
-                    return { path: at, reason: 'embedded, an object names no JSON-LD context' };
+                    return { path: at, reason: 'embedded, an object names no JSON-LD context', held: heldAt([ ...place, key ], undefined) };
                 }
 
-                const elementAt = join(at, key);
-                const omitted   = leftOut(key, element, kind, keepsEmptyName);
+                const elementAt    = join(at, key);
+                const elementPlace = [ ...place, key ];
+                const omitted      = leftOut(key, element, kind, keepsEmptyName);
 
                 if (omitted !== undefined)
-                    return { path: elementAt, reason: omitted };
+                    return { path: elementAt, reason: omitted, held: heldAt(elementPlace, undefined) };
 
-                if (typeof element === 'string' && TIMESTAMP_PROPERTIES.has(key) && !TIMESTAMP.test(element))
-                    return { path: elementAt, reason: 'a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ' };
-
-                const written = key === 'customData' ? undefined : writtenValueOf(key, element, kind);
-
-                // Two texts are written alike exactly where they are alike.
-                if (written !== undefined && (typeof written === 'string' && typeof element === 'string' ? written !== element : contentText(written) !== contentText(element)))
-                    return holdsAs(elementAt, written);
-
-                const found = check(element, key, kind, elementAt);
+                const found = writtenOtherwise(key, element, kind, elementAt, elementPlace) ?? check(element, key, kind, elementAt, elementPlace);
                 if (found !== undefined)
                     return found;
 
@@ -779,18 +869,18 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
             // empty, the lastChange of a version, which it writes as its created, whether opening times are 24/7, which
             // they are without regular openings.
             if (party !== undefined && !('name' in item))
-                return holdsAs(join(at, 'name'), { en: `${party} '${asText(writtenValueOf('@id', item['@id'] ?? '', holder) ?? item['@id'])}'` });
+                return holdsAs(join(at, 'name'), [ ...place, 'name' ], { en: `${party} '${asText(writtenValueOf('@id', item['@id'] ?? '', holder) ?? item['@id'])}'` });
 
             for (const list of name === undefined && holder !== undefined ? WRITTEN_ALSO_EMPTY[holder] ?? [] : [])
                 if (!(list in item))
-                    return holdsAs(join(at, list), []);
+                    return holdsAs(join(at, list), [ ...place, list ], []);
 
             if (!eachOnce && typeof item['created'] === 'string' && !('lastChange' in item))
-                return holdsAs(join(at, 'lastChange'), item['created']);
+                return holdsAs(join(at, 'lastChange'), [ ...place, 'lastChange' ], item['created']);
 
             if (kind === 'openingTimes' && !('24/7' in item)) {
                 const regular = item['regularOpenings'];
-                return holdsAs(join(at, '24/7'), !(isArray(regular) && regular.length > 0));
+                return holdsAs(join(at, '24/7'), [ ...place, '24/7' ], !(isArray(regular) && regular.length > 0));
             }
 
         }
@@ -803,9 +893,69 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
     const omitted = property === undefined ? undefined : leftOut(property, value, undefined, false);
 
     if (omitted !== undefined)
-        return { path, reason: omitted };
+        return { path, reason: omitted, held: heldAt([], undefined) };
 
-    return check(value, property, undefined, path, of === 'version' && property === undefined);
+    // A new value of a property as a value, e.g. a URL or a hotline, as within an object.
+    return (property === undefined ? undefined : writtenOtherwise(property, value, undefined, path, [])) ??
+           check(value, property, undefined, path, [], of === 'version' && property === undefined);
+
+}
+
+
+/**
+ * The given new value of the given property, or entity to add, as the content holds it, as far as this library tells it
+ * (`notWritten`): `{ value: undefined }` where the content does not hold it at all, e.g. an empty list; `undefined` where
+ * this library does not tell how the content holds it.
+ */
+export function heldAs(value: JSONValue, property: string | undefined): { readonly value: JSONValue | undefined } | undefined {
+
+    let held: JSONValue = clone(value);
+
+    // Each round makes one place of it as the content holds it.
+    for (let round = 0; round < 1_000; round++) {
+
+        const found = notWritten(held, property, property ?? '', 'new value');
+
+        if (found === undefined)
+            return { value: held };
+
+        if (found.held === undefined)
+            return undefined;
+
+        const next = placed(held, found.held.at, found.held.value);
+
+        if (next === undefined)
+            return { value: undefined };
+
+        held = next;
+
+    }
+
+    return undefined;
+
+}
+
+/** The given value with the given value at the given place: without what is there for `undefined`. */
+function placed(value: JSONValue, at: readonly (string | number)[], held: JSONValue | undefined): JSONValue | undefined {
+
+    const [ first, ...rest ] = at;
+
+    if (first === undefined)
+        return held;
+
+    if (isArray(value) && typeof first === 'number') {
+        const element = value[first];
+        const inner   = element === undefined ? held : placed(element, rest, held);
+        return inner === undefined ? value.filter((_, index) => index !== first) : value.map((item, index) => index === first ? inner : item);
+    }
+
+    if (isObject(value) && typeof first === 'string') {
+        const element = value[first];
+        const inner   = element === undefined || rest.length === 0 ? held : placed(element, rest, held);
+        return inner === undefined ? without(value, first) : { ...value, [first]: inner };
+    }
+
+    return value;
 
 }
 

@@ -152,7 +152,7 @@ describe('Element changes of an array of identified objects', () => {
 
         // Its new value as the content holds it, and the entity read again.
         expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'colour', newValue: 'red' })))
-            .toBe("Change 0, the EVSE 'DE*GEF*E1*1': 'chargingConnectors[1].colour' is not given as the content holds it: the content leaves it out!");
+            .toBe(`Change 0: 'chargingConnectors['3'].colour' of the EVSE 'DE*GEF*E1*1' is given as '"red"', which the content does not hold at all!`);
         expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'format', newValue: 'BAG' })))
             .toBe("Change 0: Invalid charging connector format 'BAG'!");
 

@@ -6,12 +6,14 @@ import { commitsOfEpoch1, genesis } from './qa.ts';
 import type { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 import { ChangeSet, changeSetIdentification } from '../src/history/changeSet.ts';
 import { applyChangeSet } from '../src/history/apply.ts';
-import { clone, isObject, set, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
+import { canonicalJSON } from '../src/json/canonical.ts';
+import { clone, isObject, set, without, type JSONArray, type JSONObject, type JSONValue } from '../src/json/value.ts';
 
 
 // What a change set gives is what the content holds (SPECIFICATION.md section 4, "New values"; csharp-review 10):
 // this library applies a new value as it is given, and refuses one the content would hold otherwise, as far
-// as it can tell without the types of the values. The change sets of the run give every value so.
+// as it can tell without the types of the values. The change sets of the run give every value so. Refused as WWCP_POI3
+// refuses it (`TryHeldAsGiven`), after the party it changed is read again, naming what the content holds.
 
 const changeSets = commitsOfEpoch1().map(commit => defined((commit as JSONObject)['changeSet'], 'The change set of a commit') as JSONObject);
 
@@ -36,6 +38,16 @@ function changed(revision: number, change: (first: JSONObject) => void): ChangeS
 const newValue = (change: JSONObject): JSONObject =>
     defined(change['newValue'], 'The new value of a change') as JSONObject;
 
+/** The new value of the first change of the change set of the given revision, as the run gives it. */
+const given = (revision: number): JSONValue =>
+    defined((defined(changeSets[revision - 1])['changes'] as JSONArray)[0] as JSONObject)['newValue'] ?? null;
+
+/** The refusal of a new value the content holds otherwise, in the words of WWCP_POI3. */
+const notHeld = (named: string, held: JSONValue): string =>
+    `Change 0: ${named} is not given as the content holds it, '${canonicalJSON(held)}'!`;
+
+const TARIFF = "the charging tariff 'DE*GEF*T_AC' to add";
+
 
 describe('New values, given as the content holds them (4)', () => {
 
@@ -57,13 +69,13 @@ describe('New values, given as the content holds them (4)', () => {
         });
 
         expect(() => applyChangeSet(before(13), withContext, { checkOwnership: false }))
-            .toThrow("'elements[0]' is not given as the content holds it: embedded, an object names no JSON-LD context!");
+            .toThrow(notHeld("the property 'elements' of the charging tariff 'DE*GEF*T_AC'", given(13)));
 
         // Also an entity to add, which written on its own names its context.
         const tariff = changed(11, change => { newValue(change)['@context'] = 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/chargingTariff/v1'; });
 
         expect(() => applyChangeSet(before(11), tariff, { checkOwnership: false }))
-            .toThrow("Change 0, the charging tariff 'DE*GEF*T_AC' to add: it is not given as the content holds it: embedded, an object names no JSON-LD context!");
+            .toThrow(notHeld(TARIFF, without(given(11) as JSONObject, 'lastChange')));
 
     });
 
@@ -72,22 +84,28 @@ describe('New values, given as the content holds them (4)', () => {
         const reversed = changed(15, change => { change['newValue'] = [ ...(change['newValue'] as JSONArray) ].reverse(); });
 
         expect(() => applyChangeSet(before(15), reversed, { checkOwnership: false }))
-            .toThrow("'identityKeys' is not given as the content holds it: its elements are in the order the content holds them in, each once!");
+            .toThrow(notHeld("the property 'identityKeys' of the roaming network operator 'OCC'", given(15)));
 
     });
 
     it('refuses a list given empty and a property given as null, which the content leaves out', () => {
 
         // As WWCP_POI refuses a new value the content does not hold at all, "e.g. an empty array written as none".
-        const empty = changed(15, change => { change['newValue'] = []; });
+        const licenses = changed(11, change => { newValue(change)['dataLicenses'] = []; });
 
-        expect(() => applyChangeSet(before(15), empty, { checkOwnership: false }))
-            .toThrow("'identityKeys' is not given as the content holds it: a list without elements is left out!");
+        expect(() => applyChangeSet(before(11), licenses, { checkOwnership: false }))
+            .toThrow(notHeld(TARIFF, without(given(11) as JSONObject, 'lastChange')));
 
         const description = changed(11, change => { newValue(change)['description'] = null; });
 
         expect(() => applyChangeSet(before(11), description, { checkOwnership: false }))
-            .toThrow("Change 0, the charging tariff 'DE*GEF*T_AC' to add: 'description' is not given as the content holds it: a property without a value is left out!");
+            .toThrow(notHeld(TARIFF, without(given(11) as JSONObject, 'lastChange')));
+
+        // Read again first: the roaming network operator without identity keys is none WWCP_POI3 reads.
+        const empty = changed(15, change => { change['newValue'] = []; });
+
+        expect(() => applyChangeSet(before(15), empty, { checkOwnership: false }))
+            .toThrow("Change 0: The given JSON representation of a roaming network operator is invalid: The minConsensus 2 of the roaming network operator 'OCC' needs identity keys of as many holders!");
 
     });
 
@@ -96,7 +114,7 @@ describe('New values, given as the content holds them (4)', () => {
         const created = changed(11, change => { newValue(change)['created'] = '2026-10-25T18:25:00+02:00'; });
 
         expect(() => applyChangeSet(before(11), created, { checkOwnership: false }))
-            .toThrow("'created' is not given as the content holds it: a timestamp is UTC to the millisecond, yyyy-MM-ddTHH:mm:ss.fffZ!");
+            .toThrow(notHeld(TARIFF, { ...without(given(11) as JSONObject, 'lastChange'), created: '2026-10-25T16:25:00.000Z' }));
 
     });
 

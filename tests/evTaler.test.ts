@@ -10,6 +10,7 @@ import { applyChangeSet, checkOwnership } from '../src/history/apply.ts';
 import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification, type ChangeSetSignature } from '../src/history/changeSet.ts';
 import { etagToJSON, etagToText } from '../src/etags.ts';
 import { KeyUsages, POIPublicKey } from '../src/keys.ts';
+import { canonicalJSON } from '../src/json/canonical.ts';
 import { clone, get, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
 import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 import { EV_TALER_MERCHANT_CONTEXT, evTalerMerchantOf, isTalerPublicKey, paymentOptionName, type EVTalerMerchant } from '../src/network/evTaler.ts';
@@ -276,7 +277,7 @@ describe('The payment option EVTaler needs the merchant (WWCP_POI ec3dace)', () 
         // Its exchanges as the content holds them, in the order of their master public keys.
         const unordered = { ...addMerchant, newValue: { ...merchant(), exchanges: [ ...(merchant()['exchanges'] as JSONArray) ].reverse() } };
         expect(() => applyChangeSet(before, changeSetOf([ unordered, addOption ], after), { checkOwnership: false }))
-            .toThrow(/'evTaler.exchanges' is not given as the content holds it: its elements are in the order the content holds them in, each once!/u);
+            .toThrow(`Change 0: the property 'evTaler' of the charging station operator 'DE*GEF' is not given as the content holds it, '${canonicalJSON(merchant())}'!`);
 
     });
 

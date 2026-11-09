@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- A new value not given as the content holds it is refused as WWCP_POI3 refuses it (`TryHeldAsGiven`): after the party
+  the change changed is read again, not before, and naming what the content holds. "Change 0: the property 'name' of the
+  charging pool 'DE*GEF*P1' is not given as the content holds it, '{"en":"x"}'!" of an `UpdateProperty`; "Change 0: the
+  EVSE group 'DEGEFEG9' to add is not given as the content holds it, '{"@id":"DE*GEF*EG9",…}'!" of an `Add`, the
+  entity without its lastChange; "Change 0: 'chargingConnectors['1']' of the EVSE 'DE*GEF*E1*1' is not given as the
+  content holds it, '…'!" of an element change, its element or the property of its element; "… is given as '[]', which
+  the content does not hold at all!" of a value it holds none of. This library named where it was written otherwise and
+  why, "Change 0, the charging pool 'DE*GEF*P1': 'name' is not given as the content holds it: a text in languages names
+  each language as Styx writes it, in lower case, with a text!", the place of an element by its index, before reading
+  the party again: of an `Add` with an identification written otherwise and an invalid content, it named the
+  identification, WWCP_POI3 the content. `notWritten` tells what the content holds where it is written otherwise,
+  `heldAs` makes a new value so. Also held as WWCP_POI3 holds them, where this library took them as given: flags,
+  `currentTypes` and `chargingModes`, in the order of their values, each once (`POIJSON.FlagsToJSON`); data licenses
+  given empty, which the content leaves out, of every entity; a hotline, trimmed; a language given by its number, also
+  with a sign, by its name. A new value of a property is checked as a value too, a URL or a currency, as within an
+  object, where a version written otherwise refused it. Probed against WWCP_POI `8b0580f` with 88 change sets on the QA
+  network, one with connectors on an EVSE: the same verdict and words for each, but a change refused as WWCP_POI3's
+  constructor refuses it ("Invalid change 0: …"), and, as before, who must sign identity keys of the roaming network
+  operator given twice. The earlier probes: the same verdicts, now also the words of the
+  spellings probe's `Add` with an identification written otherwise and an invalid content.
 - A change whose old value is no longer there is refused naming the value it found, as WWCP_POI3 names it
   (`POIJSON.ContentText`): its canonical JSON, "absent" for none. "Change 0: the property 'name' of the charging pool
   'DE*GEF*P1' is no longer the expected old value, but '{"en":"Jena Paradies"}'!", of every kind of entity, its
@@ -32,7 +52,7 @@
   again, two of them in either order: the same verdict for each, the same words for each but two, which this library
   words otherwise for every kind of entity, not as it reads them again: an old value no longer there, which WWCP_POI3
   names, "…, but '{"en":"Quality Assurance"}'!" (named so since, see above), and a new value the content does not
-  hold. The 116 change sets of the
+  hold (refused so since, see above). The 116 change sets of the
   spellings probe: four more in WWCP_POI3's words, the rest as before. The reading again costs about 1 s of the 80-odd
   seconds of the conformance tests.
 - The web payment page of a charging station operator, a charging pool, a charging station and their templates, as

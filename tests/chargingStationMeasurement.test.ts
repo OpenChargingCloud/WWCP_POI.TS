@@ -10,6 +10,7 @@ import { effectiveChargingStationOperator } from '../src/network/effective.ts';
 import { RoamingNetwork, ROAMING_NETWORK_CONTEXT } from '../src/network/roamingNetwork.ts';
 import { ChargingStationProof } from '../src/proofs/stationProof.ts';
 import { verifyChargingStation } from '../src/verifier/chargingStation.ts';
+import { canonicalJSON } from '../src/json/canonical.ts';
 import { clone, get, isArray, isObject, type JSONArray, type JSONObject, type JSONValue } from '../src/json/value.ts';
 
 
@@ -177,11 +178,17 @@ describe('A charging station signing measurements itself, and the ISO 15118 cert
 
         const before = network();
 
-        for (const given of [ [ status('OpenChargingCloud:chargy-1.1', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ],
-                              [ status('OpenChargingCloud:chargy-1.0', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ] ])
-            expect(() => applyChangeSet(before, changeSet(before, [ update('ChargingStation', 'DE*GEF*S1', 'transparencySoftwareStatus', [ status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ], given) ]),
-                                        { checkOwnership: false }))
-                .toThrow("'transparencySoftwareStatus' is not given as the content holds it: its elements are in the order the content holds them in, each once!");
+        // As WWCP_POI3 refuses them: the station read again first, which refuses a release given twice, then what the
+        // content holds, the releases in the order of their identifications.
+        const unordered = [ status('OpenChargingCloud:chargy-1.1', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ];
+        const refusal   = (given: JSONObject[]): () => RoamingNetwork => () =>
+            applyChangeSet(before, changeSet(before, [ update('ChargingStation', 'DE*GEF*S1', 'transparencySoftwareStatus', [ status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ], given) ]),
+                           { checkOwnership: false });
+
+        expect(refusal(unordered))
+            .toThrow(`Change 0: the property 'transparencySoftwareStatus' of the charging station 'DE*GEF*S1' is not given as the content holds it, '${canonicalJSON([ ...unordered ].reverse())}'!`);
+        expect(refusal([ status('OpenChargingCloud:chargy-1.0', 'forInformationOnly'), status('OpenChargingCloud:chargy-1.0', 'germanCalibrationLaw') ]))
+            .toThrow("Change 0: The given JSON representation of a charging station is invalid: A transparency software release of the charging station 'DE*GEF*S1' must not be given twice!");
 
     });
 

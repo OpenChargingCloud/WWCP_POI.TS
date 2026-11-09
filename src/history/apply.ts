@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { canonicalJSON, ordinal }         from '../json/canonical.ts';
+import { ordinal }                        from '../json/canonical.ts';
 import { asText, clone, get, isArray, isObject, sameValue, set, unset, without, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toTimestamp, withArticle }       from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
@@ -28,7 +28,7 @@ import { ignoringCase }                   from '../network/identifications.ts';
 import { caseId, evseGroupId, evseId, evseTemplateId, freeId, operatorId, operatorOf as operatorOfId, poolGroupId, poolId, poolTemplateId, stationGroupId, stationId,
          stationTemplateId, tariffGroupId, tariffId, tariffTemplateId, timestampOf, type Id } from '../network/poiJSON.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
-import { contentText, notWritten }        from '../network/writtenForm.ts';
+import { contentText, heldAs, notWritten } from '../network/writtenForm.ts';
 import { entityPropertyName, isElementChange, type Change, type ChangeSet } from './changeSet.ts';
 import { applyElement, pathText }       from './elements.ts';
 import { brokenPrecondition }           from './preconditions.ts';
@@ -433,19 +433,87 @@ const INFRASTRUCTURE: Readonly<Record<string, { readonly what: string, readonly 
 };
 
 
+/** A change as it is applied: an element change as the change of the property it amounts to, which names it. */
+type AppliedChange = Change & { readonly elementChange?: Change };
+
+/**
+ * The checks of the new values of the change being applied: run after the party it changed is read again, as WWCP_POI3
+ * runs `TryHeldAsGiven` there; at once where no change set is applied.
+ */
+let heldChecks: (() => void)[] | undefined;
+
 /**
  * A new value as a change gives it, which is what the content holds (section 4, "New values"): applied as it is, and refused
- * when it is written otherwise, as WWCP_POI refuses it, as far as this library tells the written form (`notWritten`). A
+ * when it is written otherwise, as WWCP_POI refuses it (`notHeldAsGiven`), after the party it changed is read again. A
  * value WWCP_POI writes otherwise in another way, e.g. an identification in another case, ends in other after ETags here.
  */
-function asGiven(value: JSONValue, property: string | undefined, where: string): JSONValue {
+function asGiven(value: JSONValue, property: string | undefined, change: AppliedChange, index: number, what: string, heldId?: string): JSONValue {
 
-    const found = notWritten(value, property, property ?? '', 'new value');
+    const check = (): void => {
+        const refused = notHeldAsGiven(value, property, change, index, what, heldId);
+        if (refused !== undefined)
+            throw new POIError(refused);
+    };
 
-    if (found !== undefined)
-        throw new POIError(`${where}: ${found.path === '' ? 'it' : `'${found.path}'`} is not given as the content holds it: ${found.reason}!`);
+    if (heldChecks === undefined)
+        check();
+    else
+        heldChecks.push(check);
 
     return clone(value);
+
+}
+
+/**
+ * Why the content does not hold the new value of a change as the change gives it, in the words of WWCP_POI3
+ * (`TryHeldAsGiven`): of an `UpdateProperty` the property, of an `Add` the entity without its lastChange, of an `AddElement`
+ * or a `ReplaceElement` the element, of an `UpdateElementProperty` the property of the element, compared as content with
+ * what the content holds there, as far as this library tells it (`heldAs`), named; undefined where it does. A removal
+ * gives no new value. Where this library tells only where it is written otherwise, that is named.
+ */
+function notHeldAsGiven(given: JSONValue, property: string | undefined, change: AppliedChange, index: number, what: string, heldId: string | undefined): string | undefined {
+
+    const element = change.elementChange;
+
+    if (element !== undefined && (element.kind === 'RemoveElement' || element.kind === 'RemoveElementProperty'))
+        return undefined;
+
+    const found = notWritten(given, property, property ?? '', 'new value');
+
+    if (found === undefined && (heldId === undefined || !isObject(given) || given['@id'] === heldId))
+        return undefined;
+
+    const held = heldAs(given, property);
+
+    if (held === undefined)
+        return found === undefined
+                   ? undefined
+                   : `Change ${index}, the ${what}${change.kind === 'Add' ? ' to add' : ''}: ${found.path === '' ? 'it' : `'${found.path}'`} is not given as the content holds it: ${found.reason}!`;
+
+    // Its identification as its type writes it, e.g. DE*GEF*EG9, not DEGEFEG9.
+    let heldValue  = heldId !== undefined && isObject(held.value) ? { ...held.value, '@id': heldId } : held.value;
+    let givenValue = given;
+    let named: string;
+
+    if (element !== undefined) {
+
+        const elementProperty = element.kind === 'UpdateElementProperty';
+        const removal         = applyElement({ ...element, kind: elementProperty ? 'RemoveElementProperty' : 'RemoveElement', oldValue: undefined, newValue: undefined }, heldValue);
+
+        named       = `'${pathText(element.elementPath ?? [], elementProperty ? element.propertyName : undefined)}' of the ${what}`;
+        givenValue  = element.newValue ?? null;
+        heldValue   = removal.error === undefined ? removal.current : undefined;
+
+    }
+    else
+        named = change.kind === 'Add' ? `the ${what} to add` : `the property '${property ?? ''}' of the ${what}`;
+
+    if (heldValue === undefined)
+        return `Change ${index}: ${named} is given as '${contentText(givenValue)}', which the content does not hold at all!`;
+
+    return sameValue(givenValue, heldValue)
+               ? undefined
+               : `Change ${index}: ${named} is not given as the content holds it, '${contentText(heldValue)}'!`;
 
 }
 
@@ -616,7 +684,7 @@ function checkOldValue(change: Change, current: JSONValue | undefined, index: nu
  * written form of its new value. Keys, and the tree hash algorithms, whose order is content, are changed as a whole. Any
  * other change stays as it is.
  */
-function resolveElementChange(change: Change, entity: JSONObject | undefined, what: string, index: number): Change {
+function resolveElementChange(change: Change, entity: JSONObject | undefined, what: string, index: number): AppliedChange {
 
     if (!isElementChange(change))
         return change;
@@ -644,13 +712,14 @@ function resolveElementChange(change: Change, entity: JSONObject | undefined, wh
         oldValue:      undefined,
         newValue:      applied.newValue,
         elementPath:   undefined,
+        elementChange: change,
     };
 
 }
 
 
 /** Applies an `UpdateProperty` or a `RemoveProperty` to an entity, and its `lastChange`, where it has one. */
-function applyProperty(entity: JSONObject, change: Change, index: number, what: string, lastChange: string | undefined): void {
+function applyProperty(entity: JSONObject, change: AppliedChange, index: number, what: string, lastChange: string | undefined): void {
 
     const property = change.propertyName;
 
@@ -665,7 +734,7 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
     else {
         if (change.newValue === undefined)
             throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
-        set(entity, property, asGiven(change.newValue, property, `Change ${String(index)}, the ${what}`));
+        set(entity, property, asGiven(change.newValue, property, change, index, what));
     }
 
     if (lastChange !== undefined)
@@ -675,13 +744,13 @@ function applyProperty(entity: JSONObject, change: Change, index: number, what: 
 
 
 /** The entity to add of a change: an object of the identification the change names, with its timestamps. */
-function entityToAdd(change: Change, index: number, what: string, createdAt: string): JSONObject {
+function entityToAdd(change: Change, index: number, what: string, createdAt: string, heldId?: string): JSONObject {
 
     if (!isObject(change.newValue) || change.newValue['@id'] !== change.entityId)
         throw new POIError(`Change ${index}: the ${what} to add must be a JSON object with the identification '${change.entityId}'!`);
 
     // The change set sets its lastChange, whatever an added entity gives.
-    const added = asGiven(without(change.newValue, 'lastChange'), undefined, `Change ${String(index)}, the ${what} to add`) as JSONObject;
+    const added = asGiven(without(change.newValue, 'lastChange'), undefined, change, index, what, heldId) as JSONObject;
 
     if (get(added, 'created') === undefined)
         added['created'] = createdAt;
@@ -755,7 +824,9 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
             if (found !== undefined)
                 throw new POIError(`Change ${index}: the ${what} already exists!`);
 
-            const added = entityToAdd(change, index, what, createdAt);
+            // Its identification as its type writes it, e.g. DE*GEF*EG9, not DEGEFEG9: the content holds it so, and WWCP_POI3
+            // refuses it otherwise (`TryHeldAsGiven`), after the operator is read again.
+            const added = entityToAdd(change, index, what, createdAt, INFRASTRUCTURE_IDS[change.entityType]?.(change.entityId)?.text);
 
             // The parent it is added to, in WWCP_POI3's words (`TryFindParentArray`): its operator, its charging pool or its
             // charging station, named in every spelling its type considers equal.
@@ -785,14 +856,6 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
                 if (holder === undefined)
                     throw new POIError(`Change ${index}: the charging station '${change.parentEntityId}' of the EVSE '${change.entityId}' does not exist!`);
             }
-
-            // Its identification as its type writes it, e.g. DE*GEF*EG9, not DEGEFEG9: the content holds it so, and WWCP_POI3
-            // refuses it otherwise (`TryHeldAsGiven`), the entity as given held without its lastChange and, unless given,
-            // its created.
-            const written = INFRASTRUCTURE_IDS[change.entityType]?.(change.entityId)?.text;
-
-            if (written !== undefined && written !== change.entityId)
-                throw new POIError(`Change ${index}: the ${what} to add is not given as the content holds it, '${canonicalJSON({ ...without(change.newValue as JSONObject, 'lastChange'), '@id': written })}'!`);
 
             // The parent as its operator keeps it, whose last change it is.
             parentType  = change.parentEntityType ?? 'ChargingStationOperator';
@@ -1032,7 +1095,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             else {
                 if (change.newValue === undefined)
                     throw new POIError(`Change ${index}: an UpdateProperty needs its newValue!`);
-                set(child, property, asGiven(change.newValue, property, `Change ${String(index)}, the ${what}`));
+                set(child, property, asGiven(change.newValue, property, change, index, what));
             }
 
             break;
@@ -1044,7 +1107,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
             if (!isObject(change.newValue) || typeof change.newValue['@id'] !== 'string' || !sameId(change.newValue['@id'], change.entityId))
                 throw new POIError(`Change ${index}: the ${type.what} to add must be a JSON object with the identification '${change.entityId}'!`);
 
-            const added    = asGiven(without(change.newValue, 'lastChange'), undefined, `Change ${String(index)}, the ${what} to add`) as JSONObject;
+            const added    = asGiven(without(change.newValue, 'lastChange'), undefined, change, index, what) as JSONObject;
             const children = get(party, type.property);
 
             if (children === undefined)
@@ -1159,7 +1222,7 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
                 (gridPoint ? type.id(given['@id'])?.key !== id.key : given['@id'] !== change.entityId))
                 throw new POIError(`Change ${index}: the ${type.what} to add must be a JSON object with the identification '${gridPoint ? id.text : change.entityId}'!`);
 
-            const added    = type.timestamps ? entityToAdd(change, index, what, createdAt) : asGiven(given, undefined, `Change ${String(index)}, the ${what} to add`) as JSONObject;
+            const added    = type.timestamps ? entityToAdd(change, index, what, createdAt) : asGiven(given, undefined, change, index, what) as JSONObject;
             const children = get(party, property);
 
             if (children === undefined)
@@ -2172,7 +2235,11 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
     // its signer chose (SPECIFICATION.md 4, POI3-ISSUES.md S5, WWCP_POI 12e993a); its keys are checked at its createdAt still.
     const createdAt  = toTimestamp(stampOf(before, changeSet));
 
-    changeSet.changes.forEach((change, index) => {
+    /**
+     * Applies the given change, reads the party it changed again, and checks its new values as the content holds them, as
+     * WWCP_POI3 does (`TryParseWithinChangeSet`, then `TryHeldAsGiven`).
+     */
+    function applyChange(change: Change, index: number): void {
 
         let changed: Changed | undefined;
 
@@ -2209,6 +2276,23 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
         if (invalid !== undefined)
             throw new POIError(`Change ${index}: ${invalid}`);
+
+        // What is signed is what is held: its new values as the party read again writes them.
+        for (const check of heldChecks ?? [])
+            check();
+
+    }
+
+    changeSet.changes.forEach((change, index) => {
+
+        heldChecks = [];
+
+        try {
+            applyChange(change, index);
+        }
+        finally {
+            heldChecks = undefined;
+        }
 
     });
 
