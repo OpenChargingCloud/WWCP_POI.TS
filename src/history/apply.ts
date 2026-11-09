@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { ordinal }                        from '../json/canonical.ts';
+import { canonicalJSON, ordinal }         from '../json/canonical.ts';
 import { asText, clone, get, isArray, isObject, sameValue, set, unset, without, type JSONArray, type JSONObject, type JSONValue } from '../json/value.ts';
 import { toTimestamp, withArticle }       from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
@@ -23,7 +23,8 @@ import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
 import { invalidGroupOrOffer, invalidPaymentOption } from '../network/references.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
-import { caseId, evseGroupId, freeId, poolGroupId, stationGroupId, timestampOf, type Id } from '../network/poiJSON.ts';
+import { caseId, evseGroupId, evseId, evseTemplateId, freeId, operatorId, operatorOf as operatorOfId, poolGroupId, poolId, poolTemplateId, stationGroupId, stationId,
+         stationTemplateId, tariffGroupId, tariffId, tariffTemplateId, timestampOf, type Id } from '../network/poiJSON.ts';
 import { trimmed }                        from '../network/versionTexts.ts';
 import { notWritten }                     from '../network/writtenForm.ts';
 import { entityPropertyName, isElementChange, type Change, type ChangeSet } from './changeSet.ts';
@@ -361,6 +362,31 @@ const TARIFF_TYPES = new Set([ 'ChargingTariff', 'ChargingTariffTemplate', 'Char
 
 const INFRASTRUCTURE_TYPES = new Set([ ...Object.keys(OPERATOR_CHILD_ARRAYS), 'ChargingPool', 'ChargingStation', 'EVSE' ]);
 
+/**
+ * The identification of each kind of infrastructure, as its C# type reads it (`ChargingPool_Id`, …): the operator it names,
+ * and which other spellings equal it, e.g. `DEGEFP1` and `DE*GEF*P1`.
+ */
+const INFRASTRUCTURE_IDS: Readonly<Record<string, (given: string) => Id | undefined>> = {
+    ChargingPool:             poolId,
+    ChargingStation:          stationId,
+    EVSE:                     evseId,
+    ChargingTariff:           tariffId,
+    EVSEGroup:                evseGroupId,
+    ChargingStationGroup:     stationGroupId,
+    ChargingPoolGroup:        poolGroupId,
+    ChargingTariffGroup:      tariffGroupId,
+    EVSETemplate:             evseTemplateId,
+    ChargingStationTemplate:  stationTemplateId,
+    ChargingPoolTemplate:     poolTemplateId,
+    ChargingTariffTemplate:   tariffTemplateId,
+};
+
+/** The identification of the charging station operator an identification of infrastructure names, e.g. `DE*GEF` of `DEGEFP1`. */
+function operatorIdOf(entityType: string, entityId: string): string | undefined {
+    const id = INFRASTRUCTURE_IDS[entityType]?.(entityId);
+    return id === undefined ? undefined : operatorOfId(id);
+}
+
 /** The properties of a charging pool a charging pool template can give its members (`ChargingPoolTemplatePoolProperties`). */
 const POOL_TEMPLATE_PROPERTIES = [ 'dataLicenses', 'address', 'geoLocation', 'parkingType', 'accessibility', 'hotline', 'gridConnectionPointId', 'brands',
                                    'openingTimes', 'energyMix', 'images', 'timeZone', 'facilities', 'paymentOptions', 'authenticationModes', 'uiFeatures',
@@ -443,17 +469,37 @@ interface Found {
 }
 
 
-/** Finds an infrastructure entity within its charging station operator (`Find` of the C# implementation). */
+/**
+ * Whether the identification an entity is kept with is the given one, in every spelling its type considers equal, e.g.
+ * `DEGEFP1` for `DE*GEF*P1`: a change may name it so (`StoredId` of the C# implementation).
+ */
+function names(stored: JSONValue | undefined, entityType: string, given: string): boolean {
+
+    if (typeof stored !== 'string')
+        return false;
+
+    if (stored === given)
+        return true;
+
+    const parse  = INFRASTRUCTURE_IDS[entityType];
+    const left   = parse?.(stored);
+    const right  = parse?.(given);
+
+    return left !== undefined && left.key === right?.key;
+
+}
+
+/** Finds an infrastructure entity within its charging station operator, as a change may name it (`StoredId` and `Find`). */
 function find(operator: JSONObject, entityType: string, entityId: string): Found | undefined {
 
-    const operatorId  = asText(operator['@id']);
+    const ownId       = asText(operator['@id']);
     const childArray  = OPERATOR_CHILD_ARRAYS[entityType];
 
     if (childArray !== undefined) {
         const children = get(operator, childArray);
         for (const child of objectsOf(children))
-            if (child['@id'] === entityId)
-                return { entity: child, container: children as JSONArray, holder: operator, property: childArray, parentType: 'ChargingStationOperator', parentId: operatorId };
+            if (names(child['@id'], entityType, entityId))
+                return { entity: child, container: children as JSONArray, holder: operator, property: childArray, parentType: 'ChargingStationOperator', parentId: ownId };
         return undefined;
     }
 
@@ -462,8 +508,8 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
     for (const pool of objectsOf(pools)) {
 
         if (entityType === 'ChargingPool') {
-            if (pool['@id'] === entityId)
-                return { entity: pool, container: pools as JSONArray, holder: operator, property: 'chargingPools', parentType: 'ChargingStationOperator', parentId: operatorId };
+            if (names(pool['@id'], entityType, entityId))
+                return { entity: pool, container: pools as JSONArray, holder: operator, property: 'chargingPools', parentType: 'ChargingStationOperator', parentId: ownId };
             continue;
         }
 
@@ -472,7 +518,7 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
         for (const station of objectsOf(stations)) {
 
             if (entityType === 'ChargingStation') {
-                if (station['@id'] === entityId)
+                if (names(station['@id'], entityType, entityId))
                     return { entity: station, container: stations as JSONArray, holder: pool, property: 'chargingStations', parentType: 'ChargingPool', parentId: asText(pool['@id']) };
                 continue;
             }
@@ -480,7 +526,7 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
             const evses = get(station, 'EVSEs');
 
             for (const evse of objectsOf(evses))
-                if (evse['@id'] === entityId)
+                if (names(evse['@id'], entityType, entityId))
                     return { entity: evse, container: evses as JSONArray, holder: station, property: 'EVSEs', parentType: 'ChargingStation', parentId: asText(station['@id']) };
 
         }
@@ -492,18 +538,27 @@ function find(operator: JSONObject, entityType: string, entityId: string): Found
 }
 
 
-/** The charging station operator an identification names: the one whose identification and a '*' it starts with. */
-function operatorOf(content: JSONObject, entityId: string): JSONObject | undefined {
+/** The charging station operator of the given identification, e.g. `DE*GEF`, as its type compares them. */
+const operatorNamed = (content: JSONObject, id: string): JSONObject | undefined =>
+    objectsOf(get(content, 'chargingStationOperators')).find(operator => operatorId(asText(operator['@id']))?.key === operatorId(id)?.key);
 
-    let found: JSONObject | undefined;
+/**
+ * The identification the given operator keeps the named entity with: the operator itself, or one of its infrastructure,
+ * in every spelling its type considers equal. Undefined for an entity the operator does not have (`StoredId`).
+ */
+function storedId(operator: JSONObject, entityType: string, entityId: string | undefined): string | undefined {
 
-    for (const operator of objectsOf(get(content, 'chargingStationOperators'))) {
-        const id = asText(operator['@id']);
-        if (entityId.startsWith(id + '*') && (found === undefined || id.length > asText(found['@id']).length))
-            found = operator;
+    if (entityId === undefined)
+        return undefined;
+
+    if (entityType === 'ChargingStationOperator') {
+        const given = operatorId(entityId);
+        return given !== undefined && given.key === operatorId(asText(operator['@id']))?.key ? asText(operator['@id']) : undefined;
     }
 
-    return found;
+    const found = INFRASTRUCTURE_IDS[entityType] === undefined ? undefined : find(operator, entityType, entityId);
+
+    return found === undefined ? undefined : asText(found.entity['@id']);
 
 }
 
@@ -636,16 +691,25 @@ function entityToAdd(change: Change, index: number, what: string, createdAt: str
 function applyInfrastructureChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
     // Named as WWCP_POI3 names it, e.g. "the charging pool 'DE*GEF*P1'" (`Describe`).
-    const what      = `${INFRASTRUCTURE[change.entityType]?.what ?? change.entityType} '${change.entityId}'`;
-    const operator  = operatorOf(content, change.entityId);
+    const description  = INFRASTRUCTURE[change.entityType]?.what ?? change.entityType;
+    const what         = `${description} '${change.entityId}'`;
+
+    // The operator its identification names, in every spelling its type reads, e.g. DE*GEF of DEGEFP1.
+    const ownerId      = operatorIdOf(change.entityType, change.entityId);
+
+    if (ownerId === undefined)
+        throw new POIError(`Change ${index}: invalid ${description} identification '${change.entityId}'!`);
+
+    const operator     = operatorNamed(content, ownerId);
 
     if (operator === undefined)
-        throw new POIError(`Change ${index}: the charging station operator of the ${what} does not exist!`);
+        throw new POIError(`Change ${index}: the charging station operator '${ownerId}' of the ${what} does not exist!`);
 
+    // The entity, as its operator keeps it, and its actual parent.
     const found = find(operator, change.entityType, change.entityId);
 
     if (found !== undefined && change.parentEntityType !== undefined &&
-       (change.parentEntityType !== found.parentType || change.parentEntityId !== found.parentId))
+       (change.parentEntityType !== found.parentType || storedId(operator, change.parentEntityType, change.parentEntityId) !== found.parentId))
         throw new POIError(`Change ${index}: the ${what} belongs to ${found.parentType} '${found.parentId}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
 
     // An element change is applied as the change of the property it amounts to.
@@ -682,34 +746,46 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
 
             const added = entityToAdd(change, index, what, createdAt);
 
-            // The parent it is added to: its operator, charging pool or charging station.
-            parentType  = change.parentEntityType ?? 'ChargingStationOperator';
-            parentId    = change.parentEntityId   ?? asText(operator['@id']);
-
+            // The parent it is added to, in WWCP_POI3's words (`TryFindParentArray`): its operator, its charging pool or its
+            // charging station, named in every spelling its type considers equal.
             let holder: JSONObject | undefined;
             let property: string;
 
             if (OPERATOR_CHILD_ARRAYS[change.entityType] !== undefined || change.entityType === 'ChargingPool') {
-                if (parentType !== 'ChargingStationOperator' || parentId !== operator['@id'])
-                    throw new POIError(`Change ${index}: ${withArticle(what, false)} belongs to ChargingStationOperator '${asText(operator['@id'])}', not to ${parentType} '${parentId}'!`);
+                if (change.parentEntityType !== undefined &&
+                   (change.parentEntityType !== 'ChargingStationOperator' || storedId(operator, 'ChargingStationOperator', change.parentEntityId) === undefined))
+                    throw new POIError(`Change ${index}: ${withArticle(what, false)} belongs to ChargingStationOperator '${asText(operator['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
                 holder   = operator;
                 property = OPERATOR_CHILD_ARRAYS[change.entityType] ?? 'chargingPools';
             }
             else if (change.entityType === 'ChargingStation') {
-                if (parentType !== 'ChargingPool')
-                    throw new POIError(`Change ${index}: a charging station is added to a charging pool!`);
-                holder   = find(operator, 'ChargingPool', parentId)?.entity;
+                if (change.parentEntityType !== 'ChargingPool' || change.parentEntityId === undefined)
+                    throw new POIError(`Change ${index}: adding the charging station '${change.entityId}' needs its ChargingPool as its parent!`);
+                holder   = find(operator, 'ChargingPool', change.parentEntityId)?.entity;
                 property = 'chargingStations';
+                if (holder === undefined)
+                    throw new POIError(`Change ${index}: the charging pool '${change.parentEntityId}' of the charging station '${change.entityId}' does not exist!`);
             }
             else {
-                if (parentType !== 'ChargingStation')
-                    throw new POIError(`Change ${index}: an EVSE is added to a charging station!`);
-                holder   = find(operator, 'ChargingStation', parentId)?.entity;
+                if (change.parentEntityType !== 'ChargingStation' || change.parentEntityId === undefined)
+                    throw new POIError(`Change ${index}: adding the EVSE '${change.entityId}' needs its ChargingStation as its parent!`);
+                holder   = find(operator, 'ChargingStation', change.parentEntityId)?.entity;
                 property = 'EVSEs';
+                if (holder === undefined)
+                    throw new POIError(`Change ${index}: the charging station '${change.parentEntityId}' of the EVSE '${change.entityId}' does not exist!`);
             }
 
-            if (holder === undefined)
-                throw new POIError(`Change ${index}: the ${parentType} '${parentId}' to add the ${what} to does not exist!`);
+            // Its identification as its type writes it, e.g. DE*GEF*EG9, not DEGEFEG9: the content holds it so, and WWCP_POI3
+            // refuses it otherwise (`TryHeldAsGiven`), the entity as given held without its lastChange and, unless given,
+            // its created.
+            const written = INFRASTRUCTURE_IDS[change.entityType]?.(change.entityId)?.text;
+
+            if (written !== undefined && written !== change.entityId)
+                throw new POIError(`Change ${index}: the ${what} to add is not given as the content holds it, '${canonicalJSON({ ...without(change.newValue as JSONObject, 'lastChange'), '@id': written })}'!`);
+
+            // The parent as its operator keeps it, whose last change it is.
+            parentType  = change.parentEntityType ?? 'ChargingStationOperator';
+            parentId    = storedId(operator, parentType, change.parentEntityId ?? asText(operator['@id']));
 
             const children = get(holder, property);
 
@@ -1594,15 +1670,16 @@ function ownerOf(content: JSONObject, change: Change, index: number, earlier: Ea
 
     if (INFRASTRUCTURE_TYPES.has(change.entityType)) {
 
-        const operator = operatorOf(content, change.entityId);
+        // The operator its identification names, whether it exists or not: its signature is missing then.
+        const ownerId = operatorIdOf(change.entityType, change.entityId);
 
-        if (operator === undefined)
-            throw new POIError(`Change ${index}: the charging station operator of the ${change.entityType} '${change.entityId}' does not exist!`);
+        if (ownerId === undefined)
+            throw new POIError(`Change ${index}: the identification '${change.entityId}' of the ${change.entityType} names no charging station operator!`);
 
         return {
             kind:   'party',
             type:   'ChargingStationOperator',
-            id:     asText(operator['@id']),
+            id:     ownerId,
             usage:  TARIFF_TYPES.has(change.entityType) ? KeyUsages.Tariffs : KeyUsages.Infrastructure,
             keys:   'signing',
         };
@@ -1827,8 +1904,12 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
 
         const party = parties.get(`${owner.type}:${owner.id}`);
 
+        // A party that does not exist, e.g. the operator an identification of infrastructure names, has no key to sign it
+        // with: its signature is missing, as WWCP_POI3 says (`SignerOf`).
         if (party === undefined)
-            throw new POIError(`${describeChange(change, index)}: the ${owner.type} '${owner.id}' does not exist!`);
+            throw new POIError(owner.keys === 'identity'
+                                   ? `${describeChange(change, index)} needs a signature by an identity key of the ${owner.type} '${owner.id}'!`
+                                   : `${describeChange(change, index)} needs a signature by a signing key of the ${owner.type} '${owner.id}'!`);
 
         // A party without signing keys is changed by the roaming network operator in its place (`SignerOf`), by signing
         // keys that may sign `party`, as all it owns, or the usage of the change; identity keys of the roaming network

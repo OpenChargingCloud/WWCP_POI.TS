@@ -26,8 +26,31 @@
   WWCP_POI's words: "Change 0: an EVSE group 'DE*GEF*EG9' belongs to ChargingStationOperator 'DE*GEF', not to
   ChargingPool 'DE*GEF*P1'!", not "the EVSE group … is added to its charging station operator 'DE*GEF', …". Probed
   against WWCP_POI `8b0580f` on 29 change sets of every kind of entity: 27 in the same verdict and words. WWCP_POI
-  refuses one change when it reads the change set, in other words, and takes the parent 'de*gef' for 'DE*GEF', which
-  this library does not yet (as it takes no other spelling of an infrastructure identification in a change).
+  refuses one change when it reads the change set, in other words, and takes the parent 'de*gef' for 'DE*GEF' (see
+  below).
+- A change names the infrastructure of a charging station operator in every spelling its identification type considers
+  equal, as WWCP_POI3 finds it (`StoredId`): `DEGEFP1`, `DEGEF*P1` or `degefP1` for the charging pool `DE*GEF*P1`,
+  `DE*GEF*E11` for the EVSE `DE*GEF*E1*1`, `de*gef` for its operator, as the entity, as its parent and as the parent it
+  is added to. The operator is the one its identification names, as its type reads it, and signs the change, whether it
+  exists or not ("… needs a signature by a signing key of the ChargingStationOperator 'DE*XXX'!"). Before, only the very
+  text it is kept with was found, and other spellings were refused. Refused in WWCP_POI3's words: "invalid charging pool
+  identification 'de*gef*p1'!", "the charging station operator 'DE*XXX' of the charging pool 'DE*XXX*P1' does not
+  exist!", "adding the charging station '…' needs its ChargingPool as its parent!", "the charging pool '…' of the
+  charging station '…' does not exist!", and an entity added under an identification its type writes otherwise, "the EVSE
+  group 'DEGEFEG9' to add is not given as the content holds it, '{"@id":"DE*GEF*EG9",…}'!".
+- The kind, the entity type and the entity identification of a change are read trimmed, as WWCP_POI3 reads them
+  (`ParseMandatoryText`), and the identification of a change set is of its content so read: a change set naming
+  `' DE*GEF*P1'` is identified as one naming `'DE*GEF*P1'`, and refused, "is not identified by its content", when
+  identified by the text untrimmed.
+- Probed against WWCP_POI `8b0580f` on 190 change sets, as `TryApplyPendingChangeSet` reads and applies them and
+  `TryCheckCoSigning` names their owners: the same verdict for each, the same content after each of the 94 taken (after
+  ETags of `CreateChangeSet`), the same words but for seven. Four have two faults at once, refused in another order (an
+  EVSE removed whose station then exceeds its maximum power and whose group names it; a tariff without elements added
+  under another spelling); a tariff without elements is refused without "Change 0: ", as this library reads the
+  operator once after all changes; and WWCP_POI refuses an empty identification and a parent type without its
+  identification when it reads a change set, as "Invalid change 0: …".
+  Who must sign a change of a party without signing keys is named otherwise: WWCP_POI names the roaming network
+  operator signing in its place, this library the party.
 - The key statement of the roaming network operator is refused as its constructor in WWCP_POI3 refuses it: an identity
   key given twice ("An identity key of a key statement must not be given twice!") before the order of its identity keys
   is looked at, and a signature by one identity key given twice ("An identity key signs a key statement once."), which

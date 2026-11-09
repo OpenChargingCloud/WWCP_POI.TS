@@ -17,7 +17,7 @@
 
 import { checkContext, onlyProperties, optionalString, requireArray, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }        from '../json/canonical.ts';
-import { get, isArray, isObject, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { asText, get, isArray, isObject, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { hash }                      from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
 import { toHex }                     from '../encoding/text.ts';
@@ -37,14 +37,56 @@ export const MERGE_CHANGE_SET_ID_PREFIX = 'merge-';
 
 /**
  * The identification of a change set by its content (4): the SHA-256 of its canonical JSON with its context, without
- * `@id` and its signatures, as 64 lowercase hex digits, in every epoch.
+ * `@id` and its signatures, as 64 lowercase hex digits, in every epoch; of its content as WWCP_POI3 reads it (`asRead`).
  */
 export function changeSetIdentification(json: JSONObject): string {
 
-    const content = without(json, '@id', 'signatures');
+    const content = without(asRead(json), '@id', 'signatures');
     set(content, '@context', CHANGE_SET_CONTEXT);
 
     return toHex(hash('sha256', canonicalJSONBytes(content)));
+
+}
+
+/** A mandatory text of a change as WWCP_POI3 reads it: trimmed, unless nothing is left, which is refused as empty. */
+const readTrimmed = (text: string): string =>
+    trimmed(text) === '' ? text : trimmed(text);
+
+/**
+ * A change set as WWCP_POI3 reads it, whose content its identification is of: the kind, the entity type and the entity
+ * identification of each change trimmed, as `ParseMandatoryText` reads them, e.g. `DE*GEF*P1` of ` DE*GEF*P1`, and as
+ * `ChangeSet.parse` reads them. A change set identified by them untrimmed is identified otherwise.
+ */
+function asRead(json: JSONObject): JSONObject {
+
+    const changes = get(json, 'changes');
+
+    if (!isArray(changes))
+        return json;
+
+    const read = changes.map(change => {
+
+        if (!isObject(change))
+            return change;
+
+        const untrimmed = [ 'kind', 'entityType', 'entityId' ].filter(property => {
+            const value = change[property];
+            return typeof value === 'string' && readTrimmed(value) !== value;
+        });
+
+        if (untrimmed.length === 0)
+            return change;
+
+        const copy: JSONObject = { ...change };
+
+        for (const property of untrimmed)
+            copy[property] = readTrimmed(asText(change[property]));
+
+        return copy;
+
+    });
+
+    return read.some((change, index) => change !== changes[index]) ? { ...json, changes: read } : json;
 
 }
 
@@ -112,7 +154,7 @@ function checkRebasedFrom(json: JSONObject, id: string): void {
     const changes = get(json, 'changes');
 
     (isArray(changes) ? changes : []).forEach((change, index) => {
-        if (isObject(change) && get(change, 'oldValue') === undefined && change['kind'] !== 'Add' && change['kind'] !== 'AddElement')
+        if (isObject(change) && get(change, 'oldValue') === undefined && ![ 'Add', 'AddElement' ].includes(readTrimmed(asText(change['kind']))))
             throw new POIError(`Change ${index} of the change set '${id}', which was rebased, has no old value: the rebase may have overwritten a concurrent change!`);
     });
 
@@ -336,7 +378,7 @@ export class ChangeSet {
 
             onlyProperties(change, [ '@context', 'kind', 'entityType', 'entityId', 'propertyName', 'oldValue', 'newValue', 'parentEntityType', 'parentEntityId', 'elementPath' ], `Change ${index}`);
 
-            const kind = requireString(change, 'kind', `The kind of change ${index}`);
+            const kind = readTrimmed(requireString(change, 'kind', `The kind of change ${index}`));
 
             if (!(KINDS as readonly string[]).includes(kind))
                 throw new POIError(`Change ${index}: unknown kind '${kind}'!`);
@@ -351,8 +393,8 @@ export class ChangeSet {
 
             const parsed: Change = {
                 kind:              kind as ChangeKind,
-                entityType:        requireString (change, 'entityType',       `The entity type of change ${index}`),
-                entityId:          requireString (change, 'entityId',         `The entity of change ${index}`),
+                entityType:        readTrimmed(requireString(change, 'entityType', `The entity type of change ${index}`)),
+                entityId:          readTrimmed(requireString(change, 'entityId',   `The entity of change ${index}`)),
                 propertyName:      optionalString(change, 'propertyName',     `The property of change ${index}`),
                 oldValue:          get(change, 'oldValue'),
                 newValue:          get(change, 'newValue'),
