@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { checkContext, onlyProperties, optionalString, requireArray, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
+import { checkContext, onlyProperties, requireArray, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
 import { canonicalJSONBytes }        from '../json/canonical.ts';
 import { asText, get, isArray, isObject, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { hash }                      from '../crypto/hash.ts';
@@ -30,6 +30,9 @@ import { POIError }                  from '../errors.ts';
 
 /** The context of a change set, also of the signature input of its signatures (4). */
 export const CHANGE_SET_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/changeSet/v3';
+
+/** The context of a change, where it is given; WWCP_POI3 writes a change within its change set without it. */
+export const CHANGE_CONTEXT = CONTEXT_PREFIX + 'roamingNetwork/change/v1';
 
 /** How the identification of the change set of a merge starts, which is identified by its parents, not by its content (5.3). */
 export const MERGE_CHANGE_SET_ID_PREFIX = 'merge-';
@@ -53,9 +56,11 @@ const readTrimmed = (text: string): string =>
     trimmed(text) === '' ? text : trimmed(text);
 
 /**
- * A change set as WWCP_POI3 reads it, whose content its identification is of: the kind, the entity type and the entity
- * identification of each change trimmed, as `ParseMandatoryText` reads them, e.g. `DE*GEF*P1` of ` DE*GEF*P1`, and as
- * `ChangeSet.parse` reads them. A change set identified by them untrimmed is identified otherwise.
+ * A change set as WWCP_POI3 reads it, whose content its identification is of, as WWCP_POI3 writes each change again
+ * (`ToJSON(Embedded: true)`): the kind, the entity type and the entity identification of each change trimmed, as
+ * `ParseMandatoryText` reads them, e.g. `DE*GEF*P1` of ` DE*GEF*P1`, and as `ChangeSet.parse` reads them; without the
+ * context of a change or of a segment of its element path, without an empty element path, the property name of each
+ * segment trimmed. A change set identified by them as given is identified otherwise.
  */
 function asRead(json: JSONObject): JSONObject {
 
@@ -69,20 +74,54 @@ function asRead(json: JSONObject): JSONObject {
         if (!isObject(change))
             return change;
 
-        const untrimmed = [ 'kind', 'entityType', 'entityId' ].filter(property => {
-            const value = change[property];
-            return typeof value === 'string' && readTrimmed(value) !== value;
-        });
-
-        if (untrimmed.length === 0)
-            return change;
-
         const copy: JSONObject = { ...change };
+        let   changed = false;
 
-        for (const property of untrimmed)
-            copy[property] = readTrimmed(asText(change[property]));
+        for (const property of [ 'kind', 'entityType', 'entityId' ]) {
+            const value = change[property];
+            if (typeof value === 'string' && readTrimmed(value) !== value) {
+                copy[property] = readTrimmed(value);
+                changed = true;
+            }
+        }
 
-        return copy;
+        if (change['@context'] === CHANGE_CONTEXT) {
+            delete copy['@context'];
+            changed = true;
+        }
+
+        const path = change['elementPath'];
+
+        if (isArray(path) && path.length === 0) {
+            delete copy['elementPath'];
+            changed = true;
+        }
+
+        else if (isArray(path) && path.some(segment => isObject(segment) && (segment['@context'] === ELEMENT_PATH_SEGMENT_CONTEXT ||
+                                                                            typeof segment['propertyName'] === 'string' && readTrimmed(segment['propertyName']) !== segment['propertyName']))) {
+
+            copy['elementPath'] = path.map(segment => {
+
+                if (!isObject(segment))
+                    return segment;
+
+                const segmentCopy: JSONObject = { ...segment };
+
+                if (segment['@context'] === ELEMENT_PATH_SEGMENT_CONTEXT)
+                    delete segmentCopy['@context'];
+
+                if (typeof segment['propertyName'] === 'string')
+                    segmentCopy['propertyName'] = readTrimmed(segment['propertyName']);
+
+                return segmentCopy;
+
+            });
+
+            changed = true;
+
+        }
+
+        return changed ? copy : change;
 
     });
 
@@ -197,7 +236,10 @@ export const entityPropertyName = (change: Change): string | undefined =>
 const blank = (text: string): boolean =>
     trimmed(text) === '';
 
-/** A segment of an element path as WWCP_POI3 reads it (`POIElementPathSegment.TryParse`), or the error. */
+/**
+ * A segment of an element path as WWCP_POI3 reads it (`POIElementPathSegment.TryParse`), or the error: its property name
+ * trimmed, as `ParseMandatoryText` reads it, its element identification as given.
+ */
 function elementPathSegment(value: JSONValue, index: number): ElementPathSegment {
 
     if (!isObject(value))
@@ -219,17 +261,18 @@ function elementPathSegment(value: JSONValue, index: number): ElementPathSegment
     if (elementId !== undefined && (typeof elementId !== 'string' || blank(elementId)))
         throw new POIError(`Change ${index}: invalid element path segment: an element identifier must not be empty!`);
 
-    return { propertyName, elementId };
+    return { propertyName: trimmed(propertyName), elementId };
 
 }
 
 /**
- * Refuses a change WWCP_POI3 does not make of what it names (`RoamingNetworkChange`): an element change without an element
- * path, another change with one, a new value of JSON `null`, and of each kind what it does not take: `Add` an entity
- * object, no old value, no property; `Remove` no new value, no property; `UpdateProperty` a property and a new value;
- * `RemoveProperty` and `RemoveElementProperty` a property and no new value; `AddElement` a new value, no old value, no
- * property; `RemoveElement` no new value, no property; `ReplaceElement` a new value, no property; `UpdateElementProperty`
- * a property and a new value.
+ * Refuses a change WWCP_POI3 does not make of what it names (`RoamingNetworkChange.Refusal`): an empty entity type or
+ * identification, a parent type without its identification or the other way round, either of them empty, an element
+ * change without an element path, another change with one, a new value of JSON `null`, and of each kind what it does
+ * not take: `Add` an entity object, no old value, no property; `Remove` no new value, no property; `UpdateProperty` a
+ * property and a new value; `RemoveProperty` and `RemoveElementProperty` a property and no new value; `AddElement` a new
+ * value, no old value, no property; `RemoveElement` no new value, no property; `ReplaceElement` a new value, no
+ * property; `UpdateElementProperty` a property and a new value.
  */
 function checkChange(change: Change, index: number): void {
 
@@ -242,6 +285,9 @@ function checkChange(change: Change, index: number): void {
 
     if ((change.parentEntityType === undefined) !== (change.parentEntityId === undefined))
         refused('parent type and parent identifier must be supplied together!');
+
+    if (change.parentEntityType !== undefined && (blank(change.parentEntityType) || blank(change.parentEntityId ?? '')))
+        refused('its parent entity type and identification must not be empty!');
 
     if (change.newValue === null)
         refused('a new JSON value must not be null; a property is cleared by RemoveProperty!');
@@ -378,28 +424,53 @@ export class ChangeSet {
 
             onlyProperties(change, [ '@context', 'kind', 'entityType', 'entityId', 'propertyName', 'oldValue', 'newValue', 'parentEntityType', 'parentEntityId', 'elementPath' ], `Change ${index}`);
 
-            const kind = readTrimmed(requireString(change, 'kind', `The kind of change ${index}`));
+            const refused = (reason: string): never => {
+                throw new POIError(`Change ${index}: ${reason}`);
+            };
+
+            const context = get(change, '@context');
+
+            if (context !== undefined && context !== CHANGE_CONTEXT)
+                refused(`the JSON-LD context of the roaming network change must be '${CHANGE_CONTEXT}'!`);
+
+            // Its texts as WWCP_POI3 reads them (`TryParseText`): anything but a text refused, also JSON null; the kind,
+            // the entity type and the entity identification trimmed, the others as given; in this order.
+            const text = (property: string, description: string): string | undefined => {
+                const value = get(change, property);
+                return value === undefined || typeof value === 'string' ? value : refused(`the ${description} must be a text!`);
+            };
+
+            const mandatory = (property: string, description: string): string =>
+                readTrimmed(text(property, description) ?? refused(`the ${description} must be a text!`));
+
+            const kind = mandatory('kind', 'kind');
 
             if (!(KINDS as readonly string[]).includes(kind))
-                throw new POIError(`Change ${index}: unknown kind '${kind}'!`);
+                refused(`unknown kind '${trimmed(kind)}'!`);
+
+            const entityType        = mandatory('entityType', 'entity type');
+            const entityId          = mandatory('entityId',   'entity identification');
+            const propertyName      = text('propertyName',     'property name');
+            const parentEntityType  = text('parentEntityType', 'parent entity type');
+            const parentEntityId    = text('parentEntityId',   'parent entity identification');
 
             // An empty element path is none, as WWCP_POI3 takes it.
             const pathJSON = get(change, 'elementPath');
 
             if (pathJSON !== undefined && !isArray(pathJSON))
-                throw new POIError(`Change ${index}: the element path must be a JSON array!`);
+                refused('the element path must be a JSON array!');
 
-            const elementPath = pathJSON === undefined || pathJSON.length === 0 ? undefined : pathJSON.map(segment => elementPathSegment(segment, index));
+            const elementPath = !isArray(pathJSON) || pathJSON.length === 0 ? undefined : pathJSON.map(segment => elementPathSegment(segment, index));
 
             const parsed: Change = {
                 kind:              kind as ChangeKind,
-                entityType:        readTrimmed(requireString(change, 'entityType', `The entity type of change ${index}`)),
-                entityId:          readTrimmed(requireString(change, 'entityId',   `The entity of change ${index}`)),
-                propertyName:      optionalString(change, 'propertyName',     `The property of change ${index}`),
+                entityType,
+                entityId,
+                propertyName,
                 oldValue:          get(change, 'oldValue'),
                 newValue:          get(change, 'newValue'),
-                parentEntityType:  optionalString(change, 'parentEntityType', `The parent entity type of change ${index}`),
-                parentEntityId:    optionalString(change, 'parentEntityId',   `The parent entity of change ${index}`),
+                parentEntityType,
+                parentEntityId,
                 elementPath,
                 json:              change,
             };

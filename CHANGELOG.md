@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- A change is read as WWCP_POI3 reads it and refused in the words of its refusal after "Change N: ", as WWCP_POI3
+  refuses it with the change proposed for it on top of `8b0580f` (`RoamingNetworkChange.Refusal`, shared by its
+  constructor and `TryParse`; without it WWCP_POI3 says "Invalid change 0: …", and where its constructor refuses, the
+  words of an `ArgumentException`, e.g. "Value must not be empty. (Parameter 'EntityId')"). Its texts: anything but a
+  text refused, also JSON null, "Change 0: the kind must be a text!", where this library said "The kind of change 0 must
+  be a text!", in the order WWCP_POI3 reads them, all before the element path; the kind trimmed, also when nothing is
+  left, "Change 0: unknown kind ''!"; a parent type or identification empty, "Change 0: its parent entity type and
+  identification must not be empty!", which this library refused only when applied, as not the parent; the property
+  name of a segment of an element path trimmed. The context of a change is checked, "Change 0: the JSON-LD context of
+  the roaming network change must be '…'!", also JSON null, where this library took any. A change set is identified by
+  its changes as WWCP_POI3 writes them again (`ToJSON(Embedded: true)`): without the context of a change or of a
+  segment, without an empty element path, the property name of a segment trimmed; this library identified it by them as
+  given, taking a change set WWCP_POI3 refuses as not identified by its content. Probed with 77 change sets with
+  changes refused when read and the 630 of the earlier probes: the same verdicts as WWCP_POI `8b0580f`, the same words
+  as with the proposed change, but of a change or a segment naming a property it does not have: WWCP_POI3 does not
+  refuse it when read, and then refuses the change set as not identified by its content, this library "Change 0 must
+  not name the property 'foo'!".
 - A new value not given as the content holds it is refused as WWCP_POI3 refuses it (`TryHeldAsGiven`): after the party
   the change changed is read again, not before, and naming what the content holds. "Change 0: the property 'name' of the
   charging pool 'DE*GEF*P1' is not given as the content holds it, '{"en":"x"}'!" of an `UpdateProperty`; "Change 0: the
@@ -19,7 +36,7 @@
   with a sign, by its name. A new value of a property is checked as a value too, a URL or a currency, as within an
   object, where a version written otherwise refused it. Probed against WWCP_POI `8b0580f` with 88 change sets on the QA
   network, one with connectors on an EVSE: the same verdict and words for each, but a change refused as WWCP_POI3's
-  constructor refuses it ("Invalid change 0: …"), and, as before, who must sign identity keys of the roaming network
+  constructor refuses it ("Invalid change 0: …"; refused so since, see above), and, as before, who must sign identity keys of the roaming network
   operator given twice. The earlier probes: the same verdicts, now also the words of the
   spellings probe's `Add` with an identification written otherwise and an invalid content.
 - A change whose old value is no longer there is refused naming the value it found, as WWCP_POI3 names it
@@ -114,7 +131,7 @@
   EVSE removed whose station then exceeds its maximum power and whose group names it; a tariff without elements added
   under another spelling); a tariff without elements is refused without "Change 0: ", as this library reads the
   operator once after all changes; and WWCP_POI refuses an empty identification and a parent type without its
-  identification when it reads a change set, as "Invalid change 0: …". Who must sign a change of a party without
+  identification when it reads a change set, as "Invalid change 0: …" (refused so since, see above). Who must sign a change of a party without
   signing keys was named otherwise in four of them (see below).
 - A change of a party without signing keys, which the roaming network operator signs in its place (`SignerOf`), is
   refused unsigned as WWCP_POI3 refuses it (`TryCheckCoSigning`): naming the roaming network operator, by as many
