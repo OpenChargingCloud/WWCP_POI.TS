@@ -2,20 +2,40 @@
 
 ## Unreleased
 
+- What a change set changes is read again right after each change, as WWCP_POI3 reads it (`TryApplyRegistryChange`,
+  `TryApplyInfrastructureChange`, …): the party the change changed, a charging station operator for its
+  infrastructure, templates, groups, tariffs, offers, parking spaces and energy meter templates and groups, the party
+  embedding a model, a release, a certificate, a grid connection point or parking data, the roaming network operator.
+  A change making one a party WWCP_POI3 does not read is refused in its words, "Change 0: Invalid hotline phone number
+  '42'!", not after the last change without them; a change set making a party invalid and valid again is refused, as
+  WWCP_POI3 refuses it, where it was taken before; of two changes making a party invalid, the first is named, not what
+  is read first. The groups, offers and payment options of a charging station operator are still checked after the last
+  change, as WWCP_POI3 checks them there. The properties of the roaming network itself are taken as WWCP_POI3 takes
+  them: "Change 0: invalid name: A multi-language text must be a JSON object!", "the data source must be a nonempty
+  text!" (a blank one taken before), "the custom data must be a JSON object!", "a roaming network has no keys of its
+  own: they are the keys of its RoamingNetworkOperator!", "the property 'foo' does not exist!" for one it has not,
+  "Add of the roaming network itself is not supported yet!". Its operator: "the operator of a roaming network is
+  changed, but neither added nor removed!", "the roaming network operator 'XYZ' does not exist!", "a roaming network
+  operator of this roaming network belongs to RoamingNetwork 'QA', not to …". Probed against WWCP_POI `8b0580f` on the
+  QA network with 88 change sets, every kind of party and of what it embeds, invalid values, invalid values made valid
+  again, two of them in either order: the same verdict for each, the same words for each but two, which this library
+  words otherwise for every kind of entity, not as it reads them again: an old value no longer there, which WWCP_POI3
+  names, "…, but '{"en":"Quality Assurance"}'!", and a new value the content does not hold. The 116 change sets of the
+  spellings probe: four more in WWCP_POI3's words, the rest as before. The reading again costs about 1 s of the 80-odd
+  seconds of the conformance tests.
 - The web payment page of a charging station operator, a charging pool, a charging station and their templates, as
   WWCP_POI `848cc52` has it (`webPaymentURL`): the URL where an EV driver pays ad hoc, without an e-mobility provider,
   and starts a session, found in the static data before standing in front of a station; not the URL in the dynamic QR
   code of a station, which is of one EVSE and never part of them. Read and written as WWCP_POI reads and writes it,
-  refused when no text or no URL ("Invalid web payment URL '42'!"); taken by the members of a template without their
-  own (effective pools and stations); changed and removed by change sets. Whoever changes it redirects payments: a
-  change of it needs a signing key that may sign `payments`, and a pool, a station or a template added with one, a pool
-  by one of its stations as well, a key that may sign `infrastructure` and `payments`, "… that may sign
-  'infrastructure' and 'payments'!". The usage of a change is now a set of usages a key names all of; the roaming
+  refused when no text or no URL ("Change 0: Invalid web payment URL '42'!"); taken by the members of a template
+  without their own (effective pools and stations); changed and removed by change sets. Whoever changes it redirects
+  payments: a change of it needs a signing key that may sign `payments`, and a pool, a station or a template added
+  with one, a pool by one of its stations as well, a key that may sign `infrastructure` and `payments`, "… that may
+  sign 'infrastructure' and 'payments'!". The usage of a change is now a set of usages a key names all of; the roaming
   network operator still signs everything it owns by a key for `party`. Commits with a web payment page were refused
   before. Probed against WWCP_POI `8b0580f` on the network of its `WebPaymentURLTests` and 23 change sets, unsigned and
   signed by keys for `payments`, `infrastructure`, `party` and both: the same verdict and the same signers for each, the
-  same content after each of the 19 taken. Two invalid values are refused without "Change 0: " in front, as every
-  invalid value of a pool or a station is (a hotline, a model URL).
+  same content after each of the 19 taken, the two invalid values in the same words since every change is read again.
 - `examples/validate-examples.ts` checks example A15 as its `Validate()` does: the station proof of DE*GEF*E1*1 the app
   gets, against the trust anchor of epoch 2, with the EV Taler merchant of DE*GEF; the EV Taler tariff of the EVSE and
   the exchanges in its currency the app shows, those in another currency not offered there; the merchant base URL and

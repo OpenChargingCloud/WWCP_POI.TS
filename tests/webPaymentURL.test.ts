@@ -195,11 +195,11 @@ describe('The web payment page of a charging station operator, a pool, a station
 
     it('is refused when no text or no URL', () => {
 
-        // WWCP_POI3 says "Change 0: " first, as for every other value of a pool or station refused (a hotline, a model URL).
+        // Refused as the pool is read again right after the change, in the words of the change.
         expect(refused(() => applyChangeSet(before, changeSetOf([ update('ChargingPool', 'DE*GEF*P1', 'webPaymentURL', OF_P1, 42) ]), { checkOwnership: false })))
-            .toBe("Invalid web payment URL '42'!");
+            .toBe("Change 0: Invalid web payment URL '42'!");
         expect(refused(() => applyChangeSet(before, changeSetOf([ update('ChargingPool', 'DE*GEF*P1', 'webPaymentURL', OF_P1, 'no url') ]), { checkOwnership: false })))
-            .toBe("Invalid web payment URL 'no url'!");
+            .toBe("Change 0: Invalid web payment URL 'no url'!");
 
         const json = networkJSON();
         const pool = defined(poolsOf(defined(objectsAt(json['chargingStationOperators'])[0], 'DE*GEF')).get('DE*GEF*P1'), 'P1');

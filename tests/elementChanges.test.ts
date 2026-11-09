@@ -152,7 +152,7 @@ describe('Element changes of an array of identified objects', () => {
         expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'colour', newValue: 'red' })))
             .toBe("Change 0, the EVSE 'DE*GEF*E1*1': 'chargingConnectors[1].colour' is not given as the content holds it: the content leaves it out!");
         expect(refused(evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'format', newValue: 'BAG' })))
-            .toBe("Invalid charging connector format 'BAG'!");
+            .toBe("Change 0: Invalid charging connector format 'BAG'!");
 
     });
 

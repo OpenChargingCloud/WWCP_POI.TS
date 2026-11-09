@@ -16,14 +16,14 @@
  */
 
 import { checkContext, mandatoryText, requireInteger, requireObject, CONTEXT_PREFIX } from '../common.ts';
-import { asText, get, isArray, isObject, sameValue, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
+import { get, isArray, isObject, sameValue, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { cborETag, etagToText, jsonETag, parseETags, sameETag, sameETags, type ETag } from '../etags.ts';
-import { isHashAlgorithm, type HashAlgorithm } from '../crypto/hash.ts';
+import type { HashAlgorithm } from '../crypto/hash.ts';
 import { effectiveContent }          from './effective.ts';
 import { ignoringCase, inRoamingNetwork } from './identifications.ts';
 import { trimmed }                   from './versionTexts.ts';
 import { partyKeysOf }               from './partyKeys.ts';
-import { invalidNetworkProperties, invalidOperatorMetadata, invalidOperatorTexts, invalidReading } from './reading.ts';
+import { invalidNetworkProperties, invalidOperatorMetadata, invalidOperatorTexts, invalidReading, invalidTreeHashAlgorithms } from './reading.ts';
 import { invalidReferences, whileChecking } from './references.ts';
 import { asRead, notWrittenAsHeld }  from './writtenForm.ts';
 import { effectiveTreeETag }         from './tree.ts';
@@ -220,6 +220,27 @@ export class RoamingNetworkOperator {
 
 }
 
+/**
+ * The error, when WWCP_POI3 refuses the roaming network operator a change of a change set changed, as it reads it again right
+ * after the change (`TryApplyRegistryChange`): as `RoamingNetworkOperator.parse` reads it, but for what the roaming network
+ * refuses of it as it is made of it, after the last change. Undefined for none.
+ */
+export function invalidRoamingNetworkOperator(json: JSONObject, roamingNetworkId: string): string | undefined {
+
+    try {
+        RoamingNetworkOperator.parse(json, roamingNetworkId);
+        return undefined;
+    }
+    catch (e) {
+        if (e instanceof KeyStatementError)
+            return undefined;
+        if (e instanceof POIError)
+            return e.message;
+        throw e;
+    }
+
+}
+
 
 /**
  * A version of a roaming network (SPECIFICATION.md sections 2 and 3): its content and its ETags.
@@ -283,15 +304,9 @@ export class RoamingNetwork {
 
         // As POITreeHashAlgorithms of WWCP_POI3 reads them, in its words: an array of known algorithms, at least one, none twice.
         if (treeHashAlgorithmsJSON !== undefined) {
-            if (!isArray(treeHashAlgorithmsJSON))
-                throw new POIError("The 'treeHashAlgorithms' must be a JSON array of hash algorithms!");
-            const unknown = treeHashAlgorithmsJSON.find(algorithm => !isHashAlgorithm(algorithm));
-            if (unknown !== undefined)
-                throw new POIError(`Unknown tree hash algorithm '${asText(unknown)}': sha256, sha384 or sha512!`);
-            if (treeHashAlgorithmsJSON.length === 0)
-                throw new POIError("The 'treeHashAlgorithms' must name at least one hash algorithm!");
-            if (new Set(treeHashAlgorithmsJSON).size !== treeHashAlgorithmsJSON.length)
-                throw new POIError("The 'treeHashAlgorithms' must not name a hash algorithm twice!");
+            const invalid = invalidTreeHashAlgorithms(treeHashAlgorithmsJSON);
+            if (invalid !== undefined)
+                throw new POIError(invalid);
             treeHashAlgorithms = treeHashAlgorithmsJSON as HashAlgorithm[];
         }
 

@@ -18,6 +18,7 @@
 import { Decimal }                from '../json/decimal.ts';
 import { numberText, withArticle } from '../common.ts';
 import { canonicalJSON }          from '../json/canonical.ts';
+import { isHashAlgorithm }        from '../crypto/hash.ts';
 import { asText, get, isArray, isNumber, isObject, type JSONObject, type JSONValue } from '../json/value.ts';
 import { caseId, caught, children, context, contextOf, currency, eMailAddressError, entityContext, enumeration, errorOf,
          evseGroupId, evseId, evseTemplateId, exactText, first, flags, freeId, givenTwice, gridOperatorId, i18n, idOf, ids,
@@ -2280,6 +2281,61 @@ export function invalidReading(content: JSONObject, of: 'version' | 'change set'
             return `The given JSON representation of a roaming network is invalid: ${e.message}`;
         throw e;
     }
+
+}
+
+/** How WWCP_POI3 reads a party of each type, as `invalidReading` reads it within a change set. */
+const PARTY_READERS: Readonly<Record<string, (json: JSONObject) => Checked>> = {
+    ChargingStationManufacturer:       manufacturer(false),
+    EMobilityProvider:                 eMobilityProvider,
+    GridOperator:                      gridOperator,
+    ParkingOperator:                   parkingOperator,
+    TransparencySoftwareManufacturer:  softwareManufacturer,
+    ConformityAssessmentBody:          conformityAssessmentBody,
+    EnergyMeterManufacturer:           manufacturer(true),
+    ChargingStationOperator:           chargingStationOperator('change set'),
+};
+
+/**
+ * The error, when WWCP_POI3 refuses a party of the given type a change of a change set changed, as it reads it again right
+ * after the change (`TryApplyRegistryChange`, `TryApplyInfrastructureChange`, …), in the words `invalidReading` names it:
+ * a charging station operator without the members of its groups, the groups of its offers and its offers overlapping,
+ * which the change set checks after its last change. Undefined for none, also for a type of no party.
+ */
+export function invalidParty(type: string, json: JSONObject): Checked {
+
+    try {
+        return PARTY_READERS[type]?.(json);
+    }
+    catch (e) {
+        if (e instanceof Thrown)
+            return `The given JSON representation of a roaming network is invalid: ${e.message}`;
+        throw e;
+    }
+
+}
+
+/**
+ * The error, when the given tree hash algorithms of a roaming network are none as `POITreeHashAlgorithms` of WWCP_POI3 reads
+ * them, in its words: an array of known algorithms, at least one, none twice.
+ */
+export function invalidTreeHashAlgorithms(value: JSONValue): Checked {
+
+    if (!isArray(value))
+        return "The 'treeHashAlgorithms' must be a JSON array of hash algorithms!";
+
+    const unknown = value.find(algorithm => !isHashAlgorithm(algorithm));
+
+    if (unknown !== undefined)
+        return `Unknown tree hash algorithm '${asText(unknown)}': sha256, sha384 or sha512!`;
+
+    if (value.length === 0)
+        return "The 'treeHashAlgorithms' must name at least one hash algorithm!";
+
+    if (new Set(value).size !== value.length)
+        return "The 'treeHashAlgorithms' must not name a hash algorithm twice!";
+
+    return undefined;
 
 }
 

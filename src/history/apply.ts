@@ -20,7 +20,9 @@ import { asText, clone, get, isArray, isObject, sameValue, set, unset, without, 
 import { toTimestamp, withArticle }       from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
-import { RoamingNetwork }                 from '../network/roamingNetwork.ts';
+import { invalidRoamingNetworkOperator, RoamingNetwork } from '../network/roamingNetwork.ts';
+import { invalidParty, invalidTreeHashAlgorithms } from '../network/reading.ts';
+import { dataLicenses }                   from '../network/poiValues.ts';
 import { invalidGroupOrOffer, invalidPaymentOption } from '../network/references.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
 import { caseId, evseGroupId, evseId, evseTemplateId, freeId, operatorId, operatorOf as operatorOfId, poolGroupId, poolId, poolTemplateId, stationGroupId, stationId,
@@ -688,7 +690,13 @@ function entityToAdd(change: Change, index: number, what: string, createdAt: str
 }
 
 
-function applyInfrastructureChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+/** The party a change changed, by its entity type, as the content holds it after the change. */
+interface Changed {
+    readonly type:  string;
+    readonly json:  JSONObject;
+}
+
+function applyInfrastructureChange(content: JSONObject, change: Change, index: number, createdAt: string): Changed {
 
     // Named as WWCP_POI3 names it, e.g. "the charging pool 'DE*GEF*P1'" (`Describe`).
     const description  = INFRASTRUCTURE[change.entityType]?.what ?? change.entityType;
@@ -816,10 +824,12 @@ function applyInfrastructureChange(content: JSONObject, change: Change, index: n
     // What embeds it changed with it, at the time of the change set.
     touchParents(operator, parentType, parentId, createdAt);
 
+    return { type: 'ChargingStationOperator', json: operator };
+
 }
 
 
-function applyNetworkArrayChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+function applyNetworkArrayChange(content: JSONObject, change: Change, index: number, createdAt: string): Changed | undefined {
 
     const property  = required(NETWORK_ARRAYS[change.entityType],   `Change ${index}: ${change.entityType} is no party!`);
     const registry  = required(PARTY_REGISTRIES[change.entityType], `Change ${index}: ${change.entityType} is no party!`);
@@ -852,7 +862,7 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
         case 'UpdateProperty':
         case 'RemoveProperty':
             applyProperty(existing(), change, index, what, createdAt);
-            break;
+            return { type: change.entityType, json: existing() };
 
         case 'Add': {
             if (entity !== undefined)
@@ -862,7 +872,7 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
                 set(content, property, [ added ]);
             else if (isArray(array))
                 insertOrdered(array, added);
-            break;
+            return { type: change.entityType, json: added };
         }
 
         case 'Remove': {
@@ -872,7 +882,7 @@ function applyNetworkArrayChange(content: JSONObject, change: Change, index: num
             items.splice(items.indexOf(entity), 1);
             if (items.length === 0)
                 unset(content, property);
-            break;
+            return undefined;
         }
 
         default:
@@ -929,7 +939,7 @@ function partyChildIn(content: JSONObject, type: PartyChildType, change: Change,
  * as its parent, changed and removed in the one embedding it, a model in the manufacturer every change of it names; the
  * party changes with it.
  */
-function applyPartyChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+function applyPartyChildChange(content: JSONObject, change: Change, index: number, createdAt: string): Changed {
 
     const type   = required(PARTY_CHILD_TYPES[change.entityType], `Change ${index}: ${change.entityType} is no child of a party!`);
     const what   = `${type.what} '${change.entityId}'`;
@@ -945,7 +955,7 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
             throw new POIError(`Change ${index}: the ${what} of the ${type.inParent} '${asText(party['@id'])}' does not exist!`);
 
         applyPartyChild(type, party, found, change, index, what, createdAt);
-        return;
+        return { type: type.parentType, json: party };
 
     }
 
@@ -980,6 +990,8 @@ function applyPartyChildChange(content: JSONObject, change: Change, index: numbe
     }
 
     applyPartyChild(type, party, found, change, index, what, createdAt);
+
+    return { type: type.parentType, json: party };
 
 }
 
@@ -1067,7 +1079,7 @@ function applyPartyChild(type: PartyChildType, party: JSONObject, found: { child
  * and removed in the one embedding it, found by its identification as its type compares it, with its timestamps where it
  * has them; the party changes with it.
  */
-function applyEmbeddedChange(content: JSONObject, change: Change, index: number, createdAt: string, type: EmbeddedType): void {
+function applyEmbeddedChange(content: JSONObject, change: Change, index: number, createdAt: string, type: EmbeddedType): Changed {
 
     const id = type.id(change.entityId);
 
@@ -1079,6 +1091,7 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
     const what       = `${type.what} '${gridPoint ? id.text : change.entityId}'`;
     const found      = embeddedOf(content, type, change.entityId);
     let   party:     JSONObject;
+    let   partyType: string;
     let   property:  string;
 
     if (change.kind === 'Add') {
@@ -1093,11 +1106,12 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
                                    ? undefined
                                    : partyNamed(content, change.parentEntityType, change.parentEntityId);
 
-        if (parent === undefined || parentProperty === undefined)
+        if (parent === undefined || parentProperty === undefined || change.parentEntityType === undefined)
             throw new POIError(`Change ${index}: the ${what} to add needs its ${type.addNeeds(change.parentEntityType)}, an existing one!`);
 
-        party     = parent;
-        property  = parentProperty;
+        party      = parent;
+        partyType  = change.parentEntityType;
+        property   = parentProperty;
 
     }
 
@@ -1110,8 +1124,9 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
            (change.parentEntityType !== found.partyType || change.parentEntityId === undefined || !sameId(change.parentEntityId, asText(found.party['@id']))))
             throw new POIError(`Change ${index}: the ${what} belongs to ${found.partyType} '${asText(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
 
-        party     = found.party;
-        property  = required(type.owners[found.partyType], found.partyType);
+        party      = found.party;
+        partyType  = found.partyType;
+        property   = required(type.owners[found.partyType], found.partyType);
 
     }
 
@@ -1171,6 +1186,8 @@ function applyEmbeddedChange(content: JSONObject, change: Change, index: number,
     // The party embedding it changed with it, at the time of the change set.
     party['lastChange'] = createdAt;
 
+    return { type: partyType, json: party };
+
 }
 
 
@@ -1193,12 +1210,13 @@ function energyMeterChildOf(content: JSONObject, type: EnergyMeterChildType, chi
  * Applies a change of an energy meter template or group: added to the charging station operator or grid operator an `Add`
  * names as its parent, changed and removed in the one embedding it, with its timestamps; the party changes with it.
  */
-function applyEnergyMeterChildChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+function applyEnergyMeterChildChange(content: JSONObject, change: Change, index: number, createdAt: string): Changed {
 
     const type   = required(ENERGY_METER_CHILD_TYPES[change.entityType], `Change ${index}: ${change.entityType} is no energy meter template or group!`);
     const what   = `${type.what} '${change.entityId}'`;
     const found  = energyMeterChildOf(content, type, change.entityId);
     let   party: JSONObject;
+    let   partyType: string;
 
     if (change.kind === 'Add') {
 
@@ -1209,10 +1227,11 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
                            ? partyNamed(content, change.parentEntityType, change.parentEntityId)
                            : undefined;
 
-        if (parent === undefined)
+        if (parent === undefined || change.parentEntityType === undefined)
             throw new POIError(`Change ${index}: the ${what} to add needs its ChargingStationOperator or GridOperator, an existing one!`);
 
-        party = parent;
+        party      = parent;
+        partyType  = change.parentEntityType;
 
     }
 
@@ -1225,7 +1244,8 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
            (change.parentEntityType !== found.partyType || change.parentEntityId === undefined || !sameId(change.parentEntityId, asText(found.party['@id']))))
             throw new POIError(`Change ${index}: the ${what} belongs to ${found.partyType} '${asText(found.party['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId ?? ''}'!`);
 
-        party = found.party;
+        party      = found.party;
+        partyType  = found.partyType;
 
     }
 
@@ -1278,56 +1298,127 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
     // The party embedding it changed with it, at the time of the change set.
     party['lastChange'] = createdAt;
 
+    return { type: partyType, json: party };
+
 }
 
 
 /** The properties of the roaming network itself a change set can update or remove. */
 const NETWORK_PROPERTIES = [ 'name', 'description', 'dataSource', 'dataLicenses', 'treeHashAlgorithms', 'customData' ];
 
+/**
+ * The error, when WWCP_POI3 refuses the new value of a property of the roaming network itself as it takes it
+ * (RoamingNetwork.ChangeSets.cs), in its words; undefined where it takes it.
+ */
+function invalidNetworkValue(property: string, value: JSONValue): string | undefined {
+
+    switch (property) {
+
+        case 'name':
+        case 'description':
+            return isObject(value) ? undefined : `invalid ${property}: A multi-language text must be a JSON object!`;
+
+        case 'dataSource':
+            return typeof value === 'string' && trimmed(value) !== '' ? undefined : 'the data source must be a nonempty text!';
+
+        case 'dataLicenses':
+            return dataLicenses({ dataLicenses: value });
+
+        case 'treeHashAlgorithms':
+            return value === null ? 'the tree hash algorithms must be an array of hash algorithms!' : invalidTreeHashAlgorithms(value);
+
+        case 'customData':
+            return isObject(value) ? undefined : 'the custom data must be a JSON object!';
+
+        case 'signingKeys':
+        case 'identityKeys':
+            return 'a roaming network has no keys of its own: they are the keys of its RoamingNetworkOperator!';
+
+        default:
+            return `the property '${property}' of a roaming network can not be changed!`;
+
+    }
+
+}
+
+/**
+ * Applies a change of the roaming network itself as WWCP_POI3 does (RoamingNetwork.ChangeSets.cs): its old value
+ * compared, then a new value it takes, or a property it has removed.
+ */
 function applyNetworkChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
 
     const what = `roaming network '${asText(content['@id'])}'`;
 
     // An element change is applied as the change of the property it amounts to, of the properties of its own only.
-    const property  = entityPropertyName(change) ?? '';
-    const held      = NETWORK_PROPERTIES.includes(property) ? get(content, property) : undefined;
     const own: JSONObject = {};
+    const ownValue = (property: string): JSONValue | undefined => NETWORK_PROPERTIES.includes(property) ? get(content, property) : undefined;
+    const given    = entityPropertyName(change) ?? '';
+    const held     = ownValue(given);
 
     if (held !== undefined)
-        set(own, property, held);
+        set(own, given, held);
 
     change = resolveElementChange(change, own, what, index);
 
-    if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
-        throw new POIError(`Change ${index}: ${change.kind} of the roaming network itself is not possible!`);
+    const property = change.propertyName ?? '';
+    const current  = ownValue(property);
 
-    if (!NETWORK_PROPERTIES.includes(change.propertyName ?? ''))
-        throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a roaming network can not be changed!`);
+    checkOldValue(change, current, index, what);
 
-    checkOldValue(change, get(content, change.propertyName ?? ''), index, what);
+    switch (change.kind) {
+
+        case 'UpdateProperty': {
+            const invalid = change.newValue === undefined ? undefined : invalidNetworkValue(property, change.newValue);
+            if (invalid !== undefined)
+                throw new POIError(`Change ${index}: ${invalid}`);
+            break;
+        }
+
+        case 'RemoveProperty':
+            if (current === undefined)
+                throw new POIError(`Change ${index}: the property '${property}' does not exist!`);
+            break;
+
+        default:
+            throw new POIError(`Change ${index}: ${change.kind} of the roaming network itself is not supported yet!`);
+
+    }
+
     applyProperty(content, change, index, what, createdAt);
 
 }
 
 
-function applyOperatorChange(content: JSONObject, change: Change, index: number, createdAt: string): void {
+/**
+ * Applies a change of the roaming network operator as WWCP_POI3 does (`TryApplyRegistryChange`): changed, but neither added
+ * nor removed, of this roaming network.
+ */
+function applyOperatorChange(content: JSONObject, change: Change, index: number, createdAt: string): Changed {
+
+    if (change.kind === 'Add' || change.kind === 'Remove')
+        throw new POIError(`Change ${index}: the operator of a roaming network is changed, but neither added nor removed!`);
+
+    if (change.parentEntityType !== undefined && (change.parentEntityType !== 'RoamingNetwork' || change.parentEntityId !== content['@id']))
+        throw new POIError(`Change ${index}: a roaming network operator of this roaming network belongs to RoamingNetwork '${asText(content['@id'])}', not to ${change.parentEntityType} '${change.parentEntityId}'!`);
 
     const operator = get(content, 'operator');
 
     if (!isObject(operator) || operator['@id'] !== change.entityId)
-        throw new POIError(`Change ${index}: the roaming network operator '${change.entityId}' is not the one of this roaming network!`);
+        throw new POIError(`Change ${index}: the roaming network operator '${change.entityId}' does not exist!`);
 
     // An element change is applied as the change of the property it amounts to.
     change = resolveElementChange(change, operator, `roaming network operator '${change.entityId}'`, index);
 
     if (change.kind !== 'UpdateProperty' && change.kind !== 'RemoveProperty')
-        throw new POIError(`Change ${index}: the roaming network operator is neither added nor removed!`);
+        throw new POIError(`Change ${index}: the operator of a roaming network is changed, but neither added nor removed!`);
 
     if (!RNO_PROPERTIES.includes(change.propertyName ?? ''))
         throw new POIError(`Change ${index}: the property '${change.propertyName ?? ''}' of a roaming network operator can not be changed!`);
 
     checkOldValue(change, get(operator, change.propertyName ?? ''), index, `roaming network operator '${change.entityId}'`);
     applyProperty(operator, change, index, `roaming network operator '${change.entityId}'`, createdAt);
+
+    return { type: 'RoamingNetworkOperator', json: operator };
 
 }
 
@@ -2078,29 +2169,41 @@ export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, opt
 
     changeSet.changes.forEach((change, index) => {
 
+        let changed: Changed | undefined;
+
         if (change.entityType === 'RoamingNetwork' && change.entityId === before.id)
             applyNetworkChange(content, change, index, createdAt);
 
         else if (change.entityType === 'RoamingNetworkOperator')
-            applyOperatorChange(content, change, index, createdAt);
+            changed = applyOperatorChange(content, change, index, createdAt);
 
         else if (NETWORK_ARRAYS[change.entityType] !== undefined)
-            applyNetworkArrayChange(content, change, index, createdAt);
+            changed = applyNetworkArrayChange(content, change, index, createdAt);
 
         else if (PARTY_CHILD_TYPES[change.entityType] !== undefined)
-            applyPartyChildChange(content, change, index, createdAt);
+            changed = applyPartyChildChange(content, change, index, createdAt);
 
         else if (ENERGY_METER_CHILD_TYPES[change.entityType] !== undefined)
-            applyEnergyMeterChildChange(content, change, index, createdAt);
+            changed = applyEnergyMeterChildChange(content, change, index, createdAt);
 
         else if (embeddedTypeOf(content, change) !== undefined)
-            applyEmbeddedChange(content, change, index, createdAt, required(embeddedTypeOf(content, change), change.entityType));
+            changed = applyEmbeddedChange(content, change, index, createdAt, required(embeddedTypeOf(content, change), change.entityType));
 
         else if (INFRASTRUCTURE_TYPES.has(change.entityType))
-            applyInfrastructureChange(content, change, index, createdAt);
+            changed = applyInfrastructureChange(content, change, index, createdAt);
 
         else
             throw new POIError(`Change ${index}: changes of ${change.entityType} '${change.entityId}' are not supported by this library yet!`);
+
+        // The party it changed, read again right after it, as WWCP_POI3 reads it (`TryApplyRegistryChange`,
+        // `TryApplyInfrastructureChange`, …): refused in the words of the change, also where a later change would make it
+        // valid again; the groups and offers of a charging station operator after the last change, as below.
+        const invalid = changed === undefined                         ? undefined
+                      : changed.type === 'RoamingNetworkOperator'     ? invalidRoamingNetworkOperator(changed.json, before.id)
+                      :                                                 invalidParty(changed.type, changed.json);
+
+        if (invalid !== undefined)
+            throw new POIError(`Change ${index}: ${invalid}`);
 
     });
 

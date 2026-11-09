@@ -207,7 +207,7 @@ describe('Changes of grid connection points', () => {
         expect(refusal([ update('GridConnectionPoint', 'gcp-1', 'gridOperatorId', 'DE*NET') ]))
             .toBe("Change 0: the property 'gridOperatorId' of a grid connection point can not be changed!");
         expect(refusal([ add('GridConnectionPoint', 'gcp-2', { '@id': 'gcp-2', name: { en: 'Two' }, created: AT }, 'GridOperator', 'DE*NET') ]))
-            .toBe("'gcp-2' has no timestamps: 'created' is not allowed!");
+            .toBe("Change 0: 'gcp-2' has no timestamps: 'created' is not allowed!");
 
     });
 
