@@ -131,8 +131,18 @@ describe('The roaming network operator in place of a party without signing keys 
 
         const byInfrastructure = network('infrastructure');
 
+        // In the words of WWCP_POI3 (TransparencyTests): who signs in the place of the BSI, and what its key may sign.
         expect(() => { checkOwnership(byInfrastructure, addCertificate(byInfrastructure)); })
-            .toThrow("Change 0: Add of the ConformityCertificate 'BSI:2026-0001' needs a signature by a signing key of the ConformityAssessmentBody 'BSI'!");
+            .toThrow("Change 0: Add of the ConformityCertificate 'BSI:2026-0001' needs a signature by a signing key of the roaming network operator 'DE*RNO' that may sign 'certificates' or 'party'!");
+
+    });
+
+    it('named as the roaming network operator signing in its place, when no key signed', () => {
+
+        const byParty = network('party');
+
+        expect(() => { checkOwnership(byParty, addCertificate(byParty, [])); })
+            .toThrow("Change 0: Add of the ConformityCertificate 'BSI:2026-0001' needs a signature by a signing key of the roaming network operator 'DE*RNO'!");
 
     });
 

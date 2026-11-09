@@ -1864,11 +1864,34 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
 
     };
 
-    // The signature an owner gives, in words.
-    const signatureOf = (owner: Owner): string =>
-        owner.kind === 'rno'        ? `${owner.keys === 'identity' ? 'an identity key' : 'a signing key'} of the roaming network operator '${rno?.id ?? ''}'`
-      : owner.keys === 'identity'   ? `an identity key of the ${owner.type} '${owner.id}'`
-      :                               `a signing key of the ${owner.type} '${owner.id}'`;
+    // Whether the roaming network operator signs in the place of an owner (`SignerOf`): a party of this version without
+    // signing keys.
+    const inPlaceOf = (owner: Owner): boolean =>
+        owner.kind === 'party' && owner.keys === 'signing' && owner.inPlace !== false &&
+        parties.get(`${owner.type}:${owner.id}`)?.signingKeys.length === 0;
+
+    const rnoInWords = rno === undefined
+                           ? 'the roaming network operator, of which this roaming network has none'
+                           : `the roaming network operator '${rno.id}'`;
+
+    // Whether the signature an owner gives takes as many holders as the quorum of the roaming network operator.
+    const byQuorum = (owner: Owner): boolean =>
+        minConsensus > 1 && (owner.kind === 'rno' || inPlaceOf(owner));
+
+    // The signature an owner gives, in the words of WWCP_POI3 (`TryCheckCoSigning`): the roaming network operator in the
+    // place of a party without signing keys, by as many holders as its quorum needs.
+    const signatureOf = (owner: Owner): string => {
+        const kind = owner.keys === 'identity' ? 'identity' : 'signing';
+        return owner.kind === 'rno' || inPlaceOf(owner)
+                   ? byQuorum(owner) ? `${kind} keys of ${minConsensus} holders of ${rnoInWords}` : `a${kind === 'identity' ? 'n' : ''} ${kind} key of ${rnoInWords}`
+             : owner.keys === 'identity'
+                   ? `an identity key of the ${owner.type} '${owner.id}'`
+                   : `a signing key of the ${owner.type} '${owner.id}'`;
+    };
+
+    // The signatures owners give, once each, as WWCP_POI3 names them (`Distinct`).
+    const signaturesOf = (owners: readonly Owner[]): string =>
+        `${owners.some(byQuorum) ? 'signatures' : 'a signature'} by ${[ ...new Set(owners.map(signatureOf)) ].join(' or ')}`;
 
     changeSet.changes.forEach((change, index) => {
 
@@ -1880,7 +1903,7 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         // One of several owners signs it, e.g. of a grid connection point its grid operator or its maintainer.
         if (owners.length > 1) {
             if (!owners.some(signs))
-                throw new POIError(`${describeChange(change, index)} needs a signature by ${owners.map(signatureOf).join(' or ')}!`);
+                throw new POIError(`${describeChange(change, index)} needs ${signaturesOf(owners)}!`);
             return;
         }
 
@@ -1920,6 +1943,14 @@ export function checkOwnership(before: RoamingNetwork, changeSet: ChangeSet): vo
         const byRNO          = owner.keys === 'signing'   && owner.inPlace !== false && party.signingKeys.length === 0 && rnoHolders('signing', owner.usage).size >= minConsensus;
 
         if (!bySigningKey && !byIdentityKey && !byRecovery && !byRNO) {
+
+            // Named as the roaming network operator signing in its place, with the usages its signing key may sign where one
+            // of its signing keys signed that may sign neither (`UsagesOf`).
+            if (inPlaceOf(owner)) {
+                const usages = owner.usage === KeyUsages.Party ? `'${KeyUsages.Party}'` : `'${owner.usage}' or '${KeyUsages.Party}'`;
+                const named  = rnoSigning.some(key => signedValid(key) && !key.maySign(owner.usage) && !key.maySign(KeyUsages.Party));
+                throw new POIError(`${describeChange(change, index)} needs ${signaturesOf([ owner ])}${named ? ` that may sign ${usages}` : ''}!`);
+            }
 
             const mayAnyway = party.signingKeys.some(signedValid);
 

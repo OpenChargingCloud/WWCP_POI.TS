@@ -254,9 +254,9 @@ describe('Who owns the entities a party embeds (4.1)', () => {
         expect(owners([ update('ChargingTariffOffer', 'offer-1', 'name', { en: 'x' }) ]))
             .toBe("Change 0: UpdateProperty of the ChargingTariffOffer 'offer-1' ('name') needs a signature by a signing key of the ChargingStationOperator 'DE*GEF'!");
         expect(owners([ update('ChargingTariffOffer', 'gdf-offer', 'name', { en: 'x' }) ]))
-            .toBe("Change 0: UpdateProperty of the ChargingTariffOffer 'gdf-offer' ('name') needs a signature by a signing key of the EMobilityProvider 'DE-GDF'!");
+            .toBe("Change 0: UpdateProperty of the ChargingTariffOffer 'gdf-offer' ('name') needs signatures by signing keys of 2 holders of the roaming network operator 'OCC'!");
         expect(owners([ update('EVSEGroup', 'DE*GDF*EG_FAV', 'name', { en: 'x' }) ]))
-            .toBe("Change 0: UpdateProperty of the EVSEGroup 'DE*GDF*EG_FAV' ('name') needs a signature by a signing key of the EMobilityProvider 'DE-GDF'!");
+            .toBe("Change 0: UpdateProperty of the EVSEGroup 'DE*GDF*EG_FAV' ('name') needs signatures by signing keys of 2 holders of the roaming network operator 'OCC'!");
         expect(owners([ update('ParkingGarage', 'garage-1', 'name', { en: 'x' }) ]))
             .toBe("Change 0: UpdateProperty of the ParkingGarage 'garage-1' ('name') needs a signature by a signing key of the ParkingOperator 'DE*PRK'!");
         expect(owners([ update('ParkingSpace', 'gef-space-1', 'name', { en: 'x' }) ]))
@@ -272,10 +272,10 @@ describe('Who owns the entities a party embeds (4.1)', () => {
             .toBe("Change 0: UpdateProperty of the GridConnectionPoint 'gcp-1' ('name') needs a signature by a signing key of the ChargingStationOperator 'DE*GEF'!");
 
         expect(owners([ removeProperty('GridConnectionPoint', 'gcp-1', 'maintainedBy') ]))
-            .toBe(`Change 0: RemoveProperty of the GridConnectionPoint 'gcp-1' ('maintainedBy') needs a signature by a signing key of the GridOperator 'DE*NET' or a signing key of the ChargingStationOperator 'DE*GEF' or an identity key of the roaming network operator '${before.operator?.id ?? ''}'!`);
+            .toBe(`Change 0: RemoveProperty of the GridConnectionPoint 'gcp-1' ('maintainedBy') needs signatures by signing keys of 2 holders of the roaming network operator '${before.operator?.id ?? ''}' or a signing key of the ChargingStationOperator 'DE*GEF' or identity keys of 2 holders of the roaming network operator '${before.operator?.id ?? ''}'!`);
 
         expect(owners([ add('GridConnectionPoint', 'gcp-2', { '@id': 'gcp-2', maintainedBy: { entityType: 'ChargingStationOperator', entityId: 'DE*GEF' } }, 'GridOperator', 'DE*NET') ]))
-            .toBe("Change 0: Add of the GridConnectionPoint 'gcp-2' needs a signature by a signing key of the ChargingStationOperator 'DE*GEF' or a signing key of the GridOperator 'DE*NET'!");
+            .toBe("Change 0: Add of the GridConnectionPoint 'gcp-2' needs signatures by a signing key of the ChargingStationOperator 'DE*GEF' or signing keys of 2 holders of the roaming network operator 'OCC'!");
 
     });
 

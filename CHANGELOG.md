@@ -48,9 +48,17 @@
   EVSE removed whose station then exceeds its maximum power and whose group names it; a tariff without elements added
   under another spelling); a tariff without elements is refused without "Change 0: ", as this library reads the
   operator once after all changes; and WWCP_POI refuses an empty identification and a parent type without its
-  identification when it reads a change set, as "Invalid change 0: …".
-  Who must sign a change of a party without signing keys is named otherwise: WWCP_POI names the roaming network
-  operator signing in its place, this library the party.
+  identification when it reads a change set, as "Invalid change 0: …". Who must sign a change of a party without
+  signing keys was named otherwise in four of them (see below).
+- A change of a party without signing keys, which the roaming network operator signs in its place (`SignerOf`), is
+  refused unsigned as WWCP_POI3 refuses it (`TryCheckCoSigning`): naming the roaming network operator, by as many
+  holders as its quorum needs, not the party, which has no key to sign with, e.g. "… needs signatures by signing keys of
+  2 holders of the roaming network operator 'OCC'!"; signed by a key of it that may sign neither the usage of the
+  change nor `party`, with both, "… needs a signature by a signing key of the roaming network operator 'DE*RNO' that
+  may sign 'certificates' or 'party'!". Of several owners, e.g. of a grid connection point, the roaming network
+  operator is named with its quorum too, its identity keys as well, once each, and "signatures" where one owner needs
+  more than one holder. Probed against WWCP_POI `8b0580f`: the 190 change sets above and 11 more name who must sign
+  them alike, word for word.
 - The key statement of the roaming network operator is refused as its constructor in WWCP_POI3 refuses it: an identity
   key given twice ("An identity key of a key statement must not be given twice!") before the order of its identity keys
   is looked at, and a signature by one identity key given twice ("An identity key signs a key statement once."), which

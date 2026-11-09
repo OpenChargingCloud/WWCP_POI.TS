@@ -300,7 +300,7 @@ describe('Element changes of parties, the roaming network and the entities parti
 
         // The maintainer of a grid connection point, by it, its grid operator or the roaming network operator.
         expect(owners([ element('UpdateElementProperty', 'GridConnectionPoint', 'gcp-1', [ seg('maintainedBy') ], { propertyName: 'entityId', newValue: 'DE*NET' }) ]))
-            .toBe(`Change 0: UpdateElementProperty of the GridConnectionPoint 'gcp-1' ('maintainedBy') needs a signature by a signing key of the GridOperator 'DE*NET' or a signing key of the ChargingStationOperator 'DE*GEF' or an identity key of the roaming network operator '${QA.operator?.id ?? ''}'!`);
+            .toBe(`Change 0: UpdateElementProperty of the GridConnectionPoint 'gcp-1' ('maintainedBy') needs signatures by signing keys of 2 holders of the roaming network operator '${QA.operator?.id ?? ''}' or a signing key of the ChargingStationOperator 'DE*GEF' or identity keys of 2 holders of the roaming network operator '${QA.operator?.id ?? ''}'!`);
 
     });
 

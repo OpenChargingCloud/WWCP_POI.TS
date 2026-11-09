@@ -177,4 +177,12 @@ describe('Infrastructure changes refused in the words of WWCP_POI3', () => {
 
     });
 
+    it('of a party without signing keys by the roaming network operator in its place, by as many holders as its quorum needs', () => {
+
+        // DE-GDF has no signing keys: the roaming network operator signs in its place (`SignerOf`).
+        expect(owners([ { kind: 'UpdateProperty', entityType: 'EVSEGroup', entityId: 'DE*GDF*EG_FAV', propertyName: 'chargingStationIds', newValue: [ 'DE*GEF*S1' ] } ]))
+            .toBe("Change 0: UpdateProperty of the EVSEGroup 'DE*GDF*EG_FAV' ('chargingStationIds') needs signatures by signing keys of 2 holders of the roaming network operator 'OCC'!");
+
+    });
+
 });
