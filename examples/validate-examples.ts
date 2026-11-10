@@ -1,5 +1,5 @@
 /*
- * Checks what the C# examples A1 to A15 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
+ * Checks what the C# examples A1 to A16 of WWCP_POI published, as their Validate() methods do, and prints what it checked.
  *
  *   npx tsx examples/validate-examples.ts                                   the run kept in tests/vectors
  *   npx tsx examples/validate-examples.ts <WWCP_POI>/examples/csharp        a run of your own, after `dotnet run` there
@@ -7,22 +7,24 @@
  *
  * Every run of the C# examples makes new keys, so every digest differs from one run to the next; what is checked is the
  * same. Attestations end 15 minutes after they are signed: the station proofs of examples A13 and A15 are checked at the
- * time of their attestations unless `--at` names another, the evidence of example A10 at the time charging began, as the
- * app does.
+ * time of their attestations unless `--at` names another, the evidence of examples A10 and A16 at the time charging
+ * began, as the app does.
  */
 
+import { createPublicKey, verify }  from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join }                     from 'node:path';
 
 import {
-    ArchiveSegment, Checkpoint, CheckpointProof, DigitalCalibrationCertificate, DigitalCertificateOfConformity,
-    DigitalDeclarationOfConformity, History, OperatorTrust, POIPublicKey, PriceStatement, PriceStatementProof, QIDigitalItem,
-    RoamingNetwork, RuntimeStatus, TrustAnchor, describeVersion, etagToText, evTalerExchangesAt, evTalerMerchantOf,
-    evTalerTariffOf, get, isArray, isObject, parseArchiveSegmentInfo, parseEvidence, parseFrame, parseJSON,
-    parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, paymentOptionName, toTimestamp, verifyChargingStation,
-    verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures, verifyEvidence, verifyPriceStatements,
-    verifySegmentLine, verifyVersion,
-    type EVTalerExchange, type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type QIDigitalI18NText,
+    ArchiveSegment, Checkpoint, CheckpointProof, Decimal, DigitalCalibrationCertificate, DigitalCertificateOfConformity,
+    DigitalDeclarationOfConformity, EVTalerContractTerms, EVTalerSettlement, History, NetDecimal, OperatorTrust, POIPublicKey,
+    PriceStatement, PriceStatementProof, QIDigitalItem, RoamingNetwork, RuntimeStatus, TrustAnchor, clone, describeVersion,
+    etagToText, evTalerExchangesAt, evTalerMerchantOf, evTalerTariffOf, get, isArray, isObject, parseArchiveSegmentInfo,
+    parseEvidence, parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, paymentOptionName,
+    toTimestamp, verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures,
+    verifyEvidence, verifyPriceStatements, verifySegmentLine, verifyVersion, writeAmount,
+    type EVTalerExchange, type EVTalerMeasurementKey, type EVTalerMeterReading, type EVTalerSignedMeterValue,
+    type EVTalerVerifiedStep, type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type QIDigitalI18NText,
     type TrustedWitness,
 } from '../src/index.ts';
 
@@ -46,6 +48,56 @@ function objectsNaming(value: JSONValue | undefined, property: string): JSONObje
     if (!isObject(value))
         return [];
     return [ ...(property in value ? [ value ] : []), ...Object.values(value).flatMap(item => objectsNaming(item, property)) ];
+}
+
+/**
+ * The transparency software of example A16 (VerifyOCMF of exampleA16.cs): OCMF of one reading signed with
+ * ECDSA-secp256r1-SHA256, as far as the example needs it; Chargy verifies OCMF and the other formats of meters.
+ */
+function verifyOCMF(value: EVTalerSignedMeterValue, key: EVTalerMeasurementKey): EVTalerMeterReading {
+
+    const ocmf  = value.encodingMethod === 'OCMF' ? Buffer.from(value.signedMeterData, 'base64').toString('utf8') : '';
+    const last  = ocmf.lastIndexOf('|');
+
+    if (!ocmf.startsWith('OCMF|') || last <= 5)
+        throw new Error('Not OCMF!');
+
+    const payload    = ocmf.slice(5, last);
+    const signature  = parseJSON(ocmf.slice(last + 1));
+    const algorithm  = isObject(signature) ? get(signature, 'SA') : undefined;
+
+    if (algorithm !== undefined && algorithm !== 'ECDSA-secp256r1-SHA256')
+        throw new Error(`Unknown signature algorithm '${show(algorithm)}'!`);
+
+    const publicKey  = createPublicKey({ key: Buffer.from(key.key), format: 'der', type: 'spki' });
+    const der        = Buffer.from(show(isObject(signature) ? get(signature, 'SD') : undefined), 'hex');
+
+    if (!verify('sha256', Buffer.from(payload, 'utf8'), { key: publicKey, dsaEncoding: 'der' }, der))
+        throw new Error('The OCMF signature is invalid!');
+
+    const json      = parseJSON(payload);
+    const readings  = isObject(json) ? get(json, 'RD') : undefined;
+    const reading   = isArray(readings) && readings.length === 1 ? readings[0] : undefined;
+
+    if (!isObject(json) || !isObject(reading))
+        throw new Error('Not one reading!');
+
+    if (reading['ST'] !== 'G' || reading['RU'] !== 'kWh')
+        throw new Error('Only a good reading in kWh is taken!');
+
+    // "2026-11-05T21:10:00,000+0000 S": the time, its offset written without a colon, and its synchronisation.
+    const time    = show(reading['TM']).split(' ')[0] ?? '';
+    const energy  = reading['RV'];
+
+    if (typeof energy !== 'number' && !(energy instanceof Decimal))
+        throw new Error('The reading names no energy!');
+
+    return {
+        meterSerialNumber:  show(json['MS']),
+        timestamp:          Date.parse(`${time.slice(0, -2).replace(',', '.')}:${time.slice(-2)}`),
+        energy:             NetDecimal.of(energy),
+    };
+
 }
 
 
@@ -604,6 +656,62 @@ if (has('published/QA-DE-GEF-E1-1-evTaler-proof.json'))
         const other     = defined(merchant.exchanges.find(exchange => exchange.currency !== currency), 'exchange in another currency');
         (defined(naming[0], 'EV Taler merchant')['evTaler'] as JSONObject)['merchantPublicKey'] = other.masterPublicKey;
         refused('Another merchant key', () => verifyChargingStation(anchorPQ, changed, { at: attested, evseId }));
+
+    });
+
+
+if (has('driver/evidence-DE_GEF_E1_1-evTaler.json'))
+    step('Example A16: EV Taler, a session paid in two steps, decided by the file the app kept', () => {
+
+        // Months later, the session is disputed: the file alone decides it, against the trust anchor of epoch 2, the
+        // station proof at the time the session began, as the app checked it then.
+        const anchorPQ    = TrustAnchor.parse(text('published/QA-trustAnchor-mldsa.txt'));
+        const evidence    = json('driver/evidence-DE_GEF_E1_1-evTaler.json') as JSONObject;
+        const evseId      = show(evidence['EVSEId']);
+        const started     = show(evidence['sessionStarted']);
+        const station     = verifyChargingStation(anchorPQ, defined(evidence['stationProof'], 'station proof in the evidence'), { at: started, evseId });
+        const statements  = defined(evidence['priceStatements'], 'price statements in the evidence');
+        const terms       = defined(evidence['contractTerms'], 'contract terms in the evidence') as JSONArray;
+
+        const steps: EVTalerVerifiedStep[] = [];
+        for (const json of terms)
+            steps.push(EVTalerContractTerms.parse(json).verify(station, statements, steps.at(-1), verifyOCMF));
+
+        const settlement    = EVTalerSettlement.parse(evidence['settlement']);
+        const verification  = settlement.verify(station, steps, verifyOCMF);
+        const first         = defined(steps[0], 'step 1');
+        const price         = defined(first.priceStatement, 'price statement of step 1');
+        const kWh           = (value: NetDecimal): string => `${value.toString()} kWh`;
+
+        console.log(`Was this the operator's price when the session began? ${first.step.chargingTariffId}, ${first.rates?.energyPerKWh?.toString() ?? '-'} €/kWh by the price statement ${price.digest.slice(0, 8)}…, signed by ${price.statement.signer}, current at ${started}`);
+        console.log(`Did I pay the operator? ${steps.length} orders, each of the merchant ${first.merchant.merchantPublicKey.slice(0, 8)}… the station proof gives, with exchanges of its evTaler`);
+        console.log(`Did I get what I paid for? ${kWh(verification.start.reading.energy)} to ${kWh(verification.end.reading.energy)}, ${kWh(verification.energy)}, both signed by ${verification.start.signedBy}, serial ${verification.start.reading.meterSerialNumber}, key ${verification.start.keyId.slice(0, 8)}…`);
+        console.log(`Was the rest refunded? ${settlement.price.toFixed(2)} € of ${settlement.paid.toFixed(2)} €, ${verification.priceCheck} by the tariff; ${settlement.refunded.toFixed(2)} € refunded, signed by ${settlement.signer} with its key for payments`);
+
+        // What is refused: a price lowered after signing, the refund raised with it; the end value left out; step 1 of
+        // another merchant, its key that of the exchange in another currency; step 2 naming the end value as the start,
+        // signed by the meter all the same: the step alone does not tell, the settlement does.
+        const lower    = defined(NetDecimal.parse('4.00'), 'price of 4.00');
+        const cheaper  = clone(settlement.json);
+        cheaper['price']     = '4.00';
+        cheaper['refunded']  = writeAmount(settlement.paid.minus(lower), 'EUR');
+        refused('Another price', () => EVTalerSettlement.parse(cheaper).verify(station, steps, verifyOCMF));
+
+        const onlyStart = clone(settlement.json);
+        (onlyStart['meterValues'] as JSONArray).splice(1, 1);
+        refused('Without the end value', () => EVTalerSettlement.parse(onlyStart));
+
+        const elsewhere  = defined(first.merchant.exchanges.find(exchange => exchange.currency !== first.currency), 'exchange in another currency');
+        const foreign    = clone(defined(terms[0], 'contract terms of step 1')) as JSONObject;
+        foreign['merchant_pub'] = elsewhere.masterPublicKey;
+        refused('Step 1 of another merchant', () => EVTalerContractTerms.parse(foreign).verify(station, statements, undefined, undefined));
+
+        const other      = clone(defined(terms[1], 'contract terms of step 2')) as JSONObject;
+        ((other['extra'] as JSONObject)['wwcp'] as JSONObject)['startMeterValue'] = clone(defined((settlement.json['meterValues'] as JSONArray)[1], 'end value'));
+        refused('Step 2 naming the end value as the start', () => {
+            const second = EVTalerContractTerms.parse(other).verify(station, statements, first, verifyOCMF);
+            settlement.verify(station, [ first, second ], verifyOCMF);
+        });
 
     });
 

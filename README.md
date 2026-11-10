@@ -30,12 +30,12 @@ migration requirements: versions, change sets and signatures 0.2.0 took are refu
 remain experimental; a package release does not establish production witness services or independently verified
 actual measurement time.
 
-**Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A15 of
+**Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A16 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
 examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations the C#
-implementation makes: in the tests from the run of WWCP_POI `045e180` vendored here, and every night from a new run of
-WWCP_POI master, with new keys. EV Taler phase 2, which example A16 shows, is checked on the proof of example A15 and
-probed against WWCP_POI3; what example A16 publishes is not checked yet. See [Tests](#tests).
+implementation makes: in the tests from the run of WWCP_POI `045e180` vendored here, A1 to A15, and every night from a
+new run of WWCP_POI master, with new keys, A1 to A16. EV Taler phase 2, which example A16 shows, is also checked on the
+proof of example A15 and probed against WWCP_POI3. See [Tests](#tests).
 
 What a review of the C# implementation found while porting it is in
 [docs/csharp-review.md of WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/csharp-review.md),
@@ -342,9 +342,53 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
 - `tests/qidigital.test.ts`: example A14, the QI-Digital documents of a meter as WWCP_POI signed them, and others signed
   with the keys of section 6 of the specification, to change them at will.
 - `tests/chargingStation.test.ts`, `tests/client.test.ts`: proofs of charging stations of epoch 2, as an app checks them.
+- `tests/evTaler.test.ts`: EV Taler, phase 1 (WWCP_POI `ec3dace`): the merchant of a charging station operator and the
+  exchanges it accepts, the payment option `EVTaler`, keys that may sign `payments`, and the EV Taler tariff of an EVSE
+  as an app reads it from the proof of its station.
+- `tests/evTalerSessions.test.ts`: EV Taler, phase 2 (WWCP_POI `c2d39e5`): the steps of a session in their contract
+  terms, checked against the station proof of example A15, the settlement statement, and amounts as `System.Decimal`
+  calculates them.
+- `tests/webPaymentURL.test.ts`: the web payment page of a charging station operator, a pool, a station and their
+  templates (WWCP_POI `848cc52`), signed by a key that may sign `payments`.
 - `tests/replay.test.ts`: the whole history of `QA`, both epochs, commit by commit, with every checkpoint.
+- `tests/snapshots.test.ts`: starting from a snapshot of the head or of a checkpoint, anchored in the trust anchor
+  alone (10.5), and signatures without a verifier (O3).
+- `tests/epochAlgorithms.test.ts`: the algorithms the first checkpoint of a later epoch takes (11.3).
+- `tests/signatureRoles.test.ts`: the roles a commit is signed in (S24), a checkpoint taken with the signatures that
+  verify (S39), how a signature is read, and what a proof gives of a child array (S29).
+- `tests/lastChange.test.ts`: the `lastChange` of everything embedding a changed entity, which never goes back (S5).
 - `tests/reading.test.ts`, `tests/references.test.ts`: `QA`, and `QA` with an entity of every kind
   (`tests/richNetwork.ts`), changed as WWCP_POI3 at 89d2e02 refuses them, in its words.
+- `tests/operator.test.ts`, `tests/partyKeys.test.ts`: the roaming network and its operator, its key statement and the
+  certificates of its signing keys, and the keys of the parties (D12), read as WWCP_POI3 reads them.
+- `tests/writtenForm.test.ts`: the content as WWCP_POI writes it; what WWCP_POI3 takes and writes otherwise is refused.
+- `tests/identifications.test.ts`, `tests/releaseIdentifications.test.ts`: identifications unique within the roaming
+  network, and releases and certificates identified under their owners (S36).
+- `tests/certificates.test.ts`, `tests/releasesAndBodies.test.ts`: certificates of conformity, a release keeping its
+  version (S31), and what a conformity assessment body is notified for (S32).
+- `tests/versionTexts.test.ts`: hardware revisions, firmware versions and serial numbers.
+- `tests/chargingStationMeasurement.test.ts`: a charging station signing measurements itself, and the ISO 15118
+  certificate of an EVSE.
+- `tests/measurementPublicKey.test.ts`: measurement public keys and their certificates, as BouncyCastle makes them.
+- `tests/offers.test.ts`: charging tariff offers of one owner, which must not overlap (9.4).
+- `tests/changeSet.test.ts`: change sets identified by their content, and a rebased one naming those it was rebased
+  from.
+- `tests/changeReading.test.ts`: a change read as WWCP_POI3 reads it, refused after "Change N: ", and the changes a
+  change set is identified by.
+- `tests/newValues.test.ts`, `tests/heldAsGiven.test.ts`, `tests/oldValues.test.ts`: new values given as the content
+  holds them, and old values no longer there, refused naming what the content holds.
+- `tests/readAgain.test.ts`: what a change set changes, read again right after each change.
+- `tests/elementChanges.test.ts`, `tests/embeddedChanges.test.ts`: changes of one element by its element path, and of
+  the entities a party embeds: charging tariff offers, groups of providers, grid connection points, parking data.
+- `tests/infrastructureChanges.test.ts`: infrastructure named in every spelling its identification type considers
+  equal, and who must sign its change.
+- `tests/preconditions.test.ts`: the ETag an entity must still have when a change set is applied.
+- `tests/ownership.test.ts`, `tests/certificateStatedBy.test.ts`: the roaming network operator signing in place of a
+  party without signing keys (4.1), and who states a certificate.
+- `tests/trustContext.test.ts`: local authorization and shared trust contexts, as above.
+- `tests/measurementKeys.test.ts`, `tests/historicalMeasurements.test.ts`, `tests/sessionPrices.test.ts`,
+  `tests/observedVersions.test.ts`, `tests/trustTransitions.test.ts`, `tests/pricePublication.test.ts`: the APIs of
+  0.2.0 below, in the order of their sections; `tests/sessionPrices.test.ts` also the simple profile of gross rates.
 - `tests/build/bundle.test.js`, `tests/browser/browser.test.ts`: the bundle and the browser, as above.
 
 To check a run of your own of the C# examples, with its new keys:

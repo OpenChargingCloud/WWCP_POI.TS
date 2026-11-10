@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `examples/validate-examples.ts` checks example A16 as its `Validate()` does: from the file the app kept alone, against
+  the trust anchor of epoch 2, the station proof at the time the session began; both steps in their contract terms
+  against it and the price statement of the EVSE; the start and the end value in OCMF with the key of the meter the
+  proof gives, by an OCMF verifier of its own as `VerifyOCMF` of `exampleA16.cs`; and the settlement statement, signed
+  by `DE*GEF` with its key for payments. Refused: another price, the end value left out, step 1 of another merchant,
+  step 2 naming the end value as the start. What it prints is what the C# example printed in a run of WWCP_POI
+  `c4c3c5a`, line for line. The run vendored here, `csharp-045e180`, has no example A16; the nightly runs of
+  WWCPPOIConformanceTests check it on a new run of WWCP_POI master. README lists every test file.
 - For development, Vite 8.3.7 (Rolldown 1.2.18) and typescript-eslint 8.72.2. TypeScript stays at 6.0:
   typescript-eslint 8.72.2 still requires a version below 6.1.
 - The simple profile of gross rates (`chargy-gross-rates/v1`) takes a flat fee without a step size, as a FLAT price
