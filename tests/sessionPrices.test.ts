@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
-import {createHash} from 'node:crypto';
+import {createHash,createPrivateKey,sign} from 'node:crypto';
 import {describe,expect,test} from 'vitest';
-import {parseJSON,prettyJSON,TrustAnchor,KeyStatement,HistoricalTrustContext,verifySessionPriceEvidence,parseTrustedWitnesses,verifyAuthorizedCheckpoint,Checkpoint,type JSONObject} from '../src/index.ts';
+import {parseJSON,prettyJSON,TrustAnchor,KeyStatement,HistoricalTrustContext,verifySessionPriceEvidence,parseTrustedWitnesses,verifyAuthorizedCheckpoint,Checkpoint,SessionPriceAgreement,type JSONObject} from '../src/index.ts';
 import {grossRates,type GrossRates} from '../src/verifier/grossRates.ts';
 const input=(name:string):JSONObject=>parseJSON(readFileSync(new URL(`./vectors/session-price-${name}.json`,import.meta.url),'utf8')) as JSONObject;
 function example(name:string='ed'): {context:HistoricalTrustContext;evidence:JSONObject;request:{evseId:string;meterSerialNumber:string;chargingStarted:number;startDocumentSHA256:string}} {
@@ -51,5 +51,19 @@ describe('CPO price assignment and separate publication evidence',()=>{
         expect(rates('{"type":"FLAT","price":1.00,"stepSize":null}')).toBeUndefined();
         expect(rates('{"type":"ENERGY","price":0.65}')).toBeUndefined();
         expect(rates('{"type":"TIME","price":2.40,"stepSize":0}')).toBeUndefined();
+    });
+    test.each([
+        ['contract','chargy-contract-gross-rates/v1','bound'],
+        ['adhoc','chargy-gross-rates/v1','bound'],
+        ['contract','chargy-gross-rates/v1','unsupported'],
+        ['adhoc','chargy-contract-gross-rates/v1','unsupported'],
+        ['subscription','chargy-contract-gross-rates/v1','unsupported'],
+    ])('an assignment of a session %s of the profile %s is %s: through an e-mobility provider, of the price its CPO charges the provider, of the profile of contracts',(mode,profile,applicability)=>{
+        // The CPO test key of the vector: Ed25519 of the seed 161, signing deterministically.
+        const key=createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),Buffer.alloc(32,161)]),format:'der',type:'pkcs8'});
+        const e=example(),agreement=e.evidence['agreement'] as JSONObject;agreement['chargingMode']=mode;agreement['pricingProfile']=profile;
+        agreement['value']=sign(null,SessionPriceAgreement.parse(agreement).signingBytes(),key).toString('base64');
+        const result=verifySessionPriceEvidence(e.context,e.evidence,e.request);
+        expect(result.agreement).toBe('valid');expect(result.applicability).toBe(applicability);expect(result.selected?.rates?.energyPerKWh).toBe('0.35');
     });
 });

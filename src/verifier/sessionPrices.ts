@@ -34,6 +34,12 @@ import { grossRates } from './grossRates.ts';
 export const SESSION_PRICE_EVIDENCE_CONTEXT = 'https://open.charging.cloud/contexts/wwcp/sessionPriceEvidence/v1';
 export const SESSION_PRICE_AGREEMENT_CONTEXT = 'https://open.charging.cloud/contexts/wwcp/sessionPriceAgreement/v1';
 export const SIMPLE_GROSS_PRICE_PROFILE = 'chargy-gross-rates/v1';
+/** The same gross rates of a session started through an e-mobility provider, of a contract with it (`contract`): the
+ *  rates the CPO charges the provider, not those the provider charges its customer. */
+export const CONTRACT_GROSS_PRICE_PROFILE = 'chargy-contract-gross-rates/v1';
+/** The profile of gross rates of each charging mode: the simple one of a session paid ad hoc, that of contracts of one
+ *  through an e-mobility provider. */
+const GROSS_PRICE_PROFILES: ReadonlyMap<string, string> = new Map([ [ 'adhoc', SIMPLE_GROSS_PRICE_PROFILE ], [ 'contract', CONTRACT_GROSS_PRICE_PROFILE ] ]);
 /** Experimental CPO assertion, distinct from customer consent. */
 export class SessionPriceAgreement {
     private constructor(public readonly json: JSONObject, public readonly chargingStarted: number, public readonly signedAt: number) {}
@@ -115,7 +121,7 @@ export function verifySessionPriceEvidence(current:TrustContext|HistoricalTrustC
     const selected=eligible[0];if(selected===undefined)throw new POIError('Missing selected price');
     const currency=requireString(selected.tariff,'currency'),elements=requireArray(selected.price['elements'],'Signed price elements').map(item=>requireObject(item,'A signed price element')),rates=grossRates(currency,elements);
     let applicability:SessionPriceVerification['applicability']=agreement===undefined?'unbound':'bound';
-    if(agreement!==undefined&&(agreement.json['chargingMode']!=='adhoc'||agreement.json['priceBinding']!=='fixed-at-start'||agreement.json['pricingProfile']!==SIMPLE_GROSS_PRICE_PROFILE||rates===undefined)){
+    if(agreement!==undefined&&(agreement.json['pricingProfile']!==GROSS_PRICE_PROFILES.get(asText(agreement.json['chargingMode']))||agreement.json['priceBinding']!=='fixed-at-start'||rates===undefined)){
         applicability='unsupported';diagnostics.push('EMP/contract terms, variable binding, unknown price profile or conditional elements are not established by this profile');
     }
     let publication:SessionPriceVerification['publication']='missing';const checkpointIds:string[]=[],witnessed=new Set<string>();
@@ -153,5 +159,5 @@ export function verifySessionPriceEvidence(current:TrustContext|HistoricalTrustC
     });
     if(policy.requirePublication===true&&publication!=='valid')diagnostics.push('Required price publication evidence is incomplete');
     return {...base,publicationWitnesses,publicationBeforeStart:publicationWitnesses.status,signatures:'valid',applicability,agreement:agreement===undefined?'missing':'valid',publication,chainGaps,diagnostics,checkpointIds,witnessedBy:[...witnessed],
-        selected:{statement:selected.statement.json,digest:selected.digest,tariff:selected.tariff,currency,elements,...(rates===undefined||agreement?.json['pricingProfile']!==SIMPLE_GROSS_PRICE_PROFILE?{}:{rates})}};
+        selected:{statement:selected.statement.json,digest:selected.digest,tariff:selected.tariff,currency,elements,...(rates===undefined||![...GROSS_PRICE_PROFILES.values()].includes(asText(agreement?.json['pricingProfile']))?{}:{rates})}};
 }

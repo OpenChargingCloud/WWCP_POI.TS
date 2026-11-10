@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A profile of contracts, `chargy-contract-gross-rates/v1` (`CONTRACT_GROSS_PRICE_PROFILE`), binds the price of a
+  session started through an e-mobility provider, of a contract with it, as WWCP_POI `b414296` takes it: a price
+  agreement whose `chargingMode` is `contract` is `bound` of it, of the same rates as the simple profile, and its price
+  is the one the CPO charges the provider; what the provider charges its customer stays unproven. Contract mode of the
+  simple profile stays `unsupported`, as the vector `sessionPrice-contract-mode` has it ("Contract mode requires an
+  additional profile"), and so does `adhoc` of the profile of contracts.
 - `examples/validate-examples.ts` checks example A16 as its `Validate()` does: from the file the app kept alone, against
   the trust anchor of epoch 2, the station proof at the time the session began; both steps in their contract terms
   against it and the price statement of the EVSE; the start and the end value in OCMF with the key of the meter the
