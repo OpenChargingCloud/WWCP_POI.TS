@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {describe,expect,test} from 'vitest';
 import {parseJSON,prettyJSON,TrustAnchor,KeyStatement,HistoricalTrustContext,verifySessionPriceEvidence,parseTrustedWitnesses,verifyAuthorizedCheckpoint,Checkpoint,type JSONObject} from '../src/index.ts';
+import {grossRates,type GrossRates} from '../src/verifier/grossRates.ts';
 const input=(name:string):JSONObject=>parseJSON(readFileSync(new URL(`./vectors/session-price-${name}.json`,import.meta.url),'utf8')) as JSONObject;
 function example(name:string='ed'): {context:HistoricalTrustContext;evidence:JSONObject;request:{evseId:string;meterSerialNumber:string;chargingStarted:number;startDocumentSHA256:string}} {
     const raw=input(name),poi=raw['poiEvidence'] as JSONObject,bootstrap=poi['bootstrap'] as JSONObject,anchor=TrustAnchor.parse(bootstrap['trustAnchor'] as string);
@@ -41,5 +42,14 @@ describe('CPO price assignment and separate publication evidence',()=>{
         const keyId=((e.evidence['priceStatements'] as JSONObject[])[0] as JSONObject)['keyId'] as string;
         expect(verifySessionPriceEvidence(e.context,e.evidence,e.request,{revocations:[{keyId,invalidFrom:0}]}).signatures).toBe('invalid');
         expect(()=>HistoricalTrustContext.create(e.context.authorizedAnchor,KeyStatement.parse((((input('ed')['poiEvidence'] as JSONObject)['bootstrap'] as JSONObject)['keyStatement'] as JSONObject)['keyStatement']),{trustedIdentityKeyIds:[]})).toThrow();
+    });
+    test('a flat fee without a step size is a gross rate, as a FLAT price component has none; energy and time need one',()=>{
+        const rates=(components:string):GrossRates|undefined=>grossRates('EUR',[parseJSON(`{"priceComponents":[${components}]}`) as JSONObject]);
+        expect(rates('{"type":"FLAT","price":1.00},{"type":"ENERGY","price":0.65,"stepSize":1}')).toEqual({currency:'EUR',flatFee:'1.00',energyPerKWh:'0.65'});
+        expect(rates('{"type":"FLAT","price":1.00},{"type":"TIME","price":2.40,"stepSize":60}')).toEqual({currency:'EUR',flatFee:'1.00',timePerHour:'2.40'});
+        expect(rates('{"type":"FLAT","price":1.00,"stepSize":1}')).toBeUndefined();
+        expect(rates('{"type":"FLAT","price":1.00,"stepSize":null}')).toBeUndefined();
+        expect(rates('{"type":"ENERGY","price":0.65}')).toBeUndefined();
+        expect(rates('{"type":"TIME","price":2.40,"stepSize":0}')).toBeUndefined();
     });
 });

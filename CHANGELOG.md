@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The simple profile of gross rates (`chargy-gross-rates/v1`) takes a flat fee without a step size, as a FLAT price
+  component has none ("A FLAT price component has no step size!"), and as WWCP_POI `c4c3c5a` takes it: it asked every
+  component for a step size of at least one, so that a price agreement of a flat fee was `unsupported`, never `bound`,
+  with no gross rates. A flat fee with a step size, also `null`, is none of the profile; energy and time need one of at
+  least one, as before. `grossRates` is a module of its own, not exported, tested apart.
 - A change is read as WWCP_POI3 reads it and refused in the words of its refusal after "Change N: ", as WWCP_POI3
   refuses it with the change proposed for it on top of `8b0580f` (`RoamingNetworkChange.Refusal`, shared by its
   constructor and `TryParse`; without it WWCP_POI3 says "Invalid change 0: …", and where its constructor refuses, the

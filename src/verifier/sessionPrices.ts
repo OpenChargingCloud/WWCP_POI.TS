@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 import { requireObject, requireArray, requireString, requireTimestamp, onlyProperties } from '../common.ts';
-import { asText, isObject, isNumber, type JSONValue, type JSONObject } from '../json/value.ts';
-import { Decimal } from '../json/decimal.ts';
+import { asText, isObject, type JSONValue, type JSONObject } from '../json/value.ts';
 import { canonicalJSONBytes } from '../json/canonical.ts';
 import { isLowerHex, toHex } from '../encoding/text.ts';
 import { verifySignature } from '../crypto/signature.ts';
@@ -30,6 +29,7 @@ import { HistoricalTrustContext, historicalOperatorContext, verifyAuthorizedChec
 import { POIPublicKey } from '../keys.ts';
 import { verifyPricePublication, type WitnessPublicationPolicy, type PricePublicationVerification } from './pricePublication.ts';
 import { POIError } from '../errors.ts';
+import { grossRates } from './grossRates.ts';
 
 export const SESSION_PRICE_EVIDENCE_CONTEXT = 'https://open.charging.cloud/contexts/wwcp/sessionPriceEvidence/v1';
 export const SESSION_PRICE_AGREEMENT_CONTEXT = 'https://open.charging.cloud/contexts/wwcp/sessionPriceAgreement/v1';
@@ -81,21 +81,6 @@ export interface SessionPriceVerification {
     readonly chainGaps:boolean;readonly checkedAt:number;readonly checkpointIds:readonly string[];readonly witnessedBy:readonly string[];readonly diagnostics:readonly string[];
     readonly selected?:{readonly statement:JSONObject;readonly digest:string;readonly tariff:JSONObject;readonly currency:string;readonly elements:readonly JSONObject[];
         readonly rates?:{readonly currency:string;readonly energyPerKWh?:string;readonly flatFee?:string;readonly timePerHour?:string}};
-}
-function grossRates(currency:string,elements:readonly JSONObject[]):NonNullable<NonNullable<SessionPriceVerification['selected']>['rates']>|undefined {
-    if(elements.length!==1)return undefined;
-    const element=elements[0];if(element===undefined||Object.keys(element).some(key=>key!=='priceComponents'&&key!=='restrictions'))return undefined;
-    if(element['restrictions']!==undefined&&(!isObject(element['restrictions'])||Object.keys(element['restrictions']).length>0))return undefined;
-    const components=element['priceComponents'];if(!Array.isArray(components)||components.length===0)return undefined;
-    const rates:{currency:string;energyPerKWh?:string;flatFee?:string;timePerHour?:string}={currency};
-    for(const raw of components){
-        if(!isObject(raw)||Object.keys(raw).some(key=>!['type','price','stepSize'].includes(key)))return undefined;
-        const type=raw['type'],value=raw['price'],step=raw['stepSize'];
-        if(!isNumber(value)||Decimal.parse(asText(value)).mantissa<0n||typeof step!=='number'||!Number.isSafeInteger(step)||step<1)return undefined;
-        const field=type==='ENERGY'?'energyPerKWh':type==='FLAT'?'flatFee':type==='TIME'?'timePerHour':undefined;
-        if(field===undefined||rates[field]!==undefined)return undefined;rates[field]=asText(value);
-    }
-    return rates;
 }
 export function verifySessionPriceEvidence(current:TrustContext|HistoricalTrustContext,value:JSONValue,request:SessionPriceRequest,
     policy:HistoricalMeterPolicy&{readonly publicationPolicy?:WitnessPublicationPolicy;readonly relatedCheckpoints?:readonly {readonly checkpoint:JSONValue;readonly operator:JSONValue}[]}={}):SessionPriceVerification {

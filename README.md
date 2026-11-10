@@ -421,7 +421,9 @@ generic algorithms (including Ed25519 and ML-DSA), usage/validity, entity/tariff
 explicit selection. `SessionPriceAgreement` binds the exact original start document SHA-256, meter/EVSE, time, tariff,
 statement digest, mode and binding/profile in a CPO signature. This is a CPO assertion, not customer consent. Unknown
 agreements never authorize themselves. The experimental `chargy-gross-rates/v1` profile fixes unconditional gross rates
-at start. EMP contracts, variable bindings and unsupported restrictions stay unproven.
+at start: one element without restrictions, of an energy, a flat and a time component each once at most, energy and
+time in a step size of at least one, a flat fee in none, as a FLAT price component has none. EMP contracts, variable
+bindings and unsupported restrictions stay unproven.
 
 Checkpoint authority is shared with historical meter verification. Price inclusion, `after` links/continuity, selected
 statement identity and related checkpoint forks are checked separately. A later checkpoint never proves pre-start
