@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- For development, Vite 8.3.7 (Rolldown 1.2.18) and typescript-eslint 8.72.2. TypeScript stays at 6.0:
+  typescript-eslint 8.72.2 still requires a version below 6.1.
 - The simple profile of gross rates (`chargy-gross-rates/v1`) takes a flat fee without a step size, as a FLAT price
   component has none ("A FLAT price component has no step size!"), and as WWCP_POI `c4c3c5a` takes it: it asked every
   component for a step size of at least one, so that a price agreement of a flat fee was `unsupported`, never `bound`,
