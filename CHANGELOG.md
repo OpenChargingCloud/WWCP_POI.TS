@@ -28,6 +28,12 @@
   element, embedded, infrastructure and release change sets, the ETags of preconditions, the versions with an EV Taler
   merchant) are calculated again by WWCP_POI3 at `c4c3c5a`, and this library takes the very same versions.
   `tests/conformance.test.ts` 825.
+- `poi-histories.json` of WWCPPOIConformanceTests `86dfc09` vendored, its other vectors those of `228041d`: 4 replays of
+  the roles every commit must be signed in (POI3-ISSUES.md S24), `required-role-*`, naming `requiredSignatureRoles`,
+  which `tests/conformance.ts` now gives the options of the history of a replay: a commit signed in the role
+  `roamingNetworkOperator` only by a key of DE*GEF, which the version does not certify for it, or not in it at all, is
+  refused; one key that may sign in it is enough. And `offer-of-a-provider-overlapping`, two offers of an e-mobility
+  provider overlapping at its EVSE group, refused (9.4). 94 replays, `tests/conformance.test.ts` 830.
 - For development, Vite 8.3.7 (Rolldown 1.2.18) and typescript-eslint 8.72.2. TypeScript stays at 6.0:
   typescript-eslint 8.72.2 still requires a version below 6.1.
 - The simple profile of gross rates (`chargy-gross-rates/v1`) takes a flat fee without a step size, as a FLAT price

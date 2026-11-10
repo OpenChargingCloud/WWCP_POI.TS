@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     applies, canonical, chargyDocument, deviates, encodings, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
     refusals, runDocument, runText, specification, trust, verifier, type AnchoredSnapshotCase, type DocumentRef, type DocumentStep,
-    type QIDigitalCase, type QIDigitalVector, type RefusalVector, type ReplayStep, type TrustCase, type VerifierCase, type VerifierPolicy,
+    type HistoryReplayVector, type QIDigitalCase, type QIDigitalVector, type RefusalVector, type ReplayStep, type TrustCase, type VerifierCase, type VerifierPolicy,
     type VerifierVector,
 } from './conformance.ts';
 
@@ -244,10 +244,18 @@ describe('Golden vectors: what the C# examples published, frozen', () => {
 const UNCHECKED: SnapshotOptions = { unanchored: true, verifyCommit: () => undefined, verifyCheckpoint: () => undefined };
 
 /**
+ * How a replay of poi-histories.json takes what it replays: unchecked, and where it names `requiredSignatureRoles`, every
+ * commit signed in them by a key the version it leads to lets sign in it (S24), for every step of the replay.
+ */
+const optionsOf = (vector: HistoryReplayVector): SnapshotOptions =>
+    vector.requiredSignatureRoles === undefined ? UNCHECKED : { ...UNCHECKED, requiredSignatureRoles: vector.requiredSignatureRoles };
+
+/**
  * Takes one step of a replay, its document given by `documentOf`, and returns the history after it: throws where the
  * history refuses it, or where the head is not the one expected.
  */
-function replayStep(current: History | undefined, step: ReplayStep, documentOf: (step: DocumentStep) => JSONValue): History {
+function replayStep(current: History | undefined, step: ReplayStep, documentOf: (step: DocumentStep) => JSONValue,
+                    options: SnapshotOptions = UNCHECKED): History {
 
     const now = (): History => {
         if (current === undefined)
@@ -258,7 +266,7 @@ function replayStep(current: History | undefined, step: ReplayStep, documentOf: 
     switch (step.op) {
 
         case 'fromSnapshot':
-            return History.fromSnapshot(documentOf(step), UNCHECKED);
+            return History.fromSnapshot(documentOf(step), options);
 
         case 'append': {
             const commits: JSONValue = documentOf(step);
@@ -288,8 +296,8 @@ function replayStep(current: History | undefined, step: ReplayStep, documentOf: 
 }
 
 /** Takes the steps of a replay one after the other: the history after the last one. */
-const replay = (steps: readonly ReplayStep[], documentOf: (step: DocumentStep) => JSONValue): History | undefined =>
-    steps.reduce<History | undefined>((current, step) => replayStep(current, step, documentOf), undefined);
+const replay = (steps: readonly ReplayStep[], documentOf: (step: DocumentStep) => JSONValue, options: SnapshotOptions = UNCHECKED): History | undefined =>
+    steps.reduce<History | undefined>((current, step) => replayStep(current, step, documentOf, options), undefined);
 
 
 describe('Golden vectors: histories WWCPPOIConformanceTests signed, what they take and refuse', () => {
@@ -301,9 +309,10 @@ describe('Golden vectors: histories WWCPPOIConformanceTests signed, what they ta
             expect(vector.commitAndCheckpointSignatures).toBe('unchecked');
 
             const documentOf = (step: DocumentStep): JSONValue => historyDocument(vector.history, step.document);
+            const options    = optionsOf(vector);
 
             if (vector.expected === 'accepted') {
-                replay(vector.steps, documentOf);
+                replay(vector.steps, documentOf, options);
                 return;
             }
 
@@ -314,18 +323,18 @@ describe('Golden vectors: histories WWCPPOIConformanceTests signed, what they ta
                 throw new Error(`The refusal ${vector.id} names no step to refuse, or no control`);
 
             // The control: in place of the refused document, the one refused but for what the replay is about is taken.
-            replay([ ...before, { ...last, document: vector.control } as ReplayStep ], documentOf);
+            replay([ ...before, { ...last, document: vector.control } as ReplayStep ], documentOf, options);
 
-            const current = replay(before, documentOf);
+            const current = replay(before, documentOf, options);
 
             // Refused for what the vector is about, where it names it; a known deviation pinned: once it is refused, the
             // marker goes in WWCPPOIConformanceTests.
             if (deviates(vector))
-                replayStep(current, last, documentOf);
+                replayStep(current, last, documentOf, options);
             else if (vector.reason === undefined)
-                expect(() => replayStep(current, last, documentOf)).toThrow();
+                expect(() => replayStep(current, last, documentOf, options)).toThrow();
             else
-                expect(() => replayStep(current, last, documentOf)).toThrow(vector.reason);
+                expect(() => replayStep(current, last, documentOf, options)).toThrow(vector.reason);
 
         });
 

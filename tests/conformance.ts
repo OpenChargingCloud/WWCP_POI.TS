@@ -157,6 +157,11 @@ export interface HistoryReplayVector extends Vector {
     readonly commitAndCheckpointSignatures: string;
     readonly expected:       'accepted' | 'refused';
     readonly steps:          readonly ReplayStep[];
+    /**
+     * The roles every commit of the replay must be signed in, by a key the version it leads to lets sign in it
+     * (SPECIFICATION.md 5.4, POI3-ISSUES.md S24): `requiredSignatureRoles` of the options of its history, where given.
+     */
+    readonly requiredSignatureRoles?: readonly string[];
     readonly control?:       string;
     /** What the refusal names, as both implementations word it. */
     readonly reason?:        string;
