@@ -94,9 +94,9 @@ describe('Payment options, an open set of names (WWCP_POI ec3dace)', () => {
 
         expect(pool['paymentOptions']).toEqual([ 'Cash', 'EVTaler' ]);
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:94244a4095bd8befeb02001c9e52d589bf64929a524e5203fb91b658edd849df',
-            'cbor:sha256:hex:0afc79f9519b3bd4c18373ad8fc8d30bc3144edd3b0731e430233b665b6c2d92',
-            'effectiveTree:sha256:hex:6feb44fd4f7decc2269440dd6e2ec0796fb22291177db2572aee1f8a6034e2b6',
+            'json:sha256:hex:8d2cb25d55f72e2e99b399da51907248a68ce6f6e815d6c85910fb74df1e02d9',
+            'cbor:sha256:hex:7106c171279a536a4b6dcccf3d7a44b39dc4745badc319c0b483d87cd9acf195',
+            'effectiveTree:sha256:hex:3ef903a5db43b54534411251e94147e7e3382af28a1850de755b8807f6166554',
         ]);
 
     });
@@ -112,9 +112,9 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
 
         // The ETags WWCP_POI3 calculates of the same content: its canonical JSON, its CBOR, its effective tree.
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:aaab56516e8cc93cf1b2a47d229a96c8a12fafae9cfefde9670d35cf731d07db',
-            'cbor:sha256:hex:f416c43450c161cf2d11732bcbfbfe97a22d4b30a21fab2ac55d74228f086624',
-            'effectiveTree:sha256:hex:b8dfd839f7fb3109115b91d6c364001501b9c4115e571bbd36e2fc08fce25ef0',
+            'json:sha256:hex:d060ef4c466f4ab280b1c2172a030092db9613d1da3cf94dde00521740dc7fc7',
+            'cbor:sha256:hex:eb89c4a8abf2bd1b426440837bc6ff1a9b23386d80cd486732c1ff60ab253911',
+            'effectiveTree:sha256:hex:8118ea19ba86566a9cf66717385d81af5bb5d5cffbfeb612cbee6c68af66b78c',
         ]);
 
         const read = evTalerMerchantOf(merchant()) as EVTalerMerchant;

@@ -15,14 +15,14 @@ import { clone, isArray, isObject, type JSONObject, type JSONValue } from '../sr
 // certificate the @id of the body issuing it alike; the prefix compared without case, both trimmed as read. A version or
 // change set holding one identified otherwise is refused in the words of WWCP_POI3 (ForeignTransparencySoftware,
 // ForeignConformityCertificate), before releases or certificates given twice; the change sets taken lead to the versions
-// WWCP_POI3 at 045e180 calculated for the same changes of the same version (CreateChangeSet).
+// WWCP_POI3 at c4c3c5a calculated for the same changes of the same version (CreateChangeSet).
 
 const AT       = '2026-11-05T21:00:00.000Z';
 const RELEASE  = 'GraphDefined:chargy-1.5.0';
 
-// The versions WWCP_POI3 at 045e180 calculated for these change sets of QA: their json and cbor ETags.
-const ADD_RELEASE      = [ '7dbaa7a3465dd71570c2717d146229e017e2e18ee566c60fa0f2c484019b4f95', '38f74da5f25b28ee524d6c86f65101badfe418cecc169668497f8e3aabf9289d' ] as const;
-const ADD_CERTIFICATE  = [ 'f212af5fa39a0b0b3072c78039b4443b7e64fc7e458e13f32fcec94ea8d0e1c5', '0adbaa48dc15697ec19e6d15b61b672ee186c766981392ec4b8ac31c8ee59c1f' ] as const;
+// The versions WWCP_POI3 at c4c3c5a calculated for these change sets of QA: their json and cbor ETags.
+const ADD_RELEASE      = [ 'dd32e5efc098d25b04ee6aeb0df49e0bc003f648db2afc16cddc4e2b04d18c57', '91d4a149c2f89c04546f306a5fb9befddc0e43be1bccd8f166a4c3131949a734' ] as const;
+const ADD_CERTIFICATE  = [ '79c834990fccfba2f307779a3a973ef7316918c82f16d4700adc0eabdab706bf', '2510c0f1a00fb34ccc7da1b9b1476d2415bc682350d9007ed05c4fa7d23840e9' ] as const;
 
 /** The given JSON with every text the given identification is replaced by the other one: the entity and what names it. */
 function renamed(json: JSONValue, from: string, to: string): JSONValue {

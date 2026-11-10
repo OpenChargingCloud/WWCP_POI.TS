@@ -117,7 +117,7 @@ describe('The roaming network and its operator, in the words of WWCP_POI3', () =
 
         // The holders of keys as WWCP_POI3 names them.
         expect(refusal(qa((_, operator) => { delete defined((operator['identityKeys'] as JSONArray)[0] as JSONObject)['holder']; })))
-            .toMatch(/^The given JSON representation of a roaming network is invalid: The roaming network operator 'OCC': The signing key '[0-9a-f]{64}' of the holder 'GammaOrg' is certified by the identity key '[0-9a-f]{64}' of no named holder: each holder certifies its own signing keys only! \(Parameter 'Operator'\)$/u);
+            .toMatch(/^The given JSON representation of a roaming network is invalid: The roaming network operator 'OCC': The signing key '[0-9a-f]{64}' of the holder 'BetaOrg' is certified by the identity key '[0-9a-f]{64}' of no named holder: each holder certifies its own signing keys only! \(Parameter 'Operator'\)$/u);
 
     });
 

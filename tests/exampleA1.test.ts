@@ -27,9 +27,9 @@ describe('Example A1: checking QA from its trust anchor', () => {
         expect(anchor.id).toBe('QA');
         expect(anchor.minConsensus).toBe(2);
         expect(anchor.keys).toEqual([
-            '58e8ab6b4620f97860d6bcc4d99bba2cb8ce3de7e36e93d0b01051230733634b',
-            'b4b2721f903a5a94f3f93d86142cb8b0496244a1724e91be38d2e79e145127d6',
-            'c641855eb640d90e8e0299b71ab435d0423d83def3227cab898f74e56d43a995',
+            '827c5f6ea4cbcd1fbe8fd4609801ee109411d2b685b23f4541dbe9d5030b24fc',
+            '909a01645680f4af6e5d547a3f821208bf2294e80f70aefd904a339f6f7172db',
+            'a366a4c67cb84992d9d781a9f39f80b07a09fd4fb7ac5aeb8ee9139979e294cb',
         ]);
         expect(anchor.urls).toEqual([ 'https://open.charging.cloud/RNs/QA' ]);
         expect(anchor.name).toEqual({ en: 'Quality Assurance' });
@@ -37,8 +37,8 @@ describe('Example A1: checking QA from its trust anchor', () => {
         expect(anchor.toQRCode()).toHaveLength(511);
 
         // The URL form names the same keys and quorum, as C# printed it.
-        expect(anchor.toURL()).toBe('https://open.charging.cloud/RNs/QA?keys=58e8ab6b4620f97860d6bcc4d99bba2cb8ce3de7e36e93d0b01051230733634b,' +
-                                    'b4b2721f903a5a94f3f93d86142cb8b0496244a1724e91be38d2e79e145127d6,c641855eb640d90e8e0299b71ab435d0423d83def3227cab898f74e56d43a995&minConsensus=2');
+        expect(anchor.toURL()).toBe('https://open.charging.cloud/RNs/QA?keys=827c5f6ea4cbcd1fbe8fd4609801ee109411d2b685b23f4541dbe9d5030b24fc,' +
+                                    '909a01645680f4af6e5d547a3f821208bf2294e80f70aefd904a339f6f7172db,a366a4c67cb84992d9d781a9f39f80b07a09fd4fb7ac5aeb8ee9139979e294cb&minConsensus=2');
         const fromURL = TrustAnchor.parse(anchor.toURL());
         expect(fromURL.keys).toEqual(anchor.keys);
         expect(fromURL.minConsensus).toBe(2);
@@ -54,13 +54,13 @@ describe('Example A1: checking QA from its trust anchor', () => {
         expect(version.signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(version.warnings).toEqual([]);
         expect(version.commit.revision).toBe(0);
-        expect(version.commit.id).toBe('42d013cf5a94124c8a952d0fa98033d449438dcb75cbf622b4dc2360e3c7280f');
+        expect(version.commit.id).toBe('83480c437d2f6a2d7e1093606daf373bfdcca40bbcbb03f158b1167e249a8533');
 
         // The ETags as C# printed them for this version.
         expect(version.network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:a0f18e229d68b386180da6028629fed5e633c532e8151fd4b5a8eba2bda6a35e',
-            'cbor:sha256:hex:143015ec82353da45389a8230079b79ea1a1781f0ca9b58132c212ca31070478',
-            'effectiveTree:sha256:hex:8e272c39f7da52ba612224ecf663e77e87cc0cbd67040712276a70458dbafd98',
+            'json:sha256:hex:5744e87ac270604334a2abdea3a8ec29a6b4f1ea8d413cfb98e4cc7d362e001e',
+            'cbor:sha256:hex:b4b2d5d2fe7ac19f8915b3b1c6c65423c44e90d394034684cace09e99fa0323d',
+            'effectiveTree:sha256:hex:f8c5e0e03bc8db316168fc6d682e5bd1ac12a3b0fb2dcd9088df67af0861c541',
         ]);
 
         expect(RoamingNetwork.parse(network).matchesCommitETags(Commit.parse(commit).eTags)).toBe(true);

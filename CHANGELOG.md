@@ -8,8 +8,20 @@
   proof gives, by an OCMF verifier of its own as `VerifyOCMF` of `exampleA16.cs`; and the settlement statement, signed
   by `DE*GEF` with its key for payments. Refused: another price, the end value left out, step 1 of another merchant,
   step 2 naming the end value as the start. What it prints is what the C# example printed in a run of WWCP_POI
-  `c4c3c5a`, line for line. The run vendored here, `csharp-045e180`, has no example A16; the nightly runs of
-  WWCPPOIConformanceTests check it on a new run of WWCP_POI master. README lists every test file.
+  `c4c3c5a`, line for line. `npm run examples` checks it on the run vendored here, `csharp-c4c3c5a` (below), the nightly
+  runs of WWCPPOIConformanceTests on a new run of WWCP_POI master. README lists every test file.
+- The test vectors of a new run of the C# examples, `tests/vectors/csharp-c4c3c5a` in place of `csharp-045e180`:
+  WWCP_POI `c4c3c5a` with Hermod `850cab3d` and Styx `21d00134`, examples A1 to A16, MakeProofs at
+  `2026-11-10T05:54:00.000Z` (`tests/at.ts`). The head of epoch 2 is revision 11, as before; example A16 adds the file
+  the app keeps of its EV Taler session, `driver/evidence-DE_GEF_E1_1-evTaler.json`. With them, of
+  WWCPPOIConformanceTests `228041d`, byte for byte: `poi-history.json` (the price statement of that file new, 9),
+  `poi-refusals.json` (307, 33 of them with a reason now), `poi-histories.json` (89 replays, 13 new of the web payment
+  page signed for payments), `poi-qidigital.json`, `poi-verifier.json` (109, `sessionPrice-flat-fee` bound) and
+  `chargy/POIPrices` with `flat-fee.chargy`. The tests on QA hold the values of the new run, mapped by content, a key
+  a test picks by its position the key now there; those WWCP_POI3 calculated of changed versions (the after ETags of 75
+  element, embedded, infrastructure and release change sets, the ETags of preconditions, the versions with an EV Taler
+  merchant) are calculated again by WWCP_POI3 at `c4c3c5a`, and this library takes the very same versions.
+  `tests/conformance.test.ts` 825.
 - For development, Vite 8.3.7 (Rolldown 1.2.18) and typescript-eslint 8.72.2. TypeScript stays at 6.0:
   typescript-eslint 8.72.2 still requires a version below 6.1.
 - The simple profile of gross rates (`chargy-gross-rates/v1`) takes a flat fee without a step size, as a FLAT price

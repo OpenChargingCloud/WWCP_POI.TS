@@ -33,9 +33,9 @@ actual measurement time.
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A16 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
 examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations the C#
-implementation makes: in the tests from the run of WWCP_POI `045e180` vendored here, A1 to A15, and every night from a
-new run of WWCP_POI master, with new keys, A1 to A16. EV Taler phase 2, which example A16 shows, is also checked on the
-proof of example A15 and probed against WWCP_POI3. See [Tests](#tests).
+implementation makes: in the tests from the run of WWCP_POI `c4c3c5a` vendored here, and every night from a new run of
+WWCP_POI master, with new keys. EV Taler phase 2, which example A16 shows, is also checked on the proof of example A15
+and probed against WWCP_POI3. See [Tests](#tests).
 
 What a review of the C# implementation found while porting it is in
 [docs/csharp-review.md of WWCPPOIConformanceTests](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/docs/csharp-review.md),
@@ -319,10 +319,11 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   step, and the verifier extensions (`poi-verifier.json`) checked against the fixtures of ChargyWebApp below as
   WWCP_POI3 checks them (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
-- `tests/vectors/csharp-045e180`, what one run of the C# examples A1 to A15 of WWCP_POI at commit `045e180` published
-  (public data only; its output is `csharp-output.log` there), and in `proofs/`, what `proofs/MakeProofs.cs.txt` made of
-  the same history with the C# implementation: proofs of charging stations of epoch 2, the commits of epoch 2 up to the
-  head, revision 11 after the EV Taler merchant of example A15, and the ECDSA twin of a price statement;
+- `tests/vectors/csharp-c4c3c5a`, what one run of the C# examples A1 to A16 of WWCP_POI at commit `c4c3c5a` published
+  (public data only; its output is `csharp-output.log` there), the EV Taler session of example A16 among it, and in
+  `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same history with the C# implementation: proofs of charging
+  stations of epoch 2, the commits of epoch 2 up to the head, revision 11 after the EV Taler merchant of example A15, and
+  the ECDSA twin of a price statement;
 - `tests/vectors/chargy-fc513cd`, the POI fixtures of ChargyWebApp at commit `fc513cd`, which `poi-verifier.json` names
   its documents in: histories, prices, publications, sessions and trust transitions;
 - `tests/vectors/chargy`, what WWCPPOIConformanceTests makes of them itself, which `poi-verifier.json` names with
