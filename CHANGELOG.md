@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `poi-refusals.json` and `poi-histories.json` of WWCPPOIConformanceTests `674b173` vendored, its other vectors those of
+  `3bb2928`: 11 vectors this library took and refused as given already, of where drivers ask for offers (`offersURL`,
+  refused and held as written otherwise, signed for `payments`) and of preconditions held, changed and of no entity.
+
 - A commit is identified and signed over its change set as WWCP_POI3 writes it again (`RoamingNetworkCommit.TryParse`),
   as its change set is since `7f5fbe5`: a change set with `metadata: {}`, `preconditions: []` or a precondition with
   ` DE*GEF `, its commit identified over it as written again, this library refused, "The commit identification '…' is
