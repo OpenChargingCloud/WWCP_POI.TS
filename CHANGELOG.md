@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `poi-verifier.json` and `chargy/POIPrices` of WWCPPOIConformanceTests `3bb2928` vendored, its other vectors those of
+  `86dfc09`: 3 vectors of the profile of contracts (WWCP_POI `b414296`), `sessionPrice-contract-profile` bound,
+  `sessionPrice-adhoc-contract-profile` and `sessionPrice-subscription-mode` unsupported, and their documents
+  `contract-profile.chargy`, `adhoc-contract-profile.chargy` and `subscription-mode.chargy`.
+
 - EV Taler, phase 3, as WWCP_POI `62390ca` takes it: the merchant of an operator (`evTaler`) names where drivers ask
   for offers, if the operator makes them, its optional `offersURL` (`EVTalerMerchant.offersURL`), a base URL as its
   merchant base URL is one: HTTPS, ending in '/', without user, query and fragment, "The offers URL '…' must be an HTTPS
