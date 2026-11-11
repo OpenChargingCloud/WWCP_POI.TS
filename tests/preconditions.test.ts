@@ -201,8 +201,8 @@ describe('Preconditions', () => {
             .toBe("The change set 'd8c334e0f83726b4e18f356cffbc37de6663edbcaec40e9e7c658b1a3b9dbbec' is not identified by its content, '8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748'!");
         expect(readAsGiven([ { '@context': PRECONDITION_CONTEXT, ...good } ]))
             .toBe("The change set '3380d064394579e5688820df6f908147fd4d8aff84a9d141d47d39225034aaa8' is not identified by its content, '8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748'!");
-        expect(readAsGiven([ { ...good, colour: 'red' } ]))
-            .toBe("The change set 'b477d5fd79827c7e4c1f8a987c8ffb96ee484bb2aaf3a534e5576e87e800a706' is not identified by its content, '8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748'!");
+        // Another property refused before the identification, as WWCP_POI3 with the change proposed for it refuses it.
+        expect(readAsGiven([ { ...good, colour: 'red' } ])).toBe('Invalid precondition 0!');
         expect(readAsGiven([]))
             .toBe("The change set 'e1aa768a3da4eea49b07c70e798ca0fdcd76e70184f130102a54e6446919c787' is not identified by its content, 'a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235'!");
 

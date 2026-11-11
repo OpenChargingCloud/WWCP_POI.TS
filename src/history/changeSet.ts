@@ -122,6 +122,13 @@ function asRead(json: JSONObject): JSONObject {
 }
 
 /**
+ * A change set as WWCP_POI3 writes it again (`ToJSON`), as its identification, its signatures and the identification and
+ * signatures of a commit embedding it are of it (`asRead`): its context and its signatures as given.
+ */
+export const changeSetAsWritten = (json: JSONObject): JSONObject =>
+    asRead(json);
+
+/**
  * The roaming network of a change set as WWCP_POI3 reads it (`RoamingNetwork_Id.TryParse`): trimmed, refused in its
  * words where it is missing, JSON null or nothing is left of it; anything else but a text refused as this library refuses it.
  */
@@ -520,17 +527,10 @@ export class ChangeSet {
 
         const id = requireString(json, '@id', 'The identification of a change set');
 
-        // Identified by its content, and rebased from what it names; the change set of a merge by its parents.
-        if (!id.startsWith(MERGE_CHANGE_SET_ID_PREFIX)) {
-
-            const contentId = changeSetIdentification(json);
-
-            if (id !== contentId)
-                throw new POIError(`The change set '${id}' is not identified by its content, '${contentId}'!`);
-
-            checkRebasedFrom(json, id);
-
-        }
+        // Read in the order WWCP_POI3 reads it (RoamingNetworkChangeSet.TryParse), so that a change set wrong in two ways
+        // is refused for the same one; identified by its content last.
+        const roamingNetworkId  = roamingNetworkIdOf(json, id);
+        const createdAt         = requireTimestamp(json, 'createdAt', `The createdAt of the change set '${id}'`);
 
         const changes = requireArray(get(json, 'changes'), `The changes of the change set '${id}'`).map((item, index) => {
 
@@ -595,6 +595,9 @@ export class ChangeSet {
 
         });
 
+        const beforeETags  = parseETags(get(json, 'beforeETags'), true, `The beforeETags of the change set '${id}'`);
+        const afterETags   = parseETags(get(json, 'afterETags'),  true, `The afterETags of the change set '${id}'`);
+
         // Its description and metadata objects, as WWCP_POI3 reads them, in its words; a description of JSON null none.
         const description = get(json, 'description');
 
@@ -625,15 +628,19 @@ export class ChangeSet {
                                      return read;
                                  });
 
-        return new ChangeSet(id,
-                             roamingNetworkIdOf(json, id),
-                             requireTimestamp(json, 'createdAt',        `The createdAt of the change set '${id}'`),
-                             changes,
-                             preconditions,
-                             parseETags(get(json, 'beforeETags'), true, `The beforeETags of the change set '${id}'`),
-                             parseETags(get(json, 'afterETags'),  true, `The afterETags of the change set '${id}'`),
-                             signatures,
-                             json);
+        // Identified by its content, and rebased from what it names; the change set of a merge by its parents.
+        if (!id.startsWith(MERGE_CHANGE_SET_ID_PREFIX)) {
+
+            const contentId = changeSetIdentification(json);
+
+            if (id !== contentId)
+                throw new POIError(`The change set '${id}' is not identified by its content, '${contentId}'!`);
+
+            checkRebasedFrom(json, id);
+
+        }
+
+        return new ChangeSet(id, roamingNetworkId, createdAt, changes, preconditions, beforeETags, afterETags, signatures, json);
 
     }
 

@@ -4,6 +4,8 @@ import { asText, defined } from './helpers.ts';
 import { commits } from './qa.ts';
 
 import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification } from '../src/history/changeSet.ts';
+import { Commit } from '../src/history/commit.ts';
+import { canonicalJSONBytes } from '../src/json/canonical.ts';
 import { canonicalJSON } from '../src/json/canonical.ts';
 import { clone, isObject, set, without, type JSONArray, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { hash }          from '../src/crypto/hash.ts';
@@ -123,6 +125,30 @@ describe('Change sets identified by their content (4)', () => {
 
         // Not rebased, its beforeETags pin the version it applies to.
         expect(ChangeSet.parse(withoutOldValue).id).toBe(withoutOldValue['@id']);
+
+    });
+
+});
+
+
+describe('A commit identified and signed over its change set as WWCP_POI3 writes it again', () => {
+
+    it('takes what WWCP_POI3 leaves out of its change set, as WWCP_POI3 does: the same identification, the same signature input', () => {
+
+        const given  = defined(commits('published/QA-commits-since-genesis.json').find(commit => isObject((commit as JSONObject)['changeSet']) &&
+                                                                                             !isObject(((commit as JSONObject)['changeSet'] as JSONObject)['metadata']))) as JSONObject;
+        const commit = Commit.parse(given);
+
+        // Metadata with nothing in them and no preconditions, which WWCP_POI3 does not write again (RoamingNetworkCommit.TryParse).
+        const spelled = clone(given);
+        set(spelled['changeSet'] as JSONObject, 'metadata', {});
+        set(spelled['changeSet'] as JSONObject, 'preconditions', []);
+
+        const read = Commit.parse(spelled);
+
+        expect(read.id).toBe(commit.id);
+        expect(canonicalJSONBytes(read.identificationContent())).toEqual(canonicalJSONBytes(commit.identificationContent()));
+        expect(canonicalJSONBytes(read.signedContent())).toEqual(canonicalJSONBytes(commit.signedContent()));
 
     });
 

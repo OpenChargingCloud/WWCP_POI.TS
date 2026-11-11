@@ -23,7 +23,7 @@ import { hash, hashAlgorithmOfIdentification, type HashAlgorithm } from '../cryp
 import { verifySignature }           from '../crypto/signature.ts';
 import { parseETags, type ETag }     from '../etags.ts';
 import { EpochProfiles, type Epoch } from './epoch.ts';
-import { ChangeSet, MERGE_CHANGE_SET_ID_PREFIX } from './changeSet.ts';
+import { ChangeSet, changeSetAsWritten, MERGE_CHANGE_SET_ID_PREFIX } from './changeSet.ts';
 import { trimmed }                   from '../network/versionTexts.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { POIError }                  from '../errors.ts';
@@ -265,27 +265,33 @@ export class Commit {
     }
 
 
-    /** What the identification is the digest of: the commit without `@id`, its signatures and those of its change set. */
+    /**
+     * What the identification is the digest of: the commit without `@id`, its signatures and those of its change set; its
+     * change set as WWCP_POI3 writes it again, as it identifies a commit over it (RoamingNetworkCommit.TryParse).
+     */
     public identificationContent(): JSONObject {
 
         const content = without(this.json, '@id', 'signatures', 'changeSet');
         content['@context'] = COMMIT_CONTEXT;
 
         if (this.changeSet !== undefined)
-            content['changeSet'] = without(this.changeSet, 'signatures', '@context');
+            content['changeSet'] = without(changeSetAsWritten(this.changeSet), 'signatures', '@context');
 
         return content;
 
     }
 
-    /** The commit as a signature of it signs it: with its `@context`, its `@id` and the signatures of its change set (5.4). */
+    /**
+     * The commit as a signature of it signs it: with its `@context`, its `@id` and the signatures of its change set (5.4);
+     * its change set as WWCP_POI3 writes it again.
+     */
     public signedContent(): JSONObject {
 
         const content = without(this.json, 'signatures', 'changeSet');
         content['@context'] = COMMIT_CONTEXT;
 
         if (this.changeSet !== undefined)
-            content['changeSet'] = without(this.changeSet, '@context');
+            content['changeSet'] = without(changeSetAsWritten(this.changeSet), '@context');
 
         return content;
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- A commit is identified and signed over its change set as WWCP_POI3 writes it again (`RoamingNetworkCommit.TryParse`),
+  as its change set is since `7f5fbe5`: a change set with `metadata: {}`, `preconditions: []` or a precondition with
+  ` DE*GEF `, its commit identified over it as written again, this library refused, "The commit identification '…' is
+  not the one of its content, '…'!", where WWCP_POI3 takes it (reported by WWCPPOIConformanceTests). A change set is
+  read in the order WWCP_POI3 reads it, identified by its content last, so that one wrong in two ways is refused for
+  the same: its roaming network and createdAt first, then its changes, ETags, description, metadata, preconditions and
+  signatures. With the change proposed for WWCP_POI3 on top of `62390ca` (a change set names only what it is written
+  with, its createdAt and roaming network as it writes them again), WWCP_POI3 refuses what this library refuses, a
+  property it does not read, a `createdAt` written otherwise, a roaming network given as a number, in its words: the 88
+  change sets of ZProbePreconditions alike in verdicts and words.
+
 - `poi-verifier.json` and `chargy/POIPrices` of WWCPPOIConformanceTests `3bb2928` vendored, its other vectors those of
   `86dfc09`: 3 vectors of the profile of contracts (WWCP_POI `b414296`), `sessionPrice-contract-profile` bound,
   `sessionPrice-adhoc-contract-profile` and `sessionPrice-subscription-mode` unsupported, and their documents
