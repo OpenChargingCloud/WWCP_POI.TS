@@ -22,6 +22,7 @@ import { hash }               from '../crypto/hash.ts';
 import { cborETag, etagToText, parseETag, sameETag, type ETag } from '../etags.ts';
 import { caseId, evseGroupId, evseId, evseTemplateId, freeId, gridOperatorId, operatorId, poolGroupId, poolId, poolTemplateId, providerId,
          stationGroupId, stationId, stationTemplateId, tariffGroupId, tariffId, tariffTemplateId, type Id } from '../network/poiJSON.ts';
+import { trimmed }            from '../network/versionTexts.ts';
 import { POIError }           from '../errors.ts';
 
 
@@ -45,8 +46,9 @@ export interface Precondition {
 
 /**
  * The preconditions of a change set as WWCP_POI3 reads them (`RoamingNetworkPrecondition.TryParse`): an array of objects,
- * each with its entity type and identification and its ETag, written in hex; refused in its words, which name only the
- * index of the precondition it does not read.
+ * each with its entity type and identification, texts trimmed as `ParseMandatoryText` reads them, also to nothing, which
+ * no entity has, and its ETag, written in hex; refused in its words, which name only the index of the precondition it
+ * does not read.
  */
 export function parsePreconditions(value: JSONValue | undefined): Precondition[] {
 
@@ -67,13 +69,11 @@ export function parsePreconditions(value: JSONValue | undefined): Precondition[]
         const entityType  = get(item, 'entityType');
         const entityId    = get(item, 'entityId');
 
-        if ((context !== undefined && context !== PRECONDITION_CONTEXT) ||
-            typeof entityType !== 'string' || entityType === '' ||
-            typeof entityId   !== 'string' || entityId   === '')
+        if ((context !== undefined && context !== PRECONDITION_CONTEXT) || typeof entityType !== 'string' || typeof entityId !== 'string')
             throw invalid;
 
         try {
-            return { entityType, entityId, eTag: parseETag(get(item, 'eTag'), true) };
+            return { entityType: trimmed(entityType), entityId: trimmed(entityId), eTag: parseETag(get(item, 'eTag'), true) };
         }
         catch {
             throw invalid;

@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { rich } from './richNetwork.ts';
 
+import { hash } from '../src/crypto/hash.ts';
+import { toHex } from '../src/encoding/text.ts';
 import { applyChangeSet } from '../src/history/apply.ts';
 import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification } from '../src/history/changeSet.ts';
+import { PRECONDITION_CONTEXT } from '../src/history/preconditions.ts';
+import { canonicalJSONBytes } from '../src/json/canonical.ts';
 import { etagToJSON } from '../src/etags.ts';
 import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 import type { JSONObject, JSONValue } from '../src/json/value.ts';
@@ -52,6 +56,28 @@ function outcome(preconditions: JSONValue, changes?: JSONObject[], after: readon
     return 'taken';
 }
 
+/** The JSON of a change set of the change at AT with the given preconditions, if any, unsigned, leading to the version before. */
+function plainJSON(preconditions?: JSONValue): JSONObject {
+    const beforeETags = QA.changeSetETags().map(eTag => etagToJSON(eTag));
+    const json: JSONObject = { '@context': CHANGE_SET_CONTEXT, roamingNetworkId: QA.id, createdAt: AT, changes: [ change ], beforeETags, afterETags: beforeETags };
+    if (preconditions !== undefined)
+        json['preconditions'] = preconditions;
+    return json;
+}
+
+/** Why a change set of the given preconditions is refused when read, identified by the SHA-256 of its canonical JSON as given. */
+function readAsGiven(preconditions: JSONValue): string {
+    const json = plainJSON(preconditions);
+    json['@id'] = toHex(hash('sha256', canonicalJSONBytes(json)));
+    try {
+        ChangeSet.parse(json);
+    }
+    catch (e) {
+        return e instanceof Error ? e.message : String(e);
+    }
+    return 'read';
+}
+
 const pre = (entityType: string, entityId: string, digest: string, format = 'json', algorithm = 'sha256'): JSONObject =>
     ({ entityType, entityId, eTag: [ format, algorithm, 'hex', digest ] });
 
@@ -87,7 +113,11 @@ describe('Preconditions', () => {
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL, 'effectiveTree') ])).toBe('taken');
 
         expect(outcome([ pre('ChargingPool', 'DEGEFP1', POOL) ])).toBe('taken');
+
+        // Its texts trimmed, as WWCP_POI3 reads them (ParseMandatoryText).
         expect(outcome([ pre('ChargingPool', ' DE*GEF*P1 ', POOL) ])).toBe('taken');
+        expect(outcome([ pre('ChargingPool', '\tDE*GEF*P1\n', POOL) ])).toBe('taken');
+        expect(outcome([ pre(' ChargingPool ', 'DE*GEF*P1', POOL) ])).toBe('taken');
 
         // Checked against the version before the change set, also for the entity it changes.
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL) ], [ { kind: 'UpdateProperty', entityType: 'ChargingPool', entityId: 'DE*GEF*P1', propertyName: 'description', newValue: { en: 'One' } } ],
@@ -113,6 +143,11 @@ describe('Preconditions', () => {
         expect(outcome([ pre('ChargingStationModel', 'GD-AC44', POOL) ]))
             .toBe(`${NOT_FIT}Precondition 0: the ChargingStationModel 'GD-AC44' does not exist!`);
 
+        // Nothing left of a text, as of an empty one: read, as WWCP_POI3 reads it, but no entity has it.
+        expect(outcome([ pre('ChargingPool', '', POOL) ])).toBe(`${NOT_FIT}Precondition 0: the ChargingPool '' does not exist!`);
+        expect(outcome([ pre('ChargingPool', '   ', POOL) ])).toBe(`${NOT_FIT}Precondition 0: the ChargingPool '' does not exist!`);
+        expect(outcome([ pre(' ', 'DE*GEF*P1', POOL) ])).toBe(`${NOT_FIT}Precondition 0: the  'DE*GEF*P1' does not exist!`);
+
     });
 
     it('read as WWCP_POI3 reads them in a change set', () => {
@@ -132,12 +167,55 @@ describe('Preconditions', () => {
         expect(read([ { '@context': 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/precondition/v1', ...good } ])).toBe('read');
         expect(read([])).toBe('read');
 
+        // Another property, too, which WWCP_POI3 at c4c3c5a takes and leaves out (identified without it, it takes it).
         for (const invalid of [ { ...good, '@context': 'x' }, { entityType: 'ChargingPool', entityId: 'DE*GEF*P1' }, { entityId: 'DE*GEF*P1', eTag: good['eTag'] as JSONValue },
-                                { ...good, entityId: '' }, { ...good, eTag: [ 'json', 'sha256', 'base64', 'AAAA' ] }, { ...good, eTag: [ 'json', 'sha256', 'hex', 'abcd' ] },
+                                { ...good, entityId: 5 }, { ...good, eTag: [ 'json', 'sha256', 'base64', 'AAAA' ] }, { ...good, eTag: [ 'json', 'sha256', 'hex', 'abcd' ] },
                                 { ...good, eTag: [ 'xml', 'sha256', 'hex', POOL ] }, { ...good, eTag: `json:sha256:hex:${POOL}` }, { ...good, colour: 'red' }, 'DE*GEF*P1' ] as JSONValue[])
             expect(read([ good, invalid ])).toBe('Invalid precondition 1!');
 
         expect(read(good)).toBe('The preconditions must be a JSON array!');
+
+    });
+
+    it('a change set identified by them as WWCP_POI3 writes them again: trimmed, without a context or another property, none of none', () => {
+
+        const good = pre('ChargingPool', 'DE*GEF*P1', POOL);
+
+        // The identifications WWCP_POI3 at c4c3c5a gave these change sets (ZProbePreconditions).
+        expect(changeSetIdentification(plainJSON([ good ]))).toBe('8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748');
+
+        for (const precondition of [ { ...good, entityId: ' DE*GEF*P1 ' }, { ...good, entityId: '\tDE*GEF*P1\n' }, { ...good, entityId: '\u00a0DE*GEF*P1\u2003' },
+                                     { ...good, entityType: ' ChargingPool ' }, { '@context': PRECONDITION_CONTEXT, ...good },
+                                     { '@context': PRECONDITION_CONTEXT, ...good, entityId: ' DE*GEF*P1' }, { ...good, colour: 'red' } ])
+            expect(changeSetIdentification(plainJSON([ precondition ]))).toBe('8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748');
+
+        expect(changeSetIdentification(plainJSON([ good, { '@context': PRECONDITION_CONTEXT, ...good } ])))
+            .toBe('b795a9ba8dcfe459bff8628706a1d965ae34b1a11465442c726e9043f61eaaa7');
+        expect(changeSetIdentification(plainJSON([ { ...good, entityId: '' } ]))).toBe('e4c59637f861bf10560afd22a7e6910dfdce69c076b342a51463000a9db75b6e');
+        expect(changeSetIdentification(plainJSON([ { ...good, entityId: '   ' } ]))).toBe('e4c59637f861bf10560afd22a7e6910dfdce69c076b342a51463000a9db75b6e');
+        expect(changeSetIdentification(plainJSON([]))).toBe('a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235');
+        expect(changeSetIdentification(plainJSON())).toBe('a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235');
+
+        // Identified by them as given, refused in the words of WWCP_POI3.
+        expect(readAsGiven([ { ...good, entityId: ' DE*GEF*P1 ' } ]))
+            .toBe("The change set 'd8c334e0f83726b4e18f356cffbc37de6663edbcaec40e9e7c658b1a3b9dbbec' is not identified by its content, '8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748'!");
+        expect(readAsGiven([ { '@context': PRECONDITION_CONTEXT, ...good } ]))
+            .toBe("The change set '3380d064394579e5688820df6f908147fd4d8aff84a9d141d47d39225034aaa8' is not identified by its content, '8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748'!");
+        expect(readAsGiven([ { ...good, colour: 'red' } ]))
+            .toBe("The change set 'b477d5fd79827c7e4c1f8a987c8ffb96ee484bb2aaf3a534e5576e87e800a706' is not identified by its content, '8c3cf49fc494dd7e1324b62bafc9b79b7ec50130dc88539a5cd9254c14949748'!");
+        expect(readAsGiven([]))
+            .toBe("The change set 'e1aa768a3da4eea49b07c70e798ca0fdcd76e70184f130102a54e6446919c787' is not identified by its content, 'a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235'!");
+
+        // Signed as identified, as WWCP_POI3 writes it again (ToJSON(Embedded: true, IncludeSignatures: false)).
+        const signature = { algorithm: 'Ed25519', keyId: 'DE*GEF', value: 'AAAA' };
+        const parsed    = (preconditions?: JSONValue): ChangeSet => {
+            const json = plainJSON(preconditions);
+            json['@id'] = changeSetIdentification(json);
+            return ChangeSet.parse(json);
+        };
+
+        expect(parsed([ { '@context': PRECONDITION_CONTEXT, ...good, entityId: ' DE*GEF*P1' } ]).signingBytes(signature)).toEqual(parsed([ good ]).signingBytes(signature));
+        expect(parsed([]).signingBytes(signature)).toEqual(parsed().signingBytes(signature));
 
     });
 

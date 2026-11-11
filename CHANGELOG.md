@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- A change set is identified by its content as WWCP_POI3 writes it again (`ToJSON`), not only by its changes: its
+  preconditions each with its entity type and identification trimmed, also to nothing, without its context and any
+  other property, none where there are none (`preconditions: []`); its roaming network trimmed; its description as Styx
+  reads a text in languages (each language in lower case, a text of no language it reads left out), none where it is
+  JSON null or has no text left; no metadata where they hold nothing. This library identified them as given: a change
+  set with ` DE*GEF*P1 ` in a precondition, identified so, it took, which WWCP_POI3 refuses as "not identified by its
+  content". Its signatures are verified over it as written again, as WWCP_POI3 signs and verifies them
+  (`ToJSON(Embedded: true, IncludeSignatures: false)`), not over it as given, also of the changes written again since
+  `eb607f9`. Read as WWCP_POI3 reads it: the texts of a precondition trimmed, empty ones read and refused when applied,
+  "Precondition 0: the ChargingPool '' does not exist!", where this library said "Invalid precondition 0!"; its
+  roaming network trimmed and compared without case (`RoamingNetwork_Id`), refused in the words of WWCP_POI3 where it
+  is missing, JSON null or blank ("Invalid 'roaming network identification'!"); a description or metadata that is no
+  JSON object refused ("JSON property 'description' is not an object!", "The metadata must be a JSON object!"), which
+  this library took. Probed with 88 change sets with ZProbePreconditions on WWCP_POI3 at `c4c3c5a`, each identified as
+  given and as WWCP_POI3 writes it: the same verdicts and words but for those this library refuses where WWCP_POI3
+  takes them: a property it does not know of a change set, a change or a precondition, which WWCP_POI3 leaves out; a
+  `createdAt` written otherwise than `yyyy-MM-ddTHH:mm:ss.fffZ`, which it writes so; a roaming network given as a
+  number, which it reads as its text.
+
 - A profile of contracts, `chargy-contract-gross-rates/v1` (`CONTRACT_GROSS_PRICE_PROFILE`), binds the price of a
   session started through an e-mobility provider, of a contract with it, as WWCP_POI `b414296` takes it: a price
   agreement whose `chargingMode` is `contract` is `bound` of it, of the same rates as the simple profile, and its price

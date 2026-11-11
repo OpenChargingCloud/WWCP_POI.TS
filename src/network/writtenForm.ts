@@ -567,7 +567,7 @@ function languageOf(language: string): string | undefined {
 }
 
 /** The texts of a text in languages as Styx writes them, of the languages it reads (`languageOf`). */
-const textsOf = (text: JSONObject): JSONObject =>
+export const textsOf = (text: JSONObject): JSONObject =>
     Object.fromEntries(Object.entries(text).
                            filter(([ , value ]) => typeof value === 'string').
                            map(([ language, value ]) => [ languageOf(language), value ] as const).

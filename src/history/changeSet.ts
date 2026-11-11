@@ -16,15 +16,16 @@
  */
 
 import { checkContext, onlyProperties, requireArray, requireObject, requireString, requireTimestamp, CONTEXT_PREFIX } from '../common.ts';
-import { canonicalJSONBytes }        from '../json/canonical.ts';
+import { canonicalJSON, canonicalJSONBytes } from '../json/canonical.ts';
 import { asText, get, isArray, isObject, set, without, type JSONObject, type JSONValue } from '../json/value.ts';
 import { hash }                      from '../crypto/hash.ts';
 import { verifySignature }           from '../crypto/signature.ts';
 import { toHex }                     from '../encoding/text.ts';
-import { parseETags, type ETag }     from '../etags.ts';
+import { parseETag, parseETags, type ETag } from '../etags.ts';
 import type { POIPublicKey }         from '../keys.ts';
 import { trimmed }                   from '../network/versionTexts.ts';
-import { parsePreconditions, type Precondition } from './preconditions.ts';
+import { textsOf }                   from '../network/writtenForm.ts';
+import { parsePreconditions, PRECONDITION_CONTEXT, type Precondition } from './preconditions.ts';
 import { POIError }                  from '../errors.ts';
 
 
@@ -56,18 +57,131 @@ const readTrimmed = (text: string): string =>
     trimmed(text) === '' ? text : trimmed(text);
 
 /**
- * A change set as WWCP_POI3 reads it, whose content its identification is of, as WWCP_POI3 writes each change again
- * (`ToJSON(Embedded: true)`): the kind, the entity type and the entity identification of each change trimmed, as
- * `ParseMandatoryText` reads them, e.g. `DE*GEF*P1` of ` DE*GEF*P1`, and as `ChangeSet.parse` reads them; without the
- * context of a change or of a segment of its element path, without an empty element path, the property name of each
- * segment trimmed. A change set identified by them as given is identified otherwise.
+ * A change set as WWCP_POI3 reads it, whose content its identification is of, as WWCP_POI3 writes it again (`ToJSON`):
+ * its roaming network trimmed, as `RoamingNetwork_Id.TryParse` reads it; its description as Styx reads and writes a
+ * text in languages (`ImmutableI18NString`, `textsOf`), without one that is JSON null or has no text of a language it
+ * reads; without metadata with nothing in them and without preconditions where there are none; each change and each
+ * precondition as WWCP_POI3 writes it again (`changesAsRead`, `preconditionAsRead`). A change set identified by them
+ * as given is identified otherwise.
  */
 function asRead(json: JSONObject): JSONObject {
 
-    const changes = get(json, 'changes');
+    const copy: JSONObject = { ...json };
+    let   changed = false;
+
+    const networkId = get(json, 'roamingNetworkId');
+
+    if (typeof networkId === 'string' && readTrimmed(networkId) !== networkId) {
+        copy['roamingNetworkId'] = readTrimmed(networkId);
+        changed = true;
+    }
+
+    const description = get(json, 'description');
+
+    if (description === null || (isObject(description) && Object.keys(textsOf(description)).length === 0)) {
+        delete copy['description'];
+        changed = true;
+    }
+
+    else if (isObject(description) && canonicalJSON(textsOf(description)) !== canonicalJSON(description)) {
+        copy['description'] = textsOf(description);
+        changed = true;
+    }
+
+    const metadata = get(json, 'metadata');
+
+    if (isObject(metadata) && Object.keys(metadata).length === 0) {
+        delete copy['metadata'];
+        changed = true;
+    }
+
+    const preconditions = get(json, 'preconditions');
+
+    if (isArray(preconditions) && preconditions.length === 0) {
+        delete copy['preconditions'];
+        changed = true;
+    }
+
+    else if (isArray(preconditions)) {
+        const read = preconditions.map(preconditionAsRead);
+        if (read.some((precondition, index) => precondition !== preconditions[index])) {
+            copy['preconditions'] = read;
+            changed = true;
+        }
+    }
+
+    const changes = changesAsRead(get(json, 'changes'));
+
+    if (changes !== get(json, 'changes')) {
+        copy['changes'] = changes ?? null;
+        changed = true;
+    }
+
+    return changed ? copy : json;
+
+}
+
+/**
+ * The roaming network of a change set as WWCP_POI3 reads it (`RoamingNetwork_Id.TryParse`): trimmed, refused in its
+ * words where it is missing, JSON null or nothing is left of it; anything else but a text refused as this library refuses it.
+ */
+function roamingNetworkIdOf(json: JSONObject, id: string): string {
+
+    const value = get(json, 'roamingNetworkId');
+
+    if (value === undefined)
+        throw new POIError("Missing JSON property 'roamingNetworkId'!");
+
+    if (value === null || (typeof value === 'string' && trimmed(value) === ''))
+        throw new POIError("Invalid 'roaming network identification'!");
+
+    return trimmed(requireString(json, 'roamingNetworkId', `The roaming network of the change set '${id}'`));
+
+}
+
+/**
+ * A precondition WWCP_POI3 reads as it writes it again (`RoamingNetworkPrecondition.ToJSON(Embedded: true)`): its entity
+ * type and identification trimmed, as `ParseMandatoryText` reads them, also to nothing; without its context and without
+ * any other property. One WWCP_POI3 does not read, it refuses before it identifies the change set: as given.
+ */
+function preconditionAsRead(precondition: JSONValue): JSONValue {
+
+    if (!isObject(precondition))
+        return precondition;
+
+    const context     = precondition['@context'];
+    const entityType  = precondition['entityType'];
+    const entityId    = precondition['entityId'];
+    const eTag        = precondition['eTag'];
+
+    if ((context !== undefined && context !== PRECONDITION_CONTEXT) || typeof entityType !== 'string' || typeof entityId !== 'string' || eTag === undefined)
+        return precondition;
+
+    try {
+        parseETag(eTag, true);
+    }
+    catch {
+        return precondition;
+    }
+
+    const read: JSONObject = { entityType: trimmed(entityType), entityId: trimmed(entityId), eTag };
+
+    return Object.keys(precondition).length === 3 && read['entityType'] === entityType && read['entityId'] === entityId
+               ? precondition
+               : read;
+
+}
+
+/**
+ * The changes of a change set as WWCP_POI3 writes each again (`ToJSON(Embedded: true)`): the kind, the entity type and
+ * the entity identification of each change trimmed, as `ParseMandatoryText` reads them, e.g. `DE*GEF*P1` of
+ * ` DE*GEF*P1`, and as `ChangeSet.parse` reads them; without the context of a change or of a segment of its element
+ * path, without an empty element path, the property name of each segment trimmed.
+ */
+function changesAsRead(changes: JSONValue | undefined): JSONValue | undefined {
 
     if (!isArray(changes))
-        return json;
+        return changes;
 
     const read = changes.map(change => {
 
@@ -125,7 +239,7 @@ function asRead(json: JSONObject): JSONObject {
 
     });
 
-    return read.some((change, index) => change !== changes[index]) ? { ...json, changes: read } : json;
+    return read.some((change, index) => change !== changes[index]) ? read : changes;
 
 }
 
@@ -481,6 +595,17 @@ export class ChangeSet {
 
         });
 
+        // Its description and metadata objects, as WWCP_POI3 reads them, in its words; a description of JSON null none.
+        const description = get(json, 'description');
+
+        if (description !== undefined && description !== null && !isObject(description))
+            throw new POIError("JSON property 'description' is not an object!");
+
+        const metadata = get(json, 'metadata');
+
+        if (metadata !== undefined && !isObject(metadata))
+            throw new POIError('The metadata must be a JSON object!');
+
         const preconditions = parsePreconditions(get(json, 'preconditions'));
 
         const signatures = get(json, 'signatures') === undefined
@@ -501,7 +626,7 @@ export class ChangeSet {
                                  });
 
         return new ChangeSet(id,
-                             requireString   (json, 'roamingNetworkId', `The roaming network of the change set '${id}'`),
+                             roamingNetworkIdOf(json, id),
                              requireTimestamp(json, 'createdAt',        `The createdAt of the change set '${id}'`),
                              changes,
                              preconditions,
@@ -519,13 +644,16 @@ export class ChangeSet {
         return isObject(description) && typeof Object.values(description)[0] === 'string' ? Object.values(description)[0] as string : undefined;
     }
 
-    /** The signature input of one of its signatures (4): the context, its algorithm and key, and the change set without signatures. */
+    /**
+     * The signature input of one of its signatures (4): the context, its algorithm and key, and the change set without
+     * signatures, as WWCP_POI3 writes it again (`ToJSON(Embedded: true, IncludeSignatures: false)`), as it is identified.
+     */
     public signingBytes(signature: ChangeSetSignature): Uint8Array {
         return canonicalJSONBytes({
             '@context':  CHANGE_SET_CONTEXT,
             algorithm:   signature.algorithm,
             keyId:       signature.keyId,
-            changeSet:   without(this.json, 'signatures', '@context'),
+            changeSet:   without(asRead(this.json), 'signatures', '@context'),
         });
     }
 

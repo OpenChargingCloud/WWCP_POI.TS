@@ -2214,7 +2214,8 @@ export function stampOf(before: RoamingNetwork, changeSet: ChangeSet): number {
 
 export function applyChangeSet(before: RoamingNetwork, changeSet: ChangeSet, options: { checkOwnership?: boolean } = {}): RoamingNetwork {
 
-    if (changeSet.roamingNetworkId !== before.id)
+    // Its roaming network compared without case, as RoamingNetwork_Id compares it.
+    if (ignoringCase(changeSet.roamingNetworkId) !== ignoringCase(before.id))
         throw new POIError(`The change set is for the roaming network '${changeSet.roamingNetworkId}', not for '${before.id}'!`);
 
     if (options.checkOwnership ?? true)

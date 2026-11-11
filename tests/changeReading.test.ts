@@ -60,6 +60,14 @@ const applied = (...changes: JSONValue[]): string =>
         return applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false });
     });
 
+/** Why a change set of the given changes, changed so, identified by its content, is refused when read, or applied. */
+function readOtherwise(changes: JSONValue[], change: (json: JSONObject) => void, apply = false): string {
+    const json = changeSetJSON(changes);
+    change(json);
+    json['@id'] = changeSetIdentification(json);
+    return refused(() => apply ? applyChangeSet(before, ChangeSet.parse(json), { checkOwnership: false }) : ChangeSet.parse(json));
+}
+
 /** Why a change set of the given changes is refused, identified by the SHA-256 of its canonical JSON as given. */
 function identifiedAsGiven(...changes: JSONValue[]): string {
     const json  = changeSetJSON(changes);
@@ -155,6 +163,75 @@ describe('A change set identified by its changes as WWCP_POI3 writes them again'
 
         // An element identification is kept as given.
         expect(identifiedAsGiven(removeBrand({ propertyName: 'brands', elementId: ' GEF-Brand ' }))).toBe('taken');
+
+    });
+
+});
+
+
+describe('A change set read and identified as WWCP_POI3 writes it again: its roaming network, description and metadata', () => {
+
+    // The identifications WWCP_POI3 at c4c3c5a gave a change set of this change (ZProbePreconditions), so changed.
+    const two: JSONObject = { kind: 'UpdateProperty', entityType: 'ChargingStation', entityId: 'DE*GEF*S2', propertyName: 'description', newValue: { en: 'Two' } };
+
+    const identification = (change: (json: JSONObject) => void): string => {
+        const json = changeSetJSON([ two ]);
+        change(json);
+        return changeSetIdentification(json);
+    };
+
+    it('its roaming network trimmed, without a description or metadata with nothing in them, a description as Styx reads a text in languages', () => {
+
+        expect(identification(() => undefined)).toBe('a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235');
+
+        for (const change of [ (json: JSONObject): void => { json['roamingNetworkId'] = ' QA '; },
+                               (json: JSONObject): void => { json['description'] = {}; },
+                               (json: JSONObject): void => { json['description'] = null; },
+                               (json: JSONObject): void => { json['description'] = { en: 5, '': 'x', de: null, fr: { a: 1 } }; },
+                               (json: JSONObject): void => { json['metadata'] = {}; } ])
+            expect(identification(change)).toBe('a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235');
+
+        expect(identification(json => { json['description'] = { en: 'x' }; })).toBe('91a7fa28637a2f63a7e6c28e319b2e1ba89aa240192d3c6fdf628b77c342d2fa');
+        expect(identification(json => { json['description'] = { EN: 'x' }; })).toBe('91a7fa28637a2f63a7e6c28e319b2e1ba89aa240192d3c6fdf628b77c342d2fa');
+        expect(identification(json => { json['description'] = { en: '' }; })).toBe('713f1e91e0621c6e251aafa1c212f19b7f18130bcbd29b66bb84513955f05ffe');
+        expect(identification(json => { json['metadata'] = { a: 1 }; })).toBe('1ef8f2a52d3b4341a6793eff2b3f335eab9b4636e1f11ac391357fe1a2eeccbc');
+
+        // Identified by them as given, refused in the words of WWCP_POI3.
+        const asGiven = (change: (json: JSONObject) => void): string => {
+            const json = changeSetJSON([ two ]);
+            change(json);
+            json['@id'] = toHex(hash('sha256', canonicalJSONBytes(json)));
+            return refused(() => ChangeSet.parse(json));
+        };
+
+        expect(asGiven(json => { json['roamingNetworkId'] = ' QA '; }))
+            .toBe("The change set '9f8e1850556550784eda6d109103feb889105e1351d158c1fe7d44288884df72' is not identified by its content, 'a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235'!");
+        expect(asGiven(json => { json['description'] = {}; }))
+            .toBe("The change set 'ced40a2cd70a53b9578f2cedfbfa8666156b6ef36a2019501621363e96af549d' is not identified by its content, 'a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235'!");
+        expect(asGiven(json => { json['metadata'] = {}; }))
+            .toBe("The change set '74762ab56e3a1335ea9c8288631d79674b6923f8b2205f5f467ca6a50075997c' is not identified by its content, 'a883d201b887a7a6d9e3b7f8fa0ab2b1f90dd469656f71c979fb2ad0ec001235'!");
+
+    });
+
+    it('its roaming network compared without case, as RoamingNetwork_Id compares it; refused in the words of WWCP_POI3', () => {
+
+        const taken = readOtherwise([ two ], () => undefined, true);
+
+        expect(taken).toMatch(/^The result does not match the change set: the json ETag/u);
+        expect(readOtherwise([ two ], json => { json['roamingNetworkId'] = 'qa'; }, true)).toBe(taken);
+        expect(readOtherwise([ two ], json => { json['roamingNetworkId'] = ' QA '; }, true)).toBe(taken);
+        expect(readOtherwise([ two ], json => { json['roamingNetworkId'] = 'QB'; }, true)).toBe("The change set is for the roaming network 'QB', not for 'QA'!");
+
+        expect(readOtherwise([ two ], json => { delete json['roamingNetworkId']; })).toBe("Missing JSON property 'roamingNetworkId'!");
+
+        for (const id of [ null, '', '  ' ])
+            expect(readOtherwise([ two ], json => { json['roamingNetworkId'] = id; })).toBe("Invalid 'roaming network identification'!");
+
+        for (const description of [ 5, [], 'x' ])
+            expect(readOtherwise([ two ], json => { json['description'] = description; })).toBe("JSON property 'description' is not an object!");
+
+        for (const metadata of [ null, [], 'x', 5 ])
+            expect(readOtherwise([ two ], json => { json['metadata'] = metadata; })).toBe('The metadata must be a JSON object!');
 
     });
 
