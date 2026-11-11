@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `poi-histories.json` of WWCPPOIConformanceTests `d552a8a` vendored, its other vectors those of `674b173`: 4
+  replays of a change set WWCP_POI3 writes again, it and its commit identified and signed so (`791219c`): a
+  precondition with ` DE*GEF `, `preconditions: []` and `metadata: {}` taken; the precondition identified as given
+  refused, "is not identified by its content".
+
 - `poi-refusals.json` and `poi-histories.json` of WWCPPOIConformanceTests `674b173` vendored, its other vectors those of
   `3bb2928`: 11 vectors this library took and refused as given already, of where drivers ask for offers (`offersURL`,
   refused and held as written otherwise, signed for `payments`) and of preconditions held, changed and of no entity.
