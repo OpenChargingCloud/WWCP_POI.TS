@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- EV Taler, phase 3, as WWCP_POI `62390ca` takes it: the merchant of an operator (`evTaler`) names where drivers ask
+  for offers, if the operator makes them, its optional `offersURL` (`EVTalerMerchant.offersURL`), a base URL as its
+  merchant base URL is one: HTTPS, ending in '/', without user, query and fragment, "The offers URL '…' must be an HTTPS
+  URL! (Parameter 'OffersURL')"; read after the exchanges and checked after the merchant base URL, as WWCP_POI3 reads
+  and checks it; written as Hermod writes it, or refused, "The offers URL '…' is written as '…'!". Without it, a merchant
+  is written as before, byte for byte. `evTalerSessionPrices` gives what prices a session at an EVSE, as the backend of
+  an operator makes its steps (`EVTalerContractTerms.TryGetSessionPrices`): its EV Taler tariff, the price statement
+  current when the session begins that prices it, one of an EVSE before the station's before the pool's, and the
+  elements. Probed with 29 merchants on WWCP_POI3 at `62390ca` (Hermod `c2f4bdde`): the same ETags, refusals and
+  words, but for the line ends of a JSON object named in a refusal, which .NET writes as the platform does.
 - A change set is identified by its content as WWCP_POI3 writes it again (`ToJSON`), not only by its changes: its
   preconditions each with its entity type and identification trimmed, also to nothing, without its context and any
   other property, none where there are none (`preconditions: []`); its roaming network trimmed; its description as Styx

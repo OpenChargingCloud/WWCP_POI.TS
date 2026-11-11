@@ -92,7 +92,8 @@ export { EVTalerRates, NetDecimal, minorUnitDigits, roundToNearest, roundUp, tal
 export { EVTalerSignedMeterValue, verifyMeterValue, type EVTalerMeasurementKey, type EVTalerMeterReading, type EVTalerMeterValueVerifier, type EVTalerVerifiedMeterValue } from './evTaler/meterValue.ts';
 export { EVTalerCovers, EVTalerStep, EV_TALER_STEP_CONTEXT, isEVTalerSessionId, type EVTalerCoversUnit, type EVTalerStepData } from './evTaler/step.ts';
 export { EVTalerPayURI, sameBaseURL } from './evTaler/payURI.ts';
-export { EVTalerAmountChecks, EVTalerContractTerms, evTalerTariff, type EVTalerAmountCheck, type EVTalerContractExchange, type EVTalerVerifiedStep } from './evTaler/contractTerms.ts';
+export { EVTalerAmountChecks, EVTalerContractTerms, evTalerSessionPrices, evTalerTariff, type EVTalerAmountCheck, type EVTalerContractExchange, type EVTalerSessionPrices,
+         type EVTalerVerifiedStep } from './evTaler/contractTerms.ts';
 export { EVTalerSettlement, EV_TALER_SETTLEMENT_CONTEXT, type EVTalerSettledOrder, type EVTalerSettlementVerification } from './evTaler/settlement.ts';
 export { parseTrustedWitnesses, verifyCheckpointLine, verifyCheckpointSignatures, type CheckpointSignatures, type TrustedWitness } from './verifier/checkpoints.ts';
 export { parseEvidence, verifyEvidence, type Evidence, type VerifiedEvidence } from './verifier/evidence.ts';

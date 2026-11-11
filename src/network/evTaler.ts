@@ -43,7 +43,7 @@ export const EV_TALER_PAYMENT_MEANS     = 'EV_TALER';
 const CROCKFORD_BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 /** What WWCP_POI reads of a merchant and of an exchange (`EVTalerMerchant.PropertyKeys`, `EVTalerExchange.PropertyKeys`). */
-const MERCHANT_PROPERTIES  = [ '@context', 'merchantBaseURL', 'merchantPublicKey', 'exchanges' ];
+const MERCHANT_PROPERTIES  = [ '@context', 'merchantBaseURL', 'merchantPublicKey', 'exchanges', 'offersURL' ];
 const EXCHANGE_PROPERTIES  = [ '@context', 'masterPublicKey', 'baseURL', 'currency', 'name' ];
 
 /** The ISO 4217 codes of the currencies of Styx (`Currency`), as `Currency.TryParseISO` takes them: XXX is none. */
@@ -71,6 +71,12 @@ export interface EVTalerMerchant {
     readonly merchantPublicKey:  string;
     /** At least one, in the ordinal order of their master public keys, each once. */
     readonly exchanges:          readonly EVTalerExchange[];
+    /**
+     * Where drivers ask for offers, if the operator makes them (WWCP_POI 62390ca, concepts/EVTaler.md section 6): the POI_API
+     * base of the roaming network at the server that makes them for the operator, e.g. "https://poi.gef.example/RNs/QA/";
+     * HTTPS, ending in '/'. An app posts to its "EVSEs/{EVSE_Id}/evTaler/sessions".
+     */
+    readonly offersURL?:         string;
 }
 
 
@@ -250,6 +256,8 @@ function notWrittenAsRead(json: JSONObject, read: EVTalerMerchant | EVTalerExcha
             return `The EV Taler merchant must not name the property '${property}'!`;
         if (get(json, 'merchantBaseURL') !== read.merchantBaseURL)
             return `The merchant base URL '${tokenText(get(json, 'merchantBaseURL') ?? '')}' is written as '${read.merchantBaseURL}'!`;
+        if (read.offersURL !== undefined && get(json, 'offersURL') !== read.offersURL)
+            return `The offers URL '${tokenText(get(json, 'offersURL') ?? '')}' is written as '${read.offersURL}'!`;
         return undefined;
     }
 
@@ -365,10 +373,22 @@ export function evTalerMerchantOf(value: JSONValue): EVTalerMerchant | string {
 
     }
 
+    // Where drivers ask for offers, if given, read after the exchanges and checked after the merchant base URL, as
+    // WWCP_POI 62390ca reads and checks it.
+    const offersURL = urlOf(value, 'offersURL', 'offers URL of an EV Taler merchant');
+
+    if (typeof offersURL === 'string')
+        return invalid(offersURL);
+
     const urlError = invalidBaseURL(merchantBaseURL, 'merchant base URL');
 
     if (urlError !== undefined)
         return invalid(`${urlError} (Parameter 'MerchantBaseURL')`);
+
+    const offersURLError = offersURL === undefined ? undefined : invalidBaseURL(offersURL, 'offers URL');
+
+    if (offersURLError !== undefined)
+        return invalid(`${offersURLError} (Parameter 'OffersURL')`);
 
     if (exchanges.length === 0)
         return invalid("A merchant accepts at least one exchange! (Parameter 'Exchanges')");
@@ -380,6 +400,7 @@ export function evTalerMerchantOf(value: JSONValue): EVTalerMerchant | string {
         merchantBaseURL:    merchantBaseURL.text,
         merchantPublicKey,
         exchanges:          exchanges.sort((left, right) => ordinal(left.masterPublicKey, right.masterPublicKey)),
+        ...(offersURL === undefined ? {} : { offersURL: offersURL.text }),
     };
 
     // What WWCP_POI takes and writes otherwise, after all it refuses: the merchant, then its exchanges as given.

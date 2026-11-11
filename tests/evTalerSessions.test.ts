@@ -3,11 +3,11 @@ import { createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, t
 import { describe, expect, it } from 'vitest';
 
 import { specification } from './conformance.ts';
-import { AT, defined, readJSON } from './helpers.ts';
+import { AT, asText, defined, readJSON } from './helpers.ts';
 import { anchorPQ } from './qa.ts';
 
 import { NetDecimal, talerAmountOf, writeAmount, writeDecimal, EVTalerRates } from '../src/evTaler/amounts.ts';
-import { EVTalerContractTerms, EVTalerAmountChecks, type EVTalerVerifiedStep } from '../src/evTaler/contractTerms.ts';
+import { EVTalerContractTerms, EVTalerAmountChecks, evTalerSessionPrices, type EVTalerVerifiedStep } from '../src/evTaler/contractTerms.ts';
 import { EVTalerSignedMeterValue, type EVTalerMeasurementKey, type EVTalerMeterReading } from '../src/evTaler/meterValue.ts';
 import { EVTalerPayURI } from '../src/evTaler/payURI.ts';
 import { EVTalerSettlement, EV_TALER_SETTLEMENT_CONTEXT } from '../src/evTaler/settlement.ts';
@@ -18,6 +18,7 @@ import { canonicalJSONBytes } from '../src/json/canonical.ts';
 import { Decimal } from '../src/json/decimal.ts';
 import { clone, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { POIPublicKey } from '../src/keys.ts';
+import { PRICE_STATEMENT_CONTEXT } from '../src/proofs/priceStatement.ts';
 import { evTalerMerchantOf, type EVTalerMerchant } from '../src/network/evTaler.ts';
 import { verifyChargingStation, verifyPriceStatements, type VerifiedChargingStation } from '../src/verifier/chargingStation.ts';
 
@@ -362,6 +363,48 @@ describe('EV Taler, phase 2: the steps of a session and its settlement (WWCP_POI
         expect([ step1.priceStatement?.digest, writeDecimal(defined(step1.stepPrice)), writeDecimal(defined(step1.reserve)), step1.amountCheck ]).toEqual([ digest, '2.95', '0', EVTalerAmountChecks.Exact ]);
         expect(refusal(() => terms(step(1, 0, 5), 'O1', 'EUR:4.25', START).verify(STATION, statements, undefined, undefined)))
             .toBe(`The session is priced by the price statement '${digest}', which the step does not name!`);
+
+    });
+
+    it('prices a session by the most specific price statement current when it begins, as the backend makes its steps (WWCP_POI 62390ca)', () => {
+
+        const keys = station([ PAYMENTS.key, TARIFFS.key ]);
+
+        /** A first price statement of the given entity pricing T_DC by the kWh at the given price, signed by DE*GEF for price statements. */
+        const statement = (entityType: string, entityId: string, price: number): JSONObject => {
+            const json: JSONObject = {
+                '@context': PRICE_STATEMENT_CONTEXT, roamingNetworkId: 'QA', entityType, entityId,
+                priceStatus: { prices: [ { chargingTariffId: T_DC, elements: [ { priceComponents: [ { type: 'ENERGY', price, stepSize: 1 } ] } ] } ] },
+                validFrom: new Date(START - 60_000).toISOString(), validUntil: new Date(START + 3_600_000).toISOString(), sequence: 0,
+                role: 'chargingStationOperator', signer: 'DE*GEF', signedAt: new Date(START - 60_000).toISOString(), algorithm: TARIFFS.algorithm, keyId: TARIFFS.key.id,
+            };
+            json['value'] = TARIFFS.sign(canonicalJSONBytes(json));
+            return json;
+        };
+
+        const pool      = statement('ChargingPool',    asText(proven.chargingPool['@id']),    3);
+        const ofStation = statement('ChargingStation', asText(proven.chargingStation['@id']), 2);
+        const ofEVSE    = statement('EVSE',            E1,                                    1);
+
+        const priced = (statements: JSONObject[]): [ string | undefined, string | undefined, JSONValue ] => {
+            const prices = evTalerSessionPrices(keys, E1, statements, START);
+            return [ asText(prices.tariff['@id']), prices.priceStatement?.statement.entityType, prices.elements[0]?.['priceComponents'] ?? null ];
+        };
+
+        const components = (price: number): JSONValue => [ { type: 'ENERGY', price, stepSize: 1 } ];
+
+        // The one of the EVSE before the one of the station before the one of the pool, in whichever order they are given.
+        expect(priced([ pool, ofStation, ofEVSE ])).toEqual([ T_DC, 'EVSE', components(1) ]);
+        expect(priced([ ofEVSE, pool, ofStation ])).toEqual([ T_DC, 'EVSE', components(1) ]);
+        expect(priced([ pool, ofStation ])).toEqual([ T_DC, 'ChargingStation', components(2) ]);
+        expect(priced([ pool ])).toEqual([ T_DC, 'ChargingPool', components(3) ]);
+
+        // Without one current then, the elements of the tariff itself.
+        const tariff = evTalerSessionPrices(keys, E1, [], START);
+        expect([ tariff.priceStatement, tariff.elements ]).toEqual([ undefined, (tariff.tariff['elements'] as JSONValue[] | undefined) ?? [] ]);
+        expect(evTalerSessionPrices(keys, E1, [ pool, ofStation, ofEVSE ], START + 7_200_000).priceStatement).toBeUndefined();
+
+        expect(refusal(() => evTalerSessionPrices(keys, 'DE*GEF*E9*9', [], START))).toBe("The EVSE 'DE*GEF*E9*9' has no EV Taler tariff in the proof!");
 
     });
 

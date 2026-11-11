@@ -38,6 +38,9 @@ const merchant = (): JSONObject => ({
     ],
 });
 
+/** Where drivers ask DE*GEF for offers (WWCP_POI 62390ca): the POI_API base of QA at its server. */
+const OFFERS_URL = 'https://poi.gef.example/RNs/QA/';
+
 const TEMPLATE_ID = 'DE*GEF*PTSUPERMARKET';
 
 /** QA without its eTags, DE*GEF with the merchant unless `withMerchant` is false, changed by `change`. */
@@ -126,6 +129,20 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
         const unordered = { ...merchant(), '@context': EV_TALER_MERCHANT_CONTEXT, exchanges: [ ...(merchant()['exchanges'] as JSONArray) ].reverse() };
         expect((evTalerMerchantOf(unordered) as EVTalerMerchant).exchanges.map(exchange => exchange.currency)).toEqual([ 'EUR', 'CHF' ]);
 
+        // Where drivers ask for offers, if given (WWCP_POI 62390ca): written after the exchanges and only when given, so that
+        // a merchant without it is written as before, byte for byte; the ETags WWCP_POI3 at 62390ca calculates of it.
+        expect(read.offersURL).toBeUndefined();
+        expect((evTalerMerchantOf({ ...merchant(), offersURL: OFFERS_URL }) as EVTalerMerchant).offersURL).toBe(OFFERS_URL);
+        expect(RoamingNetwork.parse(qa(gef => { (gef['evTaler'] as JSONObject)['offersURL'] = OFFERS_URL; })).eTags().map(etagToText)).toEqual([
+            'json:sha256:hex:4f90077344d328277d78babd94911d4442282e44301fb31b5e2108add50bfec7',
+            'cbor:sha256:hex:9daccadbac7a5e439ae28335b6f1afb5b9d7d552cd13f2e27ebde383eff4d19e',
+            'effectiveTree:sha256:hex:077e03e02be63b4df1e06eafd2e58cf960ae22fbd08506eeb75657624766c4ca',
+        ]);
+
+        // Its scheme in another case is a URL Hermod writes as given, so it is held so.
+        expect(RoamingNetwork.parse(qa(gef => { (gef['evTaler'] as JSONObject)['offersURL'] = 'HTTPS://poi.gef.example/RNs/QA/'; })).eTags().map(etagToText)[0])
+            .toBe('json:sha256:hex:50d540e40cd489e2d07f0140a44a880657b5f105d4df0404b5123716b4ae2699');
+
         expect(isTalerPublicKey(EUR_EXCHANGE)).toBe(true);
         expect(isTalerPublicKey(EUR_EXCHANGE.toLowerCase())).toBe(false);
         expect(isTalerPublicKey(`${EUR_EXCHANGE.slice(0, -1)}1`)).toBe(false);
@@ -180,6 +197,28 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
 
         expect(refusal(qa(gef => { gef['evTaler'] = null; }))).toBe('The EV Taler merchant must be a JSON object!');
 
+        // Where drivers ask for offers: a base URL as the merchant base URL is one, read after the exchanges, checked after it.
+        expect(changed(given => { given['offersURL'] = 'http://poi.gef.example/RNs/QA/'; }))
+            .toBe(invalid("The offers URL 'http://poi.gef.example/RNs/QA/' must be an HTTPS URL! (Parameter 'OffersURL')"));
+        expect(changed(given => { given['offersURL'] = 'https://poi.gef.example/RNs/QA'; }))
+            .toBe(invalid("The offers URL 'https://poi.gef.example/RNs/QA' must end with '/'! (Parameter 'OffersURL')"));
+        expect(changed(given => { given['offersURL'] = 'https://poi.gef.example/RNs/QA/#x'; }))
+            .toBe(invalid("The offers URL 'https://poi.gef.example/RNs/QA/#x' must have neither a query nor a fragment! (Parameter 'OffersURL')"));
+        expect(changed(given => { given['offersURL'] = 'https://gef:secret@poi.gef.example/RNs/QA/'; }))
+            .toBe(invalid("The offers URL 'https://gef:secret@poi.gef.example/RNs/QA/' must not name a user! (Parameter 'OffersURL')"));
+
+        for (const [ offersURL, written ] of [ [ 5, '5' ], [ null, '' ], [ '', '' ], [ '  ', '  ' ] ] as const)
+            expect(changed(given => { given['offersURL'] = offersURL; })).toBe(invalid(`Invalid offers URL of an EV Taler merchant '${written}'!`));
+
+        expect(changed((given, exchange) => { exchange['currency'] = 'XXX'; given['offersURL'] = 5; }))
+            .toBe(ofExchange(`The currency of the exchange '${EUR_EXCHANGE}' must be an ISO 4217 code, not 'XXX'!`));
+        expect(changed(given => { given['merchantBaseURL'] = 'http://taler.gef.example/instances/de-gef/'; given['offersURL'] = 5; }))
+            .toBe(invalid("Invalid offers URL of an EV Taler merchant '5'!"));
+        expect(changed(given => { given['merchantBaseURL'] = 'http://taler.gef.example/instances/de-gef/'; given['offersURL'] = 'http://poi.gef.example/RNs/QA/'; }))
+            .toBe(invalid("The merchant base URL 'http://taler.gef.example/instances/de-gef/' must be an HTTPS URL! (Parameter 'MerchantBaseURL')"));
+        expect(changed(given => { given['exchanges'] = []; given['offersURL'] = 'http://poi.gef.example/RNs/QA/'; }))
+            .toBe(invalid("The offers URL 'http://poi.gef.example/RNs/QA/' must be an HTTPS URL! (Parameter 'OffersURL')"));
+
     });
 
     it('refuses a merchant WWCP_POI3 takes and writes otherwise, as the content holds it only as it writes it', () => {
@@ -208,6 +247,11 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
             .toBe(invalid("The merchant base URL 'taler.gef.example/instances/de-gef/' is written as 'https://taler.gef.example/instances/de-gef/'!"));
         expect(changed(given => { given['merchantBaseURL'] = ' https://taler.gef.example/instances/de-gef/ '; }))
             .toBe(invalid("The merchant base URL ' https://taler.gef.example/instances/de-gef/ ' is written as 'https://taler.gef.example/instances/de-gef/'!"));
+        expect(changed(given => { given['offersURL'] = 'poi.gef.example/RNs/QA/'; }))
+            .toBe(invalid(`The offers URL 'poi.gef.example/RNs/QA/' is written as '${OFFERS_URL}'!`));
+        expect(changed(given => { given['offersURL'] = ` ${OFFERS_URL} `; }))
+            .toBe(invalid(`The offers URL ' ${OFFERS_URL} ' is written as '${OFFERS_URL}'!`));
+        expect(changed(given => { given['OffersURL'] = OFFERS_URL; })).toBe(invalid("The EV Taler merchant must not name the property 'OffersURL'!"));
         expect(changed((_, exchange) => { exchange['baseURL'] = 'exchange.example.eu/'; }))
             .toBe(ofExchange(`The base URL 'exchange.example.eu/' of the exchange '${EUR_EXCHANGE}' is written as 'https://exchange.example.eu/'!`));
         expect(changed((_, exchange) => { exchange['currency'] = ' EUR'; }))

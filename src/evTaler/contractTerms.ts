@@ -407,6 +407,49 @@ export class EVTalerContractTerms {
 }
 
 
+/** What prices a session at an EVSE (`EVTalerContractTerms.TryGetSessionPrices`): its tariff, a price statement, the elements. */
+export interface EVTalerSessionPrices {
+    /** The EV Taler tariff of the EVSE, as the proof gives it. */
+    readonly tariff:           JSONObject;
+    /** The price statement that prices the session, if any. */
+    readonly priceStatement?:  VerifiedPrice;
+    /** The elements that price the session: of the price statement, else of the tariff. */
+    readonly elements:         readonly JSONObject[];
+}
+
+/**
+ * What prices a session at the given EVSE that begins at the given time, as the backend of an operator makes its steps
+ * and `verify` checks them (`EVTalerContractTerms.TryGetSessionPrices` of WWCP_POI 62390ca, concepts/EVTaler.md 4.3): the
+ * EV Taler tariff of the EVSE, the price statement current then that prices it, the one of an EVSE before the one of the
+ * station before the one of its pool, if there is one, and the elements, of that statement or else of the tariff itself.
+ * Refused in the words of WWCP_POI where there is no EV Taler tariff or the price statements do not verify.
+ *
+ * @param priceStatements  The price statements of the station, its pool and its EVSEs, as JSON.
+ */
+export function evTalerSessionPrices(station: VerifiedChargingStation, evseId: string, priceStatements: JSONValue, at: number | Date | string): EVTalerSessionPrices {
+
+    const tariff       = evTalerTariff(station, evseId);
+    const current      = verifyPriceStatements(station, priceStatements, { at });
+    const tariffId     = idOf(tariff);
+    const specificity  = (entityType: string): number =>
+        entityType === 'EVSE' ? 0 : entityType === 'ChargingStation' ? 1 : 2;
+
+    // Of the current ones pricing the tariff, the most specific, the first of them as they are current where several are.
+    const [ priceStatement ] = [ ...current.values() ].
+                                   filter(candidate => candidate.statement.prices.some(prices => tariffIdOf(textOf(get(prices, 'chargingTariffId')))?.text === tariffId)).
+                                   sort((left, right) => specificity(left.statement.entityType) - specificity(right.statement.entityType));
+
+    const objects = (value: JSONValue | undefined): JSONObject[] =>
+        isArray(value) ? value.filter(isObject) : [];
+
+    const elements = priceStatement !== undefined
+                         ? objects(get(objects(get(priceStatement.statement.priceStatus, 'prices')).find(prices => get(prices, 'chargingTariffId') === tariffId) ?? {}, 'elements'))
+                         : objects(get(tariff, 'elements'));
+
+    return { tariff, ...(priceStatement === undefined ? {} : { priceStatement }), elements };
+
+}
+
 /**
  * The EV Taler tariff of the given EVSE, as the proof gives its tariffs (`EVTalerContractTerms.TryGetEVTalerTariff`, 4.3):
  * the first of the type AD_HOC_PAYMENT, else the first without a type, with a currency, naming no payment means or

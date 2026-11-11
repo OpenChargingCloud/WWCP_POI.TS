@@ -360,7 +360,7 @@ export const PROPERTIES_OF: Readonly<Record<string, readonly string[]>> = {
     keyStatement:            [ '@context', 'roamingNetworkId', 'roamingNetworkOperatorId', 'identityKeys', 'minConsensus', 'signedAt', 'validUntil', 'signatures' ],
     signatures:              [ 'algorithm', 'keyId', 'value' ],
     signingKeyCertificates:  [ '@context', 'roamingNetworkOperatorId', 'signingKey', 'signedAt', 'algorithm', 'keyId', 'value' ],
-    evTaler:                 [ '@context', 'merchantBaseURL', 'merchantPublicKey', 'exchanges' ],
+    evTaler:                 [ '@context', 'merchantBaseURL', 'merchantPublicKey', 'exchanges', 'offersURL' ],
     exchanges:               [ '@context', 'masterPublicKey', 'baseURL', 'currency', 'name' ],
 };
 
@@ -492,7 +492,8 @@ function writtenTexts(items: JSONArray, property: string): string[] | undefined 
 }
 
 /** The URLs WWCP_POI reads as Hermod does (`URL.TryParse`): trimmed, with the scheme https unless they name one. */
-const URLS = new Set([ 'homepage', 'datasheetURL', 'vulnerabilityReporting', 'vulnerabilityDisclosurePolicy', 'securityAdvisories', 'merchantBaseURL', 'baseURL' ]);
+const URLS = new Set([ 'homepage', 'datasheetURL', 'vulnerabilityReporting', 'vulnerabilityDisclosurePolicy', 'securityAdvisories', 'merchantBaseURL', 'baseURL',
+                       'offersURL' ]);
 
 /** Values WWCP_POI reads by their names in any case and writes as it names them. */
 const NAMED_VALUES: Readonly<Record<string, readonly string[]>> = {
