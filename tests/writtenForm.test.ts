@@ -164,9 +164,9 @@ describe('The content, as WWCP_POI writes it (SPECIFICATION.md 2, Written forms)
     it('refuses an entity without its lastChange and a party without its name, which WWCP_POI3 writes of its own', () => {
 
         expect(refusal(qa((_, __, pool) => { delete pool('DE*GEF*P2')['lastChange']; })))
-            .toBe(notWritten('chargingStationOperators[0].chargingPools[1].lastChange', 'the content holds it as \'"2026-11-10T05:52:54.298Z"\''));
+            .toBe(notWritten('chargingStationOperators[0].chargingPools[1].lastChange', 'the content holds it as \'"2026-11-12T21:54:26.581Z"\''));
         expect(refusal(qa(network => { delete network['lastChange']; })))
-            .toBe(notWritten('lastChange', 'the content holds it as \'"2026-11-10T05:52:51.451Z"\''));
+            .toBe(notWritten('lastChange', 'the content holds it as \'"2026-11-12T21:54:24.431Z"\''));
 
         // As "Charging Station Manufacturer 'GraphDefined'".
         expect(refusal(qa(network => { delete defined((network['chargingStationManufacturers'] as JSONObject[])[0])['name']; })))

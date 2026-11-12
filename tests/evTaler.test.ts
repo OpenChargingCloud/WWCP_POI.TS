@@ -11,7 +11,7 @@ import { ChangeSet, CHANGE_SET_CONTEXT, changeSetIdentification, type ChangeSetS
 import { etagToJSON, etagToText } from '../src/etags.ts';
 import { KeyUsages, POIPublicKey } from '../src/keys.ts';
 import { canonicalJSON } from '../src/json/canonical.ts';
-import { clone, get, without, type JSONArray, type JSONObject } from '../src/json/value.ts';
+import { clone, get, without, type JSONArray, type JSONObject, type JSONValue } from '../src/json/value.ts';
 import { RoamingNetwork } from '../src/network/roamingNetwork.ts';
 import { EV_TALER_MERCHANT_CONTEXT, evTalerMerchantOf, isTalerPublicKey, paymentOptionName, type EVTalerMerchant } from '../src/network/evTaler.ts';
 import { verifyChargingStation, type VerifiedChargingStation } from '../src/verifier/chargingStation.ts';
@@ -42,6 +42,9 @@ const merchant = (): JSONObject => ({
 const OFFERS_URL = 'https://poi.gef.example/RNs/QA/';
 
 const TEMPLATE_ID = 'DE*GEF*PTSUPERMARKET';
+
+/** The secure dynamic QR code a charging pool naming EVTaler needs (WWCP_POI 76d3653, decision D8), on its display. */
+const QR_CODE = (): JSONObject => ({ type: 'SecureDynamicQRCode', channels: [ 'Display' ] });
 
 /** QA without its eTags, DE*GEF with the merchant unless `withMerchant` is false, changed by `change`. */
 function qa(change: (gef: JSONObject, pool: JSONObject) => void = () => {}, withMerchant = true): JSONObject {
@@ -85,11 +88,13 @@ describe('Payment options, an open set of names (WWCP_POI ec3dace)', () => {
 
     it('unites those of a charging pool and its templates without case, its own first, in the order of their texts', () => {
 
-        // As WWCP_POI3 calculates the effective tree of it: EVTaler of the pool and evtaler of its template are one.
+        // As WWCP_POI3 calculates the effective tree of it: EVTaler of the pool and evtaler of its template are one; the pool
+        // with its secure dynamic QR code, the ETags those WWCP_POI3 at 76d3653 calculates.
         const network = RoamingNetwork.parse(qa((gef, pool) => {
             gef['chargingPoolTemplates'] = [ templateNaming([ 'Cash', 'evtaler' ]) ];
             pool['templateIds']          = [ TEMPLATE_ID ];
             pool['paymentOptions']       = [ 'Cash', 'EVTaler' ];
+            pool['authenticationModes']  = [ QR_CODE() ];
         }));
 
         const gef  = defined((network.effectiveContent['chargingStationOperators'] as JSONObject[]).find(operator => operator['@id'] === 'DE*GEF'));
@@ -97,9 +102,9 @@ describe('Payment options, an open set of names (WWCP_POI ec3dace)', () => {
 
         expect(pool['paymentOptions']).toEqual([ 'Cash', 'EVTaler' ]);
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:8d2cb25d55f72e2e99b399da51907248a68ce6f6e815d6c85910fb74df1e02d9',
-            'cbor:sha256:hex:7106c171279a536a4b6dcccf3d7a44b39dc4745badc319c0b483d87cd9acf195',
-            'effectiveTree:sha256:hex:3ef903a5db43b54534411251e94147e7e3382af28a1850de755b8807f6166554',
+            'json:sha256:hex:a1d58fb4cdb0c1f293b050201c1a5b2a88c08432a3d1557184ac33d393b6244b',
+            'cbor:sha256:hex:2071dd820163ebf064c0c5781c6a25ab3a21c141194d54541fc8e8dff9a65600',
+            'effectiveTree:sha256:hex:2eab22181dcb5762e43556269efca573cfdadf5a6eef424221766a547f016465',
         ]);
 
     });
@@ -115,9 +120,9 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
 
         // The ETags WWCP_POI3 calculates of the same content: its canonical JSON, its CBOR, its effective tree.
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:d060ef4c466f4ab280b1c2172a030092db9613d1da3cf94dde00521740dc7fc7',
-            'cbor:sha256:hex:eb89c4a8abf2bd1b426440837bc6ff1a9b23386d80cd486732c1ff60ab253911',
-            'effectiveTree:sha256:hex:8118ea19ba86566a9cf66717385d81af5bb5d5cffbfeb612cbee6c68af66b78c',
+            'json:sha256:hex:e7cc50ccfb37322ec433b110631cdfc195907fe303c1ee53a783d78ec51a38f9',
+            'cbor:sha256:hex:32d055713781560fa5a8e6a61a054ee5f6930e6e157b40297b166f5548f57017',
+            'effectiveTree:sha256:hex:8c04435f98b009b133c4b417efbfcdeb6f0031925dfa9cac9a87d78f7dbd353a',
         ]);
 
         const read = evTalerMerchantOf(merchant()) as EVTalerMerchant;
@@ -130,18 +135,18 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
         expect((evTalerMerchantOf(unordered) as EVTalerMerchant).exchanges.map(exchange => exchange.currency)).toEqual([ 'EUR', 'CHF' ]);
 
         // Where drivers ask for offers, if given (WWCP_POI 62390ca): written after the exchanges and only when given, so that
-        // a merchant without it is written as before, byte for byte; the ETags WWCP_POI3 at 62390ca calculates of it.
+        // a merchant without it is written as before, byte for byte; the ETags WWCP_POI3 at 76d3653 calculates of it.
         expect(read.offersURL).toBeUndefined();
         expect((evTalerMerchantOf({ ...merchant(), offersURL: OFFERS_URL }) as EVTalerMerchant).offersURL).toBe(OFFERS_URL);
         expect(RoamingNetwork.parse(qa(gef => { (gef['evTaler'] as JSONObject)['offersURL'] = OFFERS_URL; })).eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:4f90077344d328277d78babd94911d4442282e44301fb31b5e2108add50bfec7',
-            'cbor:sha256:hex:9daccadbac7a5e439ae28335b6f1afb5b9d7d552cd13f2e27ebde383eff4d19e',
-            'effectiveTree:sha256:hex:077e03e02be63b4df1e06eafd2e58cf960ae22fbd08506eeb75657624766c4ca',
+            'json:sha256:hex:0732836a40c90c888624bdfb11ff4dfb97291ffb44aa2230adcdc495259da5cd',
+            'cbor:sha256:hex:8d92d3ebdbaab009251acf52147454e0c228e6214e388143911c0f05927e8d6d',
+            'effectiveTree:sha256:hex:55b20f54050c510dc5dc5b10cef01f49a5dc35e1e15e2e995c1a18d798700b4e',
         ]);
 
         // Its scheme in another case is a URL Hermod writes as given, so it is held so.
         expect(RoamingNetwork.parse(qa(gef => { (gef['evTaler'] as JSONObject)['offersURL'] = 'HTTPS://poi.gef.example/RNs/QA/'; })).eTags().map(etagToText)[0])
-            .toBe('json:sha256:hex:50d540e40cd489e2d07f0140a44a880657b5f105d4df0404b5123716b4ae2699');
+            .toBe('json:sha256:hex:f827f20b2447ea43f8f0cfd65eed764ae5db8ee3116676e4652460a055e47451');
 
         expect(isTalerPublicKey(EUR_EXCHANGE)).toBe(true);
         expect(isTalerPublicKey(EUR_EXCHANGE.toLowerCase())).toBe(false);
@@ -263,11 +268,11 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
                 .toBe(notWritten('evTaler.exchanges[0].name', 'a text in languages names each language as Styx writes it, in lower case, with a text'));
 
         // Its payment options as well, which WWCP_POI3 writes trimmed and in their ordinal order.
-        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler', 'Cash' ]; })))
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler', 'Cash' ]; pool['authenticationModes'] = [ QR_CODE() ]; })))
             .toBe(notWritten('chargingPools[1].paymentOptions', 'its elements are in the order the content holds them in'));
-        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler ' ]; })))
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler ' ]; pool['authenticationModes'] = [ QR_CODE() ]; })))
             .toBe(notWritten('chargingPools[1].paymentOptions', 'the texts of its elements are trimmed'));
-        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler' ]; }))).toBe('taken');
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler' ]; pool['authenticationModes'] = [ QR_CODE() ]; }))).toBe('taken');
 
     });
 
@@ -282,7 +287,7 @@ describe('The payment option EVTaler needs the merchant (WWCP_POI ec3dace)', () 
             .toBe("The given JSON representation of a charging station operator is invalid: The charging pool 'DE*GEF*P2' names the payment option 'EVTaler', but its operator 'DE*GEF' has no EV Taler merchant! (Parameter 'EVTaler')");
         expect(refusal(qa(gef => { gef['chargingPoolTemplates'] = [ templateNaming([ 'EVTaler' ]) ]; }, false)))
             .toBe("The given JSON representation of a charging station operator is invalid: The charging pool template 'DE*GEF*PTSUPERMARKET' names the payment option 'EVTaler', but its operator 'DE*GEF' has no EV Taler merchant! (Parameter 'EVTaler')");
-        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler' ]; }))).toBe('taken');
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'Cash', 'EVTaler' ]; pool['authenticationModes'] = [ QR_CODE() ]; }))).toBe('taken');
 
     });
 
@@ -291,10 +296,12 @@ describe('The payment option EVTaler needs the merchant (WWCP_POI ec3dace)', () 
         const before        = RoamingNetwork.parse(qa(() => {}, false));
         const addOption     = { kind: 'UpdateProperty', entityType: 'ChargingPool', entityId: 'DE*GEF*P2', propertyName: 'paymentOptions', newValue: [ 'Contract', 'EVTaler' ] };
         const addMerchant   = { kind: 'UpdateProperty', entityType: 'ChargingStationOperator', entityId: 'DE*GEF', propertyName: 'evTaler', newValue: merchant() };
+        const addQRCode     = { kind: 'UpdateProperty', entityType: 'ChargingPool', entityId: 'DE*GEF*P2', propertyName: 'authenticationModes', newValue: [ QR_CODE() ] };
 
         const after = qa((gef, pool) => {
-            pool['paymentOptions']  = [ 'Contract', 'EVTaler' ];
-            pool['lastChange']      = AT;
+            pool['paymentOptions']       = [ 'Contract', 'EVTaler' ];
+            pool['authenticationModes']  = [ QR_CODE() ];
+            pool['lastChange']           = AT;
             gef['lastChange']       = AT;
         });
         after['lastChange'] = AT;
@@ -312,16 +319,105 @@ describe('The payment option EVTaler needs the merchant (WWCP_POI ec3dace)', () 
             return ChangeSet.parse(json);
         };
 
-        for (const changes of [ [ addOption, addMerchant ], [ addMerchant, addOption ] ])
+        // The merchant, the payment option and the secure dynamic QR code in any order (WWCP_POI 76d3653).
+        for (const changes of [ [ addOption, addMerchant, addQRCode ], [ addMerchant, addOption, addQRCode ], [ addQRCode, addOption, addMerchant ], [ addOption, addQRCode, addMerchant ] ])
             expect(get(defined(applyChangeSet(before, changeSetOf(changes, after), { checkOwnership: false }).chargingStationOperator('DE*GEF')), 'evTaler')).toEqual(merchant());
 
         expect(() => applyChangeSet(before, changeSetOf([ addOption ], after), { checkOwnership: false }))
             .toThrow("The charging pool 'DE*GEF*P2' names the payment option 'EVTaler', but its operator 'DE*GEF' has no EV Taler merchant!");
+        expect(() => applyChangeSet(before, changeSetOf([ addOption, addMerchant ], after), { checkOwnership: false }))
+            .toThrow("The charging pool 'DE*GEF*P2' names the payment option 'EVTaler' without the authentication mode 'SecureDynamicQRCode': an EV Taler session names the one-time password its EVSE gives right then!");
 
         // Its exchanges as the content holds them, in the order of their master public keys.
         const unordered = { ...addMerchant, newValue: { ...merchant(), exchanges: [ ...(merchant()['exchanges'] as JSONArray) ].reverse() } };
-        expect(() => applyChangeSet(before, changeSetOf([ unordered, addOption ], after), { checkOwnership: false }))
+        expect(() => applyChangeSet(before, changeSetOf([ unordered, addOption, addQRCode ], after), { checkOwnership: false }))
             .toThrow(`Change 0: the property 'evTaler' of the charging station operator 'DE*GEF' is not given as the content holds it, '${canonicalJSON(merchant())}'!`);
+
+    });
+
+});
+
+
+describe('The secure dynamic QR code a charging pool naming EVTaler needs (WWCP_POI 76d3653, decision D8)', () => {
+
+    const modes = (...authenticationModes: JSONValue[]): string =>
+        refusal(qa((_, pool) => { pool['authenticationModes'] = authenticationModes; }));
+
+    const invalidMode = (mode: string, error: string): string =>
+        `Invalid authentication mode '${mode}': ${error}`;
+
+    const notWrittenAt = (path: string, why: string): string =>
+        `'chargingStationOperators[0].${path}' is not written as the content holds it: ${why}!`;
+
+    it('names the channels its stations give the URL of the code over, BLE, Display and NFC, as WWCP_POI3 reads them', () => {
+
+        expect(modes(QR_CODE())).toBe('taken');
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [ 'BLE', 'Display', 'NFC' ] })).toBe('taken');
+        expect(modes({ type: 'RFID' }, QR_CODE())).toBe('taken');
+
+        // At least one, each once, by its exact name; in the words of WWCP_POI3 at 76d3653 (ZProbeNetworks, 43 cases alike).
+        const needs = "Invalid authentication mode: The authentication mode 'SecureDynamicQRCode' needs the channels its URL is given over: BLE, Display, NFC! (Parameter 'Channels')";
+        expect(modes({ type: 'SecureDynamicQRCode' })).toBe(invalidMode('{"type":"SecureDynamicQRCode"}', needs));
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [] })).toBe(invalidMode('{"type":"SecureDynamicQRCode","channels":[]}', needs));
+        expect(modes({ type: 'SecureDynamicQRCode', channels: 'Display' }))
+            .toBe(invalidMode('{"type":"SecureDynamicQRCode","channels":"Display"}', 'The channel of the secure dynamic QR code must be a JSON array!'));
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [ 'display' ] }))
+            .toBe(invalidMode('{"type":"SecureDynamicQRCode","channels":["display"]}', "Invalid channel of the secure dynamic QR code 'display'!"));
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [ 'QR' ] }))
+            .toBe(invalidMode('{"type":"SecureDynamicQRCode","channels":["QR"]}', "Invalid channel of the secure dynamic QR code 'QR'!"));
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [ 'Display', 'Display' ] }))
+            .toBe(invalidMode('{"type":"SecureDynamicQRCode","channels":["Display","Display"]}', "Invalid authentication mode: A channel of the secure dynamic QR code must not be given twice! (Parameter 'Channels')"));
+
+        // Only it names channels, and it names nothing of another type.
+        expect(modes({ type: 'RFID', channels: [ 'BLE' ] }))
+            .toBe(invalidMode('{"type":"RFID","channels":["BLE"]}', "Invalid authentication mode: Only SecureDynamicQRCode names channels, not 'RFID'! (Parameter 'Channels')"));
+        expect(modes({ type: 'securedynamicqrcode', channels: [ 'BLE' ] }))
+            .toBe(invalidMode('{"type":"securedynamicqrcode","channels":["BLE"]}', "Invalid authentication mode: Only SecureDynamicQRCode names channels, not 'securedynamicqrcode'! (Parameter 'Channels')"));
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [ 'NFC' ], number: '+491234' }))
+            .toBe(invalidMode('{"type":"SecureDynamicQRCode","channels":["NFC"],"number":"+491234"}', "Invalid authentication mode: Only SMS and PhoneCall name a number, not 'SecureDynamicQRCode'! (Parameter 'Number')"));
+
+        // A channel given twice before a card type of another type, as its constructor checks them.
+        expect(modes({ type: 'SecureDynamicQRCode', cardTypes: [ 'Calypso' ], channels: [ 'BLE', 'BLE' ] }))
+            .toBe(invalidMode('{"type":"SecureDynamicQRCode","cardTypes":["Calypso"],"channels":["BLE","BLE"]}', "Invalid authentication mode: A channel of the secure dynamic QR code must not be given twice! (Parameter 'Channels')"));
+
+        // Written as the content holds it: the channels in the ordinal order of their names, none given empty.
+        expect(modes({ type: 'SecureDynamicQRCode', channels: [ 'NFC', 'BLE' ] }))
+            .toBe(notWrittenAt('chargingPools[1].authenticationModes[0].channels', 'its elements are in the order the content holds them in'));
+        expect(modes({ type: 'RFID', channels: [] }))
+            .toBe(notWrittenAt('chargingPools[1].authenticationModes[0].channels', 'a list without elements is left out'));
+        expect(modes(QR_CODE(), { type: 'RFID' }))
+            .toBe(notWrittenAt('chargingPools[1].authenticationModes', 'its elements are in the order the content holds them in'));
+
+    });
+
+    it('is effective at every charging pool naming EVTaler, its own or of a template; templates alone are not checked', () => {
+
+        const withoutIt = "The given JSON representation of a charging station operator is invalid: The charging pool 'DE*GEF*P2' names the payment option 'EVTaler' without the authentication mode 'SecureDynamicQRCode': an EV Taler session names the one-time password its EVSE gives right then! (Parameter 'EVTaler')";
+
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler' ]; }))).toBe(withoutIt);
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'evtaler' ]; }))).toBe(withoutIt);
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler' ]; pool['authenticationModes'] = [ { type: 'RFID' } ]; }))).toBe(withoutIt);
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler' ]; pool['authenticationModes'] = [ QR_CODE() ]; }))).toBe('taken');
+
+        // The payment option of a template, the code of the pool, and the other way round; both of the template.
+        const template = (more: JSONObject): JSONObject => ({ ...without(templateNaming([]), 'paymentOptions'), ...more });
+        const ofTemplate = (more: JSONObject, pool: JSONObject = {}): string =>
+            refusal(qa((gef, given) => { gef['chargingPoolTemplates'] = [ template(more) ]; given['templateIds'] = [ TEMPLATE_ID ]; Object.assign(given, pool); }));
+        expect(ofTemplate({ paymentOptions: [ 'EVTaler' ] })).toBe(withoutIt);
+        expect(ofTemplate({ paymentOptions: [ 'EVTaler' ] }, { authenticationModes: [ QR_CODE() ] })).toBe('taken');
+        expect(ofTemplate({ authenticationModes: [ QR_CODE() ] }, { paymentOptions: [ 'EVTaler' ] })).toBe('taken');
+        expect(ofTemplate({ paymentOptions: [ 'EVTaler' ], authenticationModes: [ QR_CODE() ] })).toBe('taken');
+        expect(refusal(qa(gef => { gef['chargingPoolTemplates'] = [ template({ paymentOptions: [ 'EVTaler' ] }) ]; }))).toBe('taken');
+
+        // The first pool in the order of their identifications.
+        expect(refusal(qa((gef, p2) => {
+            p2['paymentOptions'] = [ 'EVTaler' ];
+            defined((gef['chargingPools'] as JSONObject[]).find(pool => pool['@id'] === 'DE*GEF*P1'))['paymentOptions'] = [ 'EVTaler' ];
+        }))).toBe(withoutIt.replace('DE*GEF*P2', 'DE*GEF*P1'));
+
+        // Without a merchant, the merchant is missing first, as before.
+        expect(refusal(qa((_, pool) => { pool['paymentOptions'] = [ 'EVTaler' ]; pool['authenticationModes'] = [ QR_CODE() ]; }, false)))
+            .toBe("The given JSON representation of a charging station operator is invalid: The charging pool 'DE*GEF*P2' names the payment option 'EVTaler', but its operator 'DE*GEF' has no EV Taler merchant! (Parameter 'EVTaler')");
 
     });
 

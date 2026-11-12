@@ -104,8 +104,8 @@ function verifyOCMF(value: EVTalerSignedMeterValue, key: EVTalerMeasurementKey):
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-c4c3c5a');
-const time       = at ?? (directory.includes('csharp-c4c3c5a') ? '2026-11-10T05:54:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-76d3653');
+const time       = at ?? (directory.includes('csharp-76d3653') ? '2026-11-12T21:55:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');
@@ -630,7 +630,8 @@ if (has('published/QA-DE-GEF-E1-1-evTaler-proof.json'))
             throw new Error(merchant);
 
         const pool      = station.chargingPool;
-        console.log(`${show(pool['@id'])}, ${show((pool['name'] as JSONObject)['en'])}: payment options ${((pool['paymentOptions'] as JSONArray | undefined) ?? []).map(show).join(', ')}`);
+        console.log(`${show(pool['@id'])}, ${show((pool['name'] as JSONObject)['en'])}: payment options ${((pool['paymentOptions'] as JSONArray | undefined) ?? []).map(show).join(', ')}, ` +
+                    `authentication modes ${((pool['authenticationModes'] as JSONObject[] | undefined) ?? []).map(mode => `${show(mode['type'])} (${((mode['channels'] as JSONArray | undefined) ?? []).map(show).join(', ')})`).join(', ')}`);
 
         // The EV Taler tariff of the EVSE, and the exchanges of the merchant in its currency: what the app shows as
         // "EV Taler (provider)".

@@ -135,8 +135,8 @@ describe('A checkpoint taken with the signatures that verify here (S39)', () => 
     const named       = (taken: Checkpoint): string[] =>
         taken.signatures.map(signature => `${signature.role} ${signature.signer ?? ''} ${signature.keyId.slice(0, 8)}`);
 
-    const VERIFIED    = [ 'roamingNetworkOperator OCC 701cb52b', 'roamingNetworkOperator OCC 3a0438a7', 'roamingNetworkOperator OCC bcb82f7a',
-                          'witness calibration.example f9b4aa81', 'witness association.example c9d8391d' ];
+    const VERIFIED    = [ 'roamingNetworkOperator OCC c17df6ed', 'roamingNetworkOperator OCC 091f5757', 'roamingNetworkOperator OCC 7c8bee34',
+                          'witness calibration.example c1ce8bcf', 'witness association.example 982ad2b5' ];
 
     /** Why the first signature not verified here was left out, as WWCP_POI says it: by a key of the operator not trusted here. */
     const first       = defined(signatures[3]);
@@ -144,7 +144,7 @@ describe('A checkpoint taken with the signatures that verify here (S39)', () => 
 
     it('takes it with the signatures that verify here only, the others left out', () => {
 
-        expect(asText(first['keyId'])).toMatch(/^1f4c125b/);
+        expect(asText(first['keyId'])).toMatch(/^032a1055/);
 
         const taken = upTo(historyOf({ requiredCheckpointSignatureRoles: [ 'roamingNetworkOperator', 'witness' ] }, witnessed())).takeCheckpoint(checkpoint);
 
@@ -190,7 +190,7 @@ describe('A checkpoint taken with the signatures that verify here (S39)', () => 
         const history = History.fromSnapshot(readJSON('published/QA-epoch-2-checkpoint-0-snapshot.json'), { ...witnessed(), unanchored: true, requiredCheckpointSignatureRoles: [ 'witness' ] });
 
         expect(named(defined(history.checkpoints[0]))).toEqual([ ...VERIFIED.slice(0, 3),
-                                                                 'roamingNetworkOperator OCC 1f4c125b', 'roamingNetworkOperator OCC 9ce2a7d2', 'roamingNetworkOperator OCC 2dda2fff',
+                                                                 'roamingNetworkOperator OCC 032a1055', 'roamingNetworkOperator OCC ad3b940d', 'roamingNetworkOperator OCC bbc5f820',
                                                                  ...VERIFIED.slice(3) ]);
 
     });

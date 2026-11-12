@@ -69,7 +69,7 @@ describe('An old value no longer there', () => {
         expect(refusal(update('ChargingStationModel', 'GD-AC44', 'maxPower', 22000, 1, { parentEntityType: 'ChargingStationManufacturer', parentEntityId: 'GraphDefined' })))
             .toBe("Change 0: the property 'maxPower' of the charging station model 'GD-AC44' is no longer the expected old value, but '44000'!");
         expect(refusal(update('GridConnectionPoint', 'gcp-1', 'energyMeter', { '@id': 'gcp-meter-1' }, { '@id': 'x' })))
-            .toBe(`Change 0: the property 'energyMeter' of the grid connection point 'gcp-1' is no longer the expected old value, but '{"@id":"gcp-meter-1","created":"2026-11-10T05:53:07.929Z","lastChange":"2026-11-10T05:53:07.929Z"}'!`);
+            .toBe(`Change 0: the property 'energyMeter' of the grid connection point 'gcp-1' is no longer the expected old value, but '{"@id":"gcp-meter-1","created":"2026-11-12T21:54:38.880Z","lastChange":"2026-11-12T21:54:38.880Z"}'!`);
         expect(refusal(update('ConformityAssessmentBody', 'BSI', 'name', { en: 'x' }, NOT_IT)))
             .toBe(`Change 0: the property 'name' of the conformity assessment body 'BSI' is no longer the expected old value, but '{"de":"Bundesamt für Sicherheit in der Informationstechnik"}'!`);
         expect(refusal(update('RoamingNetworkOperator', 'OCC', 'name', { en: 'x' }, NOT_IT)))

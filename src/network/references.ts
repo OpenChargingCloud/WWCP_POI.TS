@@ -24,6 +24,7 @@ import { evseGroupId, evseId, evseTemplateId, freeId, idOf, idsOf, operatorId, o
          thrown, Thrown, timestampOf, type Checked, type Id } from './poiJSON.ts';
 import { firstOverlap, offerOf, sessionsOverlap, timeZoneNamed, UTC, type TimeZone } from './offers.ts';
 import { EV_TALER_PAYMENT_OPTION, namesEVTaler } from './evTaler.ts';
+import { SECURE_DYNAMIC_QR_CODE }  from './poiValues.ts';
 import { duplicateIdentification, ignoringCase, inRoamingNetwork } from './identifications.ts';
 import { readPartyKeys }          from './partyKeys.ts';
 import { trimmed }                from './versionTexts.ts';
@@ -515,7 +516,8 @@ function powerSum(station: JSONObject, evses: readonly JSONObject[], id: string)
 /**
  * The error, as WWCP_POI3 words it after the last change of a change set, when a group of a charging station operator
  * names a member it does not have, or an offer a group it does not have (`InvalidGroupOrOffer`), or a charging pool or a
- * charging pool template of it the payment option EVTaler without an EV Taler merchant (`InvalidPaymentOption`), or two of
+ * charging pool template of it the payment option EVTaler without an EV Taler merchant, or a charging pool as it is at
+ * runtime the payment option EVTaler without the authentication mode SecureDynamicQRCode (`InvalidPaymentOption`), or two of
  * its charging tariff offers overlap at an EVSE (`OverlappingOffers`).
  */
 export const invalidGroupOrOffer = (operator: JSONObject): string | undefined =>
@@ -852,14 +854,37 @@ function newProviderOfferOverlap(network: Network, before: JSONObject | undefine
 
 }
 
-/** The error, when a charging pool or a charging pool template names the payment option EVTaler, but its operator has no merchant. */
+/**
+ * The error, when a charging pool or a charging pool template names the payment option EVTaler, but its operator has no
+ * merchant, or a charging pool as it is at runtime, with what its templates give it, names it without the authentication
+ * mode SecureDynamicQRCode (`InvalidPaymentOption`; decision D8 of concepts/EVTaler.md): every EV Taler session names the
+ * one-time password its EVSE gives right then. Templates themselves are not checked for the mode, only the pools.
+ */
 export const invalidPaymentOption = (operator: JSONObject): string | undefined =>
     whileChecking(() => paymentOptionError(operator));
 
+/** Whether the given authentication modes name one of the type SecureDynamicQRCode. */
+const namesSecureDynamicQRCode = (authenticationModes: JSONValue | undefined): boolean =>
+    isArray(authenticationModes) && authenticationModes.some(mode => isObject(mode) && mode['type'] === SECURE_DYNAMIC_QR_CODE);
+
 function paymentOptionError(operator: JSONObject): string | undefined {
 
-    if (get(operator, 'evTaler') !== undefined)
+    if (get(operator, 'evTaler') !== undefined) {
+
+        // The effective charging pool: its own payment options and authentication modes united with those of its templates.
+        for (const pool of poolsOf(operator)) {
+
+            const effective = [ pool, ...templatesOf(pool, operator, 'chargingPoolTemplates', poolTemplateId) ];
+
+            if (effective.some(entity => namesEVTaler(get(entity, 'paymentOptions'))) &&
+                !effective.some(entity => namesSecureDynamicQRCode(get(entity, 'authenticationModes'))))
+                return `The charging pool '${textOf(pool, poolId)}' names the payment option '${EV_TALER_PAYMENT_OPTION}' without the authentication mode '${SECURE_DYNAMIC_QR_CODE}': an EV Taler session names the one-time password its EVSE gives right then!`;
+
+        }
+
         return undefined;
+
+    }
 
     const id = textOf(operator, operatorId);
 

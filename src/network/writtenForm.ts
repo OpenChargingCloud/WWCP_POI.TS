@@ -53,7 +53,7 @@ const ORDERED_TEXTS = new Set([
     'paymentMeans', 'paymentBrands', 'signatureMethods', 'connectorTypes', 'EVSEIds', 'chargingStationIds', 'chargingPoolIds',
     'energyMeterIds', 'EVSEGroupIds', 'chargingStationGroupIds', 'chargingPoolGroupIds', 'chargingStationOperatorIds',
     'eMobilityProviderIds', 'parkingSensorIds', 'parkingProductIds', 'measurands', 'notifiedFor',
-    'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'cardTypes', 'dimensions', 'usages',
+    'verifiedTransparencySoftwareIds', 'compatibleTransparencySoftwareIds', 'cardTypes', 'channels', 'dimensions', 'usages',
 ]);
 
 /**
@@ -62,7 +62,7 @@ const ORDERED_TEXTS = new Set([
  * the elements of a price, the exchanges of an EV Taler merchant and the identity keys of a key statement.
  */
 const LEFT_OUT_WHEN_EMPTY = new Set([
-    'acceptedEMobilityProviderIds', 'authenticationModes', 'brands', 'cardTypes', 'certificateIds', 'certificates',
+    'acceptedEMobilityProviderIds', 'authenticationModes', 'brands', 'cardTypes', 'certificateIds', 'certificates', 'channels',
     'chargingConnectors', 'chargingPoolGroupIds', 'chargingPoolGroups', 'chargingPoolIds', 'chargingPoolTemplates',
     'chargingPools', 'chargingStationGroupIds', 'chargingStationGroups', 'chargingStationIds', 'chargingStationManufacturers',
     'chargingStationModels', 'chargingStationOperatorIds', 'chargingStationOperators', 'chargingStationTemplates',

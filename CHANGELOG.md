@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- The authentication mode SecureDynamicQRCode, as WWCP_POI `76d3653` reads it (EV Taler, decision D8 of
+  concepts/EVTaler.md): the channels the stations of a charging pool give the URL of their secure dynamic QR code over,
+  with its time-based one-time password of OCPP 2.1, `BLE`, `Display` and `NFC`, at least one, each once, by its exact
+  name and in the ordinal order of their names; no other type names channels. A charging pool naming the payment option
+  EVTaler, as it is at runtime with what its templates give it, names it too, its own or of a template, where its
+  operator has an EV Taler merchant: "The charging pool '…' names the payment option 'EVTaler' without the
+  authentication mode 'SecureDynamicQRCode': an EV Taler session names the one-time password its EVSE gives right
+  then!", checked as the merchant rule, when an operator is read and after the last change of a change set, so that a
+  change set adds the merchant, the payment option and the code in any order. Probed against WWCP_POI3 at `76d3653`: the
+  43 versions of ZProbeNetworks alike in verdicts and words, one in a JToken text of C# with CRLF only. Example A15
+  prints the authentication modes of Jena Paradies as the C# example does.
+
+- The frozen run is `csharp-76d3653` (WWCP_POI `76d3653`, Hermod `c5ff091b`, Styx `a6b9f9fb`, .NET 11), AT
+  `2026-11-12T21:55:00.000Z`, in place of `csharp-c4c3c5a`: revision 11 of epoch 2 is "Jena Paradies: EV Taler, with a
+  secure dynamic QR code" now, which the old run, the payment option alone, no longer is. Vendored byte for byte from
+  WWCPPOIConformanceTests `a81db5f` with it: `poi-history.json`, `poi-refusals.json` (6 versions of the code refused or
+  held otherwise), `poi-histories.json` (Jena Paradies of history-parties with the code; 3 replays new: the payment
+  option without the code refused, the code first, the code removed while named refused) and `poi-qidigital.json`.
+  The tests on QA hold the values of the new run, mapped by content; what WWCP_POI3 calculated of changed versions
+  (after ETags of the change sets of element, embedded, infrastructure and release changes, the ETags and
+  identifications of the preconditions and change sets, the versions with an EV Taler merchant) calculated again by
+  WWCP_POI3 at `76d3653` on the very same versions, all alike.
+
 - `poi-histories.json` of WWCPPOIConformanceTests `d552a8a` vendored, its other vectors those of `674b173`: 4
   replays of a change set WWCP_POI3 writes again, it and its commit identified and signed so (`791219c`): a
   precondition with ` DE*GEF `, `preconditions: []` and `metadata: {}` taken; the precondition identified as given

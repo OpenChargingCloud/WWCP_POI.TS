@@ -816,7 +816,16 @@ export const transparencySoftwareAssignment = (json: JSONObject): Checked =>
          ? 'A transparency software status needs its transparencySoftwareId and its legalStatus!'
          : undefined);
 
-/** An authentication mode as `AuthenticationMode.TryParse` reads it: of a type, the cards and brands of RFID. */
+/** The channels a secure dynamic QR code is given over (`SecureDynamicQRCodeChannels`), in the order of their names. */
+export const SECURE_DYNAMIC_QR_CODE_CHANNELS = [ 'BLE', 'Display', 'NFC' ] as const;
+
+/** The type of the authentication mode of a secure dynamic QR code, which a charging pool naming EVTaler needs (D8). */
+export const SECURE_DYNAMIC_QR_CODE = 'SecureDynamicQRCode';
+
+/**
+ * An authentication mode as `AuthenticationMode.TryParse` reads it: of a type, the cards and brands of RFID, the channels
+ * of a secure dynamic QR code.
+ */
 export function authenticationMode(json: JSONObject): Checked {
 
     try {
@@ -829,6 +838,7 @@ export function authenticationMode(json: JSONObject): Checked {
                       brands(json) ??
                       text(json, 'number', 'number') ??
                       text(json, 'stationCode', 'station code') ??
+                      errorOf(idsByName(json, 'channels', 'channel of the secure dynamic QR code', SECURE_DYNAMIC_QR_CODE_CHANNELS)) ??
                       (type === undefined ? 'An authentication mode needs its type!' : undefined);
 
         if (error !== undefined || typeof type !== 'string')
@@ -841,6 +851,11 @@ export function authenticationMode(json: JSONObject): Checked {
 
         if (new Set(cardTypes).size !== cardTypes.length)
             throw new Thrown("An RFID card type must not be given twice! (Parameter 'CardTypes')");
+
+        const channels = idsByName(json, 'channels', 'channel of the secure dynamic QR code', []) as string[];
+
+        if (new Set(channels).size !== channels.length)
+            throw new Thrown("A channel of the secure dynamic QR code must not be given twice! (Parameter 'Channels')");
 
         const brandIds = (isArray(get(json, 'brands')) ? get(json, 'brands') as JSONValue[] : []).flatMap(item => {
             const id = isObject(item) && typeof item['@id'] === 'string' ? freeId(item['@id']) : undefined;
@@ -867,6 +882,13 @@ export function authenticationMode(json: JSONObject): Checked {
 
         if (get(json, 'stationCode') !== undefined && type !== 'SMS')
             throw new Thrown(`Only SMS names a station code, not '${type}'! (Parameter 'StationCode')`);
+
+        if (type === SECURE_DYNAMIC_QR_CODE) {
+            if (channels.length === 0)
+                throw new Thrown(`The authentication mode '${type}' needs the channels its URL is given over: ${SECURE_DYNAMIC_QR_CODE_CHANNELS.join(', ')}! (Parameter 'Channels')`);
+        }
+        else if (channels.length > 0)
+            throw new Thrown(`Only ${SECURE_DYNAMIC_QR_CODE} names channels, not '${type}'! (Parameter 'Channels')`);
 
         return undefined;
 
