@@ -3,7 +3,7 @@
 ## Unreleased
 
 
-## 0.4.0 (prepared; not yet published)
+## 0.4.0 (2026-11-13)
 
 Change sets and commits as WWCP_POI3 writes them again, and EV Taler phase 3: a change is read, applied and refused as
 WWCP_POI3 reads, applies and refuses it, each party read again right after the change that changed it; a change set and
