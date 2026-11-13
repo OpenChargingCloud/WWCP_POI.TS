@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+
+## 0.4.0 (prepared; not yet published)
+
+Change sets and commits as WWCP_POI3 writes them again, and EV Taler phase 3: a change is read, applied and refused as
+WWCP_POI3 reads, applies and refuses it, each party read again right after the change that changed it; a change set and
+its commit are identified and signed over what WWCP_POI3 writes of them again, not over them as given; a charging
+station operator names where drivers pay ad hoc (`webPaymentURL`) and ask for offers (`offersURL`), and a charging pool
+naming EV Taler the secure dynamic QR code of its stations; a profile of contracts binds the price of a session started
+through an e-mobility provider. Each of them is probed against WWCP_POI3, what differs named below, and the vectors of
+WWCPPOIConformanceTests `448fc73` hold, none deviating, on the run of WWCP_POI `76d3653`. See [Migration](#migration)
+before upgrading: versions and change sets 0.3.0 took are refused, others it refused are taken, and the words of many
+refusals change.
+
 - `poi-evtaler.json` of WWCPPOIConformanceTests `448fc73` vendored byte for byte and run in
   `tests/conformance.test.ts`: the amounts of EV Taler (concepts/EVTaler.md of WWCP_POI, section 9 and open point 3,
   no part of SPECIFICATION.md), 57 vectors. The gross rates of the simple profile of a charging tariff or why it has none
@@ -270,6 +283,43 @@
   is looked at, and a signature by one identity key given twice ("An identity key signs a key statement once."), which
   was taken before; its validity in C#'s words. Probed against WWCP_POI `74f1d8e` on 36 versions of QA, the same
   verdict and words for each. Four vectors of `poi-refusals.json` follow the new words.
+
+### Migration
+
+- A charging pool naming the payment option `EVTaler`, its own or of a template, whose operator has an EV Taler
+  merchant, names the authentication mode `SecureDynamicQRCode` with at least one of the channels `BLE`, `Display` and
+  `NFC`: a version or change set without it, which 0.3.0 took, is refused. No other authentication mode names channels.
+- A change set is identified, and its signatures are verified, over it as WWCP_POI3 writes it again, and so is its
+  commit: one identified over what it was given as, with an untrimmed text, a context or another property in a
+  precondition, an empty `preconditions`, `metadata` or element path, a description in languages written otherwise,
+  which 0.3.0 took, is refused, "is not identified by its content"; one identified as WWCP_POI3 writes it, which 0.3.0
+  refused, is taken. Producers identify and sign change sets and commits as WWCP_POI3 does.
+- A change set is refused where a change makes a party one WWCP_POI3 does not read, also when a later change makes it
+  valid again, which 0.3.0 took; the change is named, "Change N: …", in the words of WWCP_POI3. A change naming a
+  JSON-LD context other than its own, a description or metadata that is no JSON object, or a new value the content does
+  not hold as given is refused as WWCP_POI3 refuses it.
+- Messages of refusals checked by their text change where 0.3.0 worded them on its own: a change refused when read
+  ("Change 0: the kind must be a text!"), an old value no longer there, which now names the value found, a new value
+  not given as the content holds it, who must sign a change of a party without signing keys, the articles of entities
+  ("An EVSE group", "of an energy meter model") and numbers without trailing zeros.
+- A charging station, an EVSE or an energy meter given twice within one charging station operator, and data licenses
+  that differ in case only, which 0.3.0 took, are refused. So is a key statement of the roaming network operator with
+  two signatures by one identity key.
+- A change names the infrastructure of a charging station operator in every spelling its identification type considers
+  equal, `DEGEFP1` for `DE*GEF*P1`: change sets 0.3.0 refused for another spelling are taken, and an entity added under
+  an identification its type writes otherwise is refused.
+- Versions and commits with a web payment page (`webPaymentURL`) or an offers URL of an EV Taler merchant (`offersURL`),
+  which 0.3.0 refused, are taken. A change of a web payment page needs a signing key that may sign `payments`, and an
+  entity added with one a key that may sign `infrastructure` and `payments`.
+- A price agreement of a flat fee, which 0.3.0 gave as `unsupported`, is `bound` of the simple profile of gross rates
+  where its FLAT component has no step size; one with a step size, also `null`, is none of the profile. A price
+  agreement whose `chargingMode` is `contract` is `bound` of the new profile `chargy-contract-gross-rates/v1`
+  (`CONTRACT_GROSS_PRICE_PROFILE`), and stays `unsupported` of the simple profile.
+- New in the API, nothing removed: `evTalerSessionPrices` and its type `EVTalerSessionPrices`, the `offersURL` of an
+  EV Taler merchant, `CONTRACT_GROSS_PRICE_PROFILE`.
+- The dependencies are those of 0.3.0, `@vanaheimr/cose` ^0.15.0 and `@vanaheimr/metrological-cbor` ^0.12.0. The
+  minimum runtime remains Node 22.18, and the package remains ESM-only. The package is 3.9 MB unpacked, where 0.3.0
+  was 3.7 MB.
 
 
 ## 0.3.0 (2026-11-08)
