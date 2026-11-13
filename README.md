@@ -316,7 +316,8 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   of the specification, station proofs of its example network signed with its keys against a trust anchor, what to
   calculate of the documents of the run below, documents to refuse, the QI-Digital documents of example A14 of that run
   taken and refused as WWCP_POI checks them, small histories WWCPPOIConformanceTests signs itself, replayed step by
-  step, and the verifier extensions (`poi-verifier.json`) checked against the fixtures of ChargyWebApp below as
+  step, the amounts of EV Taler (`poi-evtaler.json`: the rates of a charging tariff, what a step and a session cost),
+  and the verifier extensions (`poi-verifier.json`) checked against the fixtures of ChargyWebApp below as
   WWCP_POI3 checks them (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
 - `tests/vectors/csharp-76d3653`, what one run of the C# examples A1 to A16 of WWCP_POI at commit `76d3653` published

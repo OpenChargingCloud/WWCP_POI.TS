@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `poi-evtaler.json` of WWCPPOIConformanceTests `448fc73` vendored byte for byte and run in
+  `tests/conformance.test.ts`: the amounts of EV Taler (concepts/EVTaler.md of WWCP_POI, section 9 and open point 3,
+  no part of SPECIFICATION.md), 57 vectors. The gross rates of the simple profile of a charging tariff or why it has none
+  (4 priced, 14 not), what a step costs, rounded up to the minor unit of the currency, or that the tariff does not price
+  it (17 and 2), and the price of a session, rounded to the nearest, half away from zero (20). No change of the
+  library: it calculates all of them as WWCP_POI3 does.
+
 - The authentication mode SecureDynamicQRCode, as WWCP_POI `76d3653` reads it (EV Taler, decision D8 of
   concepts/EVTaler.md): the channels the stations of a charging pool give the URL of their secure dynamic QR code over,
   with its time-based one-time password of OCPP 2.1, `BLE`, `Display` and `NFC`, at least one, each once, by its exact

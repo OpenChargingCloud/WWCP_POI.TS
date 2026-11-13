@@ -246,6 +246,45 @@ export const qiDigitalDocument = (ref: QIDigitalDocumentRef): JSONValue =>
     'text' in ref ? parseJSON(ref.text) : patched(ref);
 
 
+/** The gross rates of the simple profile of a charging tariff, decimals as texts without trailing zeros, each where the tariff has it. */
+export interface EVTalerRatesGiven {
+    readonly energyPerKWh?:     string;
+    readonly energyStepWh?:     string;
+    readonly timePerHour?:      string;
+    readonly timeStepSeconds?:  string;
+    readonly flatFee?:          string;
+}
+
+/**
+ * An amount of EV Taler (concepts/EVTaler.md of WWCP_POI, section 9 and open point 3; no part of SPECIFICATION.md):
+ * `rates` the gross rates of the simple profile of a charging tariff, `step` what a step costs, rounded up to the minor
+ * unit of the currency, `session` the price of a session, rounded to the nearest, half away from zero.
+ */
+export interface EVTalerVector extends Applicability {
+    readonly id:           string;
+    readonly description:  string;
+    readonly basis:        string;
+    readonly check:        'rates' | 'step' | 'session';
+    readonly currency:     string;
+    /** The charging tariff with the elements that price it, as JSON text: the text of its numbers matters. */
+    readonly tariff:       string;
+    readonly expected:     'priced' | 'notPriced';
+    /** rates, priced. */
+    readonly rates?:       EVTalerRatesGiven;
+    /** step: what it covers, its decimals as texts. */
+    readonly covers?:      { readonly from: string, readonly to: string, readonly unit: string };
+    /** session: its energy in kWh, a decimal as a text, and its duration. */
+    readonly energy?:      string;
+    readonly durationMs?:  number;
+    /** step, session, priced: the amount, with the digits of the minor unit of the currency. */
+    readonly price?:       string;
+    /** notPriced: why, as both implementations word it. */
+    readonly reason?:      string;
+}
+
+export const evTaler = load('poi-evtaler.json') as { readonly run: string, readonly vectors: readonly EVTalerVector[] };
+
+
 // ---- Documents of the frozen run ----------------------------------------------------------------------------------
 
 /** The vendored run: next to the vector files, by its name. */

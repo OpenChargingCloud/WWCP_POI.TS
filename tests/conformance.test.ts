@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    applies, canonical, chargyDocument, deviates, encodings, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
+    applies, canonical, chargyDocument, deviates, encodings, evTaler, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
     refusals, runDocument, runText, specification, trust, verifier, type AnchoredSnapshotCase, type DocumentRef, type DocumentStep,
-    type HistoryReplayVector, type QIDigitalCase, type QIDigitalVector, type RefusalVector, type ReplayStep, type TrustCase, type VerifierCase, type VerifierPolicy,
+    type EVTalerRatesGiven, type EVTalerVector, type HistoryReplayVector, type QIDigitalCase, type QIDigitalVector, type RefusalVector, type ReplayStep, type TrustCase, type VerifierCase, type VerifierPolicy,
     type VerifierVector,
 } from './conformance.ts';
 
@@ -29,6 +29,8 @@ import { DigitalCalibrationCertificate }    from '../src/qidigital/calibrationCe
 import { DigitalCertificateOfConformity }   from '../src/qidigital/certificateOfConformity.ts';
 import { DigitalDeclarationOfConformity }   from '../src/qidigital/declarationOfConformity.ts';
 import { QIDigitalItem }                    from '../src/qidigital/parts.ts';
+import { EVTalerRates, NetDecimal, writeAmount, writeDecimal } from '../src/evTaler/amounts.ts';
+import { EVTalerCovers }                    from '../src/evTaler/step.ts';
 import { HistoricalTrustContext, initialTrustEpoch, KeyStatement, parseTrustedWitnesses, parseWitnessPublicationPolicy, pricePublicationOfferHashes,
          PricePublicationReceipt, TrustContext, TrustTransition, trustPolicyId, trustStatementDigest, verifyChargingDocumentKeys, verifyHistoricalMeterEvidence,
          verifyMeterKey, verifySessionPriceEvidence, VerifiedTrustTransition, type HistoricalMeterPolicy, type WitnessPublicationPolicy } from '../src/index.ts';
@@ -551,6 +553,128 @@ describe('Golden vectors: the QI-Digital documents of example A14, checked as WW
                 expect(() => { check(vector, vector); }).toThrow();
             else
                 expect(() => { check(vector, vector); }).toThrow(vector.reason);
+
+        });
+
+});
+
+describe('Golden vectors: the amounts of EV Taler, what a step and a session cost', () => {
+
+    /** The rates of the charging tariff of a vector, priced by its own elements, or why it has none. */
+    function ratesOf(vector: EVTalerVector): EVTalerRates | { readonly reason: string } {
+
+        // Read as POI reads JSON: the tariff is given as text, for the text of its numbers matters.
+        const tariff = parseJSON(vector.tariff);
+
+        if (!isObject(tariff))
+            throw new Error('The charging tariff of the vector is no JSON object');
+
+        const elements = tariff['elements'];
+
+        return EVTalerRates.of(vector.currency, tariff, isArray(elements) ? elements.filter(isObject) : []);
+
+    }
+
+    function pricedBy(vector: EVTalerVector): EVTalerRates {
+        const rates = ratesOf(vector);
+        if (!(rates instanceof EVTalerRates))
+            throw new Error(`The charging tariff of the vector has no rates: ${rates.reason}`);
+        return rates;
+    }
+
+    function decimalOf(text: string | undefined): NetDecimal {
+        const value = text === undefined ? undefined : NetDecimal.parse(text);
+        if (value === undefined)
+            throw new Error(`The vector gives no decimal: '${text ?? ''}'`);
+        return value;
+    }
+
+    /** The rates as a vector gives them: decimals as texts without trailing zeros, each where the tariff has it. */
+    function given(rates: EVTalerRates): EVTalerRatesGiven {
+        const written = (value: NetDecimal | undefined): string | undefined => value === undefined ? undefined : writeDecimal(value);
+        return JSON.parse(JSON.stringify({ energyPerKWh:     written(rates.energyPerKWh),
+                                           energyStepWh:     written(rates.energyStepWh),
+                                           timePerHour:      written(rates.timePerHour),
+                                           timeStepSeconds:  written(rates.timeStepSeconds),
+                                           flatFee:          written(rates.flatFee) })) as EVTalerRatesGiven;
+    }
+
+    it('names the frozen run of poi-history.json', () => {
+        expect(evTaler.run).toBe(history.run);
+    });
+
+    for (const vector of evTaler.vectors.filter(applies))
+        it(`${vector.id} (${vector.check}, ${vector.expected}): ${vector.description}`, () => {
+
+            // Of the file, not of its type: a newer file may expect otherwise.
+            const expected: string = vector.expected;
+
+            if (expected !== 'priced' && expected !== 'notPriced')
+                throw new Error(`A vector expecting '${expected}' is not known to these tests: the vector files are newer than the tests!`);
+
+            switch (vector.check) {
+
+                case 'rates': {
+
+                    const rates = ratesOf(vector);
+
+                    // A known deviation pinned: once it has none, the marker goes in WWCPPOIConformanceTests.
+                    if (vector.expected === 'notPriced') {
+                        if (deviates(vector)) { expect(rates).toBeInstanceOf(EVTalerRates); return; }
+                        expect(rates).toEqual({ reason: vector.reason });
+                        return;
+                    }
+
+                    if (!(rates instanceof EVTalerRates))
+                        throw new Error(`The charging tariff has no rates: ${rates.reason}`);
+
+                    expect(rates.currency).toBe(vector.currency);
+
+                    if (deviates(vector)) { expect(given(rates)).not.toEqual(vector.rates); return; }
+
+                    expect(given(rates)).toEqual(vector.rates);
+                    return;
+
+                }
+
+                case 'step': {
+
+                    const price = pricedBy(vector).stepPrice(EVTalerCovers.parse(vector.covers));
+
+                    if (vector.expected === 'notPriced') {
+                        if (deviates(vector)) { expect(price).toBeInstanceOf(NetDecimal); return; }
+                        expect(price).toBe(vector.reason);
+                        return;
+                    }
+
+                    if (typeof price === 'string')
+                        throw new Error(price);
+
+                    if (deviates(vector)) { expect(writeAmount(price, vector.currency)).not.toBe(vector.price); return; }
+
+                    expect(writeAmount(price, vector.currency)).toBe(vector.price);
+                    return;
+
+                }
+
+                case 'session': {
+
+                    if (vector.expected !== 'priced' || vector.durationMs === undefined)
+                        throw new Error('The price of a session is calculated, of its duration: the vector files are newer than the tests!');
+
+                    const price = writeAmount(pricedBy(vector).sessionPrice(decimalOf(vector.energy), vector.durationMs), vector.currency);
+
+                    if (deviates(vector)) { expect(price).not.toBe(vector.price); return; }
+
+                    expect(price).toBe(vector.price);
+                    return;
+
+                }
+
+                default:
+                    throw new Error(`A check '${String(vector.check)}' is not known to these tests: the vector files are newer than the tests!`);
+
+            }
 
         });
 
