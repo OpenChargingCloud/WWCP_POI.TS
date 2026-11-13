@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- WWCP_POI3 refuses what this library refuses of a change set, since WWCP_POI `bc554b2`, the change 0.4.0 names as
+  proposed for it on top of `62390ca`: a property it does not read, of the change set, of a change or of a
+  precondition; a `createdAt` not written as `yyyy-MM-ddTHH:mm:ss.fffZ`; a roaming network given as a number. No change
+  of this library. Probed with the 88 change sets of ZProbePreconditions on WWCP_POI `bc554b2` and this library at
+  0.4.0: the same verdict and words for each.
+
+- `poi-histories.json` of WWCPPOIConformanceTests `a776b40` vendored byte for byte, 117 replays, 11 of them new, of
+  what WWCP_POI `bc554b2` refuses of a change set, all refused here already: a property not read of a change set and of
+  a change, a `createdAt` without milliseconds and with an offset, a roaming network given as a number, each with its
+  commit identified over the change set as given, refused in the same words by both, and as it is written again,
+  refused by both, by this library as "The commit identification '…' is not the one of its content", for it identifies
+  a commit over a change set it does not read as given; and a property not read of a precondition, "Invalid
+  precondition 0!" by both.
+
 
 ## 0.4.0 (2026-11-13)
 
