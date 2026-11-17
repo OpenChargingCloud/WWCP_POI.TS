@@ -24,13 +24,12 @@ ML-DSA-44/65/87.
 
 ## Status
 
-**0.5.0 is prepared, not yet published to npm.** It lets the holders of the keys of a roaming network operator join and
-leave, its quorum checked of every version, reads the URLs of the copies of a roaming network and follows the key
-statements of its operator from an old trust anchor to the keys of today. See
-[the changelog](CHANGELOG.md#050-prepared-not-yet-published) for the changes and migration requirements: versions
-0.4.0 took are refused. Until then 0.4.0, published to npm on 13 November 2026, is the latest release. The experimental
-profiles below remain experimental; a package release does not establish production witness services or independently
-verified actual measurement time.
+**0.5.0 was published to npm on 17 November 2026.** It lets the holders of the keys of a roaming network operator join
+and leave, its quorum checked of every version, reads the URLs of the copies of a roaming network and follows the key
+statements of its operator from an old trust anchor to the keys of today. See [the changelog](CHANGELOG.md) for the
+changes and migration requirements: versions 0.4.0 took are refused. The experimental profiles below remain
+experimental; a package release does not establish production witness services or independently verified actual
+measurement time.
 
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A16 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
@@ -549,10 +548,9 @@ signature encodings nor changed tariff definitions reuse another original's rece
 
 ## Publishing
 
-Version 0.4.0 is available on npm; 0.5.0 is prepared. The commands below are its release procedure. For a later
-release, choose a new version and replace the version, tag and archive names below; published versions are immutable.
-Update package.json, package-lock.json and the release notes, then validate the source and inspect the package before
-approving a release:
+Version 0.5.0 is available on npm. The commands below record its release procedure. For a future release, choose a new
+version and replace the version, tag and archive names below; published versions are immutable. Update package.json,
+package-lock.json and the release notes, then validate the source and inspect the package before approving a release:
 
 ```bash
 npm ci

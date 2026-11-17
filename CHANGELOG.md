@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (prepared; not yet published)
+## 0.5.0 (2026-11-17)
 
 The holders of the keys of a roaming network operator join and leave, and a roaming network names where its copies are:
 the quorum of its operator fits its keys in every version, not between the changes of one change set, so a second
