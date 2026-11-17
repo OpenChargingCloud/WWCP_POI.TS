@@ -24,11 +24,13 @@ ML-DSA-44/65/87.
 
 ## Status
 
-**0.4.0 was published to npm on 13 November 2026.** It identifies and signs change sets and commits as WWCP_POI3
-writes them again, reads every change as WWCP_POI3 does, in its words, and adds EV Taler phase 3, the web payment page
-and the profile of contracts. See [the changelog](CHANGELOG.md) for the changes and migration requirements: versions
-and change sets 0.3.0 took are refused. The experimental profiles below remain experimental; a package release does not
-establish production witness services or independently verified actual measurement time.
+**0.5.0 is prepared, not yet published to npm.** It lets the holders of the keys of a roaming network operator join and
+leave, its quorum checked of every version, reads the URLs of the copies of a roaming network and follows the key
+statements of its operator from an old trust anchor to the keys of today. See
+[the changelog](CHANGELOG.md#050-prepared-not-yet-published) for the changes and migration requirements: versions
+0.4.0 took are refused. Until then 0.4.0, published to npm on 13 November 2026, is the latest release. The experimental
+profiles below remain experimental; a package release does not establish production witness services or independently
+verified actual measurement time.
 
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A16 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
@@ -547,9 +549,10 @@ signature encodings nor changed tariff definitions reuse another original's rece
 
 ## Publishing
 
-Version 0.4.0 is available on npm. The commands below record its release procedure. For a future release, choose a new
-version and replace the version, tag and archive names below; published versions are immutable. Update package.json,
-package-lock.json and the release notes, then validate the source and inspect the package before approving a release:
+Version 0.4.0 is available on npm; 0.5.0 is prepared. The commands below are its release procedure. For a later
+release, choose a new version and replace the version, tag and archive names below; published versions are immutable.
+Update package.json, package-lock.json and the release notes, then validate the source and inspect the package before
+approving a release:
 
 ```bash
 npm ci
@@ -565,10 +568,10 @@ check the final archive. Commit the reviewed release files, then tag and push th
 remote:
 
 ```bash
-git tag -s v0.4.0 -m "v0.4.0"
-git push origin master v0.4.0
-git push git1 master v0.4.0
-git push git2 master v0.4.0
+git tag -s v0.5.0 -m "v0.5.0"
+git push origin master v0.5.0
+git push git1 master v0.5.0
+git push git2 master v0.5.0
 ```
 
 Publish the inspected archive only after that separate approval:
@@ -576,11 +579,11 @@ Publish the inspected archive only after that separate approval:
 ```bash
 npm login
 npm whoami
-npm publish ./open-charging-cloud-wwcp-poi-0.4.0.tgz --access public
+npm publish ./open-charging-cloud-wwcp-poi-0.5.0.tgz --access public
 ```
 
-Consumers read [Migration](CHANGELOG.md#migration) and move to `@open-charging-cloud/wwcp-poi@^0.4.0`, which a range of
-`^0.3.0` does not take, then refresh their lockfile and verify a clean install.
+Consumers read [Migration](CHANGELOG.md#migration) and move to `@open-charging-cloud/wwcp-poi@^0.5.0`, which a range of
+`^0.4.0` does not take, then refresh their lockfile and verify a clean install.
 
 
 ## License

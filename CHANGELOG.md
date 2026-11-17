@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (prepared; not yet published)
+
+The holders of the keys of a roaming network operator join and leave, and a roaming network names where its copies are:
+the quorum of its operator fits its keys in every version, not between the changes of one change set, so a second
+holder joins the only one in one change set; a roaming network names the URLs of its copies (`urls`), part of its
+content; and the key statements of its operator, one after the other, lead from the identity keys of an old trust
+anchor to the keys of today (`KeyStatement.verifyChain`). Each of them is probed against WWCP_POI3 at `c1b641b`, what
+differs named below, and the vectors of WWCPPOIConformanceTests `d8c91dd` hold, none deviating, on the run of WWCP_POI
+`c1b641b`. See [Migration](#migration) before upgrading: versions 0.4.0 took are refused, versions and change sets it
+refused are taken, and the words of some refusals change.
 
 - WWCP_POI `c1b641b` ported: the holders of a roaming network operator join and leave one by one, a roaming network
   names the URLs of its copies, and the key statements of its operator one after the other lead from an old trust
@@ -74,6 +83,29 @@
   refused by both, by this library as "The commit identification '…' is not the one of its content", for it identifies
   a commit over a change set it does not read as given; and a property not read of a precondition, "Invalid
   precondition 0!" by both.
+
+### Migration
+
+- A roaming network may name the URLs of its copies, `urls`, between its tree hash algorithms and its operator: a
+  version, a trust anchor or a change set with them, which 0.4.0 refused, is taken, and they are part of the content
+  its ETags and identifications are of. They are changed as a whole, by the roaming network operator.
+- The quorum of a roaming network operator, more than half of the holders of its keys of each kind, is checked of every
+  version, no longer after each change: a change set changing its keys and its `minConsensus` one by one, e.g. a second
+  holder joining the only one, which 0.4.0 refused at the first of these changes, is taken. Where the version after a
+  change set breaks the rule it is refused in the words of the quorum alone, "The minConsensus 9 of the roaming network
+  operator 'OCC' needs signing keys of as many holders, not of 3!", where 0.4.0 began with "Change 0: The given JSON
+  representation of a roaming network operator is invalid: ".
+- A quorum of one is written as none: a version writing `"minConsensus": 1` and a change giving `minConsensus` as 1,
+  which 0.4.0 took, are refused; producers leave it out and remove it.
+- `OperatorTrust.followedBy` asks of a later key statement the quorum trusted before, no longer the larger of it and the
+  quorum the later statement states: a key statement by which a holder joins, which 0.4.0 refused there, is followed,
+  and a version whose key statement its own quorum did not sign is refused when it is read, as before.
+- New in the API, nothing removed: the `urls` of a `RoamingNetwork`, `KeyStatement.verifyChain`,
+  `KeyStatement.parseChain` and `KeyStatement.verifyRequiring`, and a third, optional parameter of
+  `RoamingNetworkOperator.parse`, when its quorum is checked.
+- The dependencies are those of 0.4.0, `@vanaheimr/cose` ^0.15.0 and `@vanaheimr/metrological-cbor` ^0.12.0. The
+  minimum runtime remains Node 22.18, and the package remains ESM-only. The package is 4.0 MB unpacked, where 0.4.0
+  was 3.9 MB.
 
 
 ## 0.4.0 (2026-11-13)
