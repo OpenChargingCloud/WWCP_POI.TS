@@ -51,7 +51,7 @@ describe('the bundle', () => {
                                     { cwd: projectRoot, encoding: 'utf8' });
 
         expect(JSON.parse(output)).toEqual({
-            revision:    0,
+            revision:    2,
             signedBy:    [ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ],
             station:     'DE*GEF*S1',
             model:       'GD-DC300',

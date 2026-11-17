@@ -2339,3 +2339,99 @@ export function invalidTreeHashAlgorithms(value: JSONValue): Checked {
 
 }
 
+/** The most URLs a roaming network names, and the most characters of one of them (`POINetworkURLs` of WWCP_POI3). */
+export const MAX_NETWORK_URLS       = 16;
+export const MAX_NETWORK_URL_LENGTH = 512;
+
+/** A text as `Uri.UnescapeDataString` gives it: every escape of UTF-8 it can read, the rest as it is. */
+function unescaped(text: string): string {
+    try {
+        return decodeURIComponent(text);
+    }
+    catch {
+        return text.replace(/(?:%[0-9A-Fa-f]{2})+/gu, escapes => {
+            try {
+                return decodeURIComponent(escapes);
+            }
+            catch {
+                return escapes;
+            }
+        });
+    }
+}
+
+/**
+ * The error, when the given `urls` of the given roaming network are none as `POINetworkURLs.TryParse` of WWCP_POI3 reads
+ * them, in its words and its order (SPECIFICATION.md, section 2): an array of at least one and at most 16 absolute https
+ * URLs of this roaming network, ~/RNs/{RN_Id}, each at most 512 characters, without user information, a query, a fragment
+ * or a trailing slash, none twice. Read as Hermod reads a URL, trimmed and with the scheme https where it names none; that
+ * such a URL is not written as the content holds it, the written form of the content refuses.
+ */
+export function invalidNetworkURLs(value: JSONValue, roamingNetworkId: string): Checked {
+
+    const network = `the roaming network '${roamingNetworkId}'`;
+
+    if (!isArray(value))
+        return `The 'urls' of ${network} must be a JSON array of URLs!`;
+
+    if (value.length === 0)
+        return `The 'urls' of ${network} must name at least one URL, or be left out!`;
+
+    if (value.length > MAX_NETWORK_URLS)
+        return `The 'urls' of ${network} must name at most ${String(MAX_NETWORK_URLS)} URLs, not ${String(value.length)}!`;
+
+    const urls: string[] = [];
+
+    for (const item of value) {
+
+        const url = typeof item === 'string' ? hermodURL(item) : undefined;
+
+        if (url === undefined)
+            return `The 'urls' of ${network} must name absolute URLs, not '${interpolated(item)}'!`;
+
+        urls.push(url.text);
+
+    }
+
+    if (new Set(urls).size !== urls.length)
+        return `The 'urls' of ${network} must not name a URL twice!`;
+
+    for (const text of urls) {
+
+        if (text.length > MAX_NETWORK_URL_LENGTH)
+            return `A URL of ${network} has ${String(text.length)} characters, more than ${String(MAX_NETWORK_URL_LENGTH)}!`;
+
+        const schemeEnd = text.indexOf('://');
+
+        if (text.slice(0, schemeEnd).toLowerCase() !== 'https')
+            return `The URL '${text}' of ${network} is no https URL!`;
+
+        // As WWCP_POI3 looks for user information: in what follows the scheme, up to the first slash.
+        const afterScheme = text.slice(schemeEnd + 3);
+        const slash       = afterScheme.indexOf('/');
+
+        if ((slash >= 0 ? afterScheme.slice(0, slash) : afterScheme).includes('@'))
+            return `The URL '${text}' of ${network} must not name user information!`;
+
+        // Its path as Hermod reads it: without the fragment and the query, '/' for none, two slashes in a row as one.
+        const fragmentAt   = afterScheme.indexOf('#');
+        const noFragment   = fragmentAt >= 0 ? afterScheme.slice(0, fragmentAt) : afterScheme;
+        const queryAt      = noFragment.indexOf('?');
+        const noQuery      = queryAt >= 0 ? noFragment.slice(0, queryAt) : noFragment;
+        const pathAt       = noQuery.indexOf('/');
+        const path         = pathAt >= 0 ? trimmed(noQuery.slice(pathAt)).replaceAll('//', '/') : '/';
+        const segments     = path.split('/');
+        const urlNetworkId = trimmed(unescaped(segments[segments.length - 1] ?? ''));
+
+        if (fragmentAt >= 0 || queryAt >= 0 || path.endsWith('/') || segments.length < 2 || segments[segments.length - 2] !== 'RNs' || urlNetworkId === '')
+            return `The URL '${text}' of ${network} is not the one of a roaming network, ~/RNs/{RN_Id}, without a query, a fragment or a trailing slash!`;
+
+        if (ignoringCase(urlNetworkId) !== ignoringCase(trimmed(roamingNetworkId)))
+            return `The URL '${text}' of ${network} is one of the roaming network '${urlNetworkId}'!`;
+
+    }
+
+    return undefined;
+
+}
+

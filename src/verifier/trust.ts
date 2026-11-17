@@ -86,8 +86,11 @@ export class OperatorTrust {
 
     /**
      * The trust in the operator of a later version of a history this trust follows (8.6, *Succession*): its key statement
-     * signed by identity keys trusted here, of as many holders as required, e.g. after the operator stated new keys signed
-     * by its old ones, as before a new epoch (example A11). Its own identity keys are then trusted, those it dropped not.
+     * signed by identity keys trusted here, of as many holders as required here, e.g. after the operator stated new keys
+     * signed by its old ones, as before a new epoch (example A11), or after a holder joined, the quorum before deciding who
+     * holds the keys after it (example A1): the quorum of the later statement is not asked of the holders known here, as a
+     * version is refused whose key statement its own quorum did not sign. Its own identity keys are then trusted, those it
+     * dropped not.
      * Only for a version the history took commit by commit, each signed by the owners of its changes in the version before.
      */
     public followedBy(network: RoamingNetwork, at?: number | Date | string): OperatorTrust {
@@ -110,7 +113,7 @@ export class OperatorTrust {
         for (const [id, holder] of this.identityKeyHolders)
             known.set(holder, [ ...(known.get(holder) ?? []), id ]);
 
-        const { signedBy, holderOf } = statement.verifyHolders([ ...known.values() ], operator.identityKeys, { minConsensus: this.requiredConsensus, at: timeOf(at) });
+        const { signedBy, holderOf } = statement.verifyRequiring([ ...known.values() ], operator.identityKeys, this.requiredConsensus, timeOf(at));
 
         // Trusted then: those of the trust anchor and of the later statement, not those the statement before named only.
         const trusted = new Set([ ...this.anchor.keys, ...statement.identityKeys.map(key => key.id) ]);

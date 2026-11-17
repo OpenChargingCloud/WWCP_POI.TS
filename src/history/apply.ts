@@ -21,7 +21,7 @@ import { toTimestamp, withArticle }       from '../common.ts';
 import { cborETag, etagToText, jsonETag, sameETag, type ETag } from '../etags.ts';
 import { KeyUsages, POIPublicKey, type KeyUsage } from '../keys.ts';
 import { invalidRoamingNetworkOperator, RoamingNetwork } from '../network/roamingNetwork.ts';
-import { invalidParty, invalidTreeHashAlgorithms } from '../network/reading.ts';
+import { invalidNetworkURLs, invalidParty, invalidTreeHashAlgorithms } from '../network/reading.ts';
 import { dataLicenses }                   from '../network/poiValues.ts';
 import { invalidGroupOrOffer, invalidPaymentOption } from '../network/references.ts';
 import { ignoringCase }                   from '../network/identifications.ts';
@@ -478,6 +478,10 @@ function notHeldAsGiven(given: JSONValue, property: string | undefined, change: 
     if (element !== undefined && (element.kind === 'RemoveElement' || element.kind === 'RemoveElementProperty'))
         return undefined;
 
+    // The quorum of a roaming network operator of one is written as none: it is removed, not given as 1 (4.1).
+    if (property === 'minConsensus' && given === 1 && element === undefined && what.startsWith('roaming network operator '))
+        return `Change ${index}: the property 'minConsensus' of the ${what} is given as '1', which the content does not hold at all!`;
+
     const found = notWritten(given, property, property ?? '', 'new value');
 
     if (found === undefined && (heldId === undefined || !isObject(given) || given['@id'] === heldId))
@@ -694,7 +698,7 @@ function resolveElementChange(change: Change, entity: JSONObject | undefined, wh
     if (entity === undefined)
         throw new POIError(`Change ${index}: the ${what} does not exist!`);
 
-    if (property === 'signingKeys' || property === 'identityKeys' || property === 'treeHashAlgorithms')
+    if (property === 'signingKeys' || property === 'identityKeys' || property === 'treeHashAlgorithms' || property === 'urls')
         throw new POIError(`Change ${index}: the ${property} of the ${what} are changed as a whole, not element by element!`);
 
     const applied = applyElement(change, get(entity, property));
@@ -1370,13 +1374,13 @@ function applyEnergyMeterChildChange(content: JSONObject, change: Change, index:
 
 
 /** The properties of the roaming network itself a change set can update or remove. */
-const NETWORK_PROPERTIES = [ 'name', 'description', 'dataSource', 'dataLicenses', 'treeHashAlgorithms', 'customData' ];
+const NETWORK_PROPERTIES = [ 'name', 'description', 'dataSource', 'dataLicenses', 'treeHashAlgorithms', 'urls', 'customData' ];
 
 /**
  * The error, when WWCP_POI3 refuses the new value of a property of the roaming network itself as it takes it
  * (RoamingNetwork.ChangeSets.cs), in its words; undefined where it takes it.
  */
-function invalidNetworkValue(property: string, value: JSONValue): string | undefined {
+function invalidNetworkValue(property: string, value: JSONValue, roamingNetworkId: string): string | undefined {
 
     switch (property) {
 
@@ -1392,6 +1396,9 @@ function invalidNetworkValue(property: string, value: JSONValue): string | undef
 
         case 'treeHashAlgorithms':
             return value === null ? 'the tree hash algorithms must be an array of hash algorithms!' : invalidTreeHashAlgorithms(value);
+
+        case 'urls':
+            return invalidNetworkURLs(value, roamingNetworkId);
 
         case 'customData':
             return isObject(value) ? undefined : 'the custom data must be a JSON object!';
@@ -1436,7 +1443,7 @@ function applyNetworkChange(content: JSONObject, change: Change, index: number, 
     switch (change.kind) {
 
         case 'UpdateProperty': {
-            const invalid = change.newValue === undefined ? undefined : invalidNetworkValue(property, change.newValue);
+            const invalid = change.newValue === undefined ? undefined : invalidNetworkValue(property, change.newValue, asText(content['@id']));
             if (invalid !== undefined)
                 throw new POIError(`Change ${index}: ${invalid}`);
             break;

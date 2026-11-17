@@ -26,7 +26,7 @@ const sha256Hex = (text: string): string =>
 
 
 // The examples A2 to A9 of WWCP_POI, checked from what the C# implementation published, as their Validate() methods do.
-// They are of epoch 1; QA as A8 and A9 left it, revision 13, is the version of checkpoint 4.
+// They are of epoch 1; QA as A8 and A9 left it, revision 15, is the version of checkpoint 4.
 
 const snapshot4  = readJSON('published/QA-checkpoint-4-snapshot.json') as JSONObject;
 const head       = verifyVersion(anchor, defined(snapshot4['roamingNetwork']), defined(snapshot4['commit']), AT);
@@ -59,9 +59,9 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
         expect(keyIds(gef['signingKeys'])).toEqual(keyIds(sent['signingKeys']));
         expect(keyIds(gef['identityKeys'])).toEqual(keyIds(sent['identityKeys']));
         expect(POIPublicKey.parseAll(gef['signingKeys'], 'keys').map(key => `${key.id} for ${key.usages.join(', ')}`)).toEqual([
-            '90207193e9fb9f7e950920b2bf97d2b9d9247dbc8cf7107f01d432735a46d15f for priceStatements, tariffs',
-            'd0e7d72465abd495b98c9f94e172510bc211f14c9aca776298d3d913837575d5 for party',
-            'ff8a51dcdf5bb8c62b8123e1f5df979a6403eceff743c730cfb3fb6189c3287f for infrastructure',
+            '20dd53280b75220ae75bcdc957bfe759bc408b0d24841a2416e72f7692297390 for party',
+            '8c0c6670e6e6745b83fe76f132c20d17c29dd5fef0dd206191b3058b7081e873 for priceStatements, tariffs',
+            'a0e9f8b6ddcf26dd986d3594a12b6154fd5305bd4901056bbf8a69ace3b106cf for infrastructure',
         ]);
 
         // The manufacturers with the models they stated, as C# printed them.
@@ -79,8 +79,8 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
 
         // The change set as DE*GEF sent it: signed by its two identity keys and by the one of each manufacturer, the proof
         // that they hold them. Adding parties is the roaming network operator's: two of its holders must sign it as well.
-        const genesis  = readJSON('published/QA-genesis.json') as JSONObject;
-        const before   = RoamingNetwork.parse(genesis['roamingNetwork']);
+        // QA at revision 2, as example A1 left it: AlphaOrg, BetaOrg and GammaOrg hold the keys of OCC, two of them decide.
+        const before   = RoamingNetwork.parse(readJSON('published/QA-revision2.json'));
         const sent     = ChangeSet.parse(readJSON('DE-GEF/addGEF.json'));
 
         expect(sent.signatures.map(signature => signature.algorithm)).toEqual([ 'ES512', 'Ed448', 'ES512', 'ES512', 'ES512' ]);
@@ -89,11 +89,11 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
         ]);
         expect(() => applyChangeSet(before, sent)).toThrow("Change 0: Add of the ChargingStationOperator 'DE*GEF' needs signatures by signing keys of 2 holders of the roaming network operator 'OCC'!");
 
-        // As committed, signed by AlphaOrg and BetaOrg as well, it applies, and leads to the version of revision 1.
-        const committed = Commit.parse((commits('published/QA-commits-since-genesis.json'))[0]);
+        // As committed, signed by AlphaOrg and BetaOrg as well, it applies, and leads to the version of revision 3.
+        const committed = Commit.parse((commits('published/QA-commits-since-genesis.json'))[2]);
         const after     = applyChangeSet(before, ChangeSet.parse(committed.changeSet));
         expect(after.matchesCommitETags(committed.eTags)).toBe(true);
-        expect(committed.id).toBe('5248bf2c59ed50e2b176bb0be64d3e4f7b21780f8b9f89a2011ccd8d0b4af3c0');
+        expect(committed.id).toBe('14f230771ef717b1dcb2cc43bffc83105d096765f9f6f0cb5b3982fa5084b251');
 
         // Without the signatures of the identity keys of DE*GEF, there is no proof of possession.
         const withoutProof = clone(defined(committed.changeSet));
@@ -106,12 +106,13 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
 
         const all      = commits('published/QA-commits-since-genesis.json');
         const history  = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(byOperator));
-        history.append(defined(all[0]));
+        for (const commit of all.slice(0, 3))
+            history.append(commit);
 
         const before   = history.head.network;
-        const models   = Commit.parse(all[1]);
-        expect(models.revision).toBe(2);
-        expect(models.id).toBe('db934da22dd7926fb4873b5101fd86e2e06ba0d50eafa677486299621c3a37c5');
+        const models   = Commit.parse(all[3]);
+        expect(models.revision).toBe(4);
+        expect(models.id).toBe('6facbeb7e29da3b10597dea02663a947e2160bb753c2d445551ecf98cf9695df');
         expect(ChangeSet.parse(models.changeSet).changes.map(change => `${change.kind} ${change.entityType} ${change.entityId} of ${change.parentEntityId ?? ''}`)).toEqual([
             'Add ChargingStationModel GD-DC300 of GraphDefined', 'Add ChargingStationModel GD-AC44 of GraphDefined', 'Add EnergyMeterModel KDM-500 of KERNBERG', 'Add EnergyMeterModel SM-3 of SAALE',
         ]);
@@ -184,10 +185,10 @@ describe('Example A3: two pools, their templates, their energy meters and their 
                     }
 
         expect(meters).toEqual([
-            'DE*GEF*M1*1 KERNBERG KDM-500, serial DCM-2026-001-1, OCMF, key c191068c',
-            'DE*GEF*M1*2 KERNBERG KDM-500, serial DCM-2026-001-2, OCMF, key b25f6f9f',
-            'DE*GEF*M2*1 SAALE SM-3, serial ACM-2026-002-1, OCMF, key 8856f38e',
-            'DE*GEF*M2*2 SAALE SM-3, serial ACM-2026-002-2, OCMF, key c7dacea7',
+            'DE*GEF*M1*1 KERNBERG KDM-500, serial DCM-2026-001-1, OCMF, key b729f68a',
+            'DE*GEF*M1*2 KERNBERG KDM-500, serial DCM-2026-001-2, OCMF, key 4cd2464d',
+            'DE*GEF*M2*1 SAALE SM-3, serial ACM-2026-002-1, OCMF, key 261fcf21',
+            'DE*GEF*M2*2 SAALE SM-3, serial ACM-2026-002-2, OCMF, key 1faa3dfb',
         ]);
 
     });
@@ -196,14 +197,13 @@ describe('Example A3: two pools, their templates, their energy meters and their 
 
         const all     = commits('published/QA-commits-since-genesis.json');
         const history = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(byOperator));
-        history.append(defined(all[0]));
-        history.append(defined(all[1]));
-        history.append(defined(all[2]));
+        for (const commit of all.slice(0, 5))
+            history.append(commit);
 
-        // The commit of revision 4 with the signature of its change set claimed by the key of DE*GEF for its tariffs.
-        const pool       = clone(defined(Commit.parse(all[3]).changeSet));
+        // The commit of revision 6 with the signature of its change set claimed by the key of DE*GEF for its tariffs.
+        const pool       = clone(defined(Commit.parse(all[5]).changeSet));
         const signature  = defined((pool['signatures'] as JSONObject[])[0]);
-        signature['keyId'] = '90207193e9fb9f7e950920b2bf97d2b9d9247dbc8cf7107f01d432735a46d15f';
+        signature['keyId'] = '8c0c6670e6e6745b83fe76f132c20d17c29dd5fef0dd206191b3058b7081e873';
         expect(() => applyChangeSet(history.head.network, ChangeSet.parse(pool))).toThrow(/is invalid/);
 
         // Unsigned, it needs a signature of DE*GEF.
@@ -221,9 +221,9 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
 
         const checkpoint0 = checkpoint(0);
         expect(verifyCheckpointSignatures(checkpoint0, trust).signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
-        expect(checkpoint0.id).toBe('4252751bcaf50a56ccb988ef5a87489e5be672bcc6eb81fc5d56c1f9008fe879');
-        expect(checkpoint0.revision).toBe(7);
-        expect(checkpoint0.commits.size).toBe(8);
+        expect(checkpoint0.id).toBe('1ae0687dd75a0243e6ac56e0982cc088dac2cfd2db0dfcb4bba6fa4cf13b5d2a');
+        expect(checkpoint0.revision).toBe(9);
+        expect(checkpoint0.commits.size).toBe(10);
 
         const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(joined.head.commit.id).toBe(checkpoint0.commitId);
@@ -232,8 +232,8 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
         for (const commit of commits('published/QA-commits-since-checkpoint-0.json'))
             joined.append(commit);
 
-        expect(joined.head.commit.revision).toBe(9);
-        expect(joined.head.commit.id).toBe('0a87c12c3d9a7a117bc9dd51f848386125479069fbed96fda2996f85ca3ca5f1');
+        expect(joined.head.commit.revision).toBe(11);
+        expect(joined.head.commit.id).toBe('8d5447bd5433275bf3f7694310de40cdb75c2bbbbaacabb8fe30ba2d719d866e');
 
         expect(pools(joined.head.network, 3, 4)).toEqual([
             'DE*GEF*S5 300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW',
@@ -244,25 +244,25 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
 
     });
 
-    it('proves the commit of revision 4 to be part of checkpoint 0, and refuses what is changed, as C# does', () => {
+    it('proves the commit of revision 6 to be part of checkpoint 0, and refuses what is changed, as C# does', () => {
 
         const checkpoint0 = checkpoint(0);
-        const proof       = CheckpointProof.parse(readJSON('published/QA-proof-revision-4.json'));
+        const proof       = CheckpointProof.parse(readJSON('published/QA-proof-revision-6.json'));
 
-        expect(proof.revision).toBe(4);
+        expect(proof.revision).toBe(6);
         proof.verify(checkpoint0);
 
         // A checkpoint of another revision: its @id is no longer the digest of its content.
         const changedCheckpoint = clone(readJSON('published/QA-checkpoint-0.json') as JSONObject);
         changedCheckpoint['revision'] = 5;
-        expect(() => Checkpoint.parse(changedCheckpoint)).toThrow("The checkpoint identification '4252751bcaf50a56ccb988ef5a87489e5be672bcc6eb81fc5d56c1f9008fe879' is not the one of its content, 'f11fd3cd8ef8403cba307e1ea155e5146a91c8d80cc38b0da822c6ba6d116762'!");
+        expect(() => Checkpoint.parse(changedCheckpoint)).toThrow("The checkpoint identification '1ae0687dd75a0243e6ac56e0982cc088dac2cfd2db0dfcb4bba6fa4cf13b5d2a' is not the one of its content, '2453cc22432b6080464034a21edf4413036d6f6205ff0e0c55ab4522d70709b5'!");
 
         // A version of the checkpoint changed: it does not lead to the ETags of the checkpoint.
         const changedSnapshot = parseJSON(readText('published/QA-checkpoint-0-snapshot.json').replace('"en": "Jena Paradies"', '"en": "Jena Paradies, moved"'));
         expect(() => History.fromSnapshot(changedSnapshot, anchoredIn(anchor, byOperator))).toThrow(/The JSON ETag|json ETag \(sha256\) differs/);
 
         // A proof of another position: it leads to another root.
-        const changedProof = clone(readJSON('published/QA-proof-revision-4.json') as JSONObject);
+        const changedProof = clone(readJSON('published/QA-proof-revision-6.json') as JSONObject);
         changedProof['@index'] = 5;
         expect(() => { CheckpointProof.parse(changedProof).verify(checkpoint0); }).toThrow('The proof does not lead to the commits of the checkpoint!');
 
@@ -298,7 +298,7 @@ describe('Example A5: a correction between two checkpoints', () => {
 
         const line = [ checkpoint(0), checkpoint(1), checkpoint(2) ];
         verifyCheckpointLine(line);
-        expect(line.map(item => item.revision)).toEqual([ 7, 9, 10 ]);
+        expect(line.map(item => item.revision)).toEqual([ 9, 11, 12 ]);
 
         const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(pools(history.head.network, 3, 4)).toEqual([]);
@@ -327,18 +327,18 @@ describe('Example A5: a correction between two checkpoints', () => {
         const fromTwo = History.fromSnapshot(readJSON('published/QA-checkpoint-2-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(pools(fromTwo.head.network, 3)[1]).toBe('DE*GEF*S6 22 kW: DE*GEF*E6*1 AC_ThreePhases 11 kW, DE*GEF*E6*2 AC_ThreePhases 11 kW');
 
-        CheckpointProof.parse(readJSON('published/QA-proof-revision-8.json')).verify(checkpoint(1));
-        CheckpointProof.parse(readJSON('published/QA-proof-revision-10.json')).verify(checkpoint(2));
+        CheckpointProof.parse(readJSON('published/QA-proof-revision-10.json')).verify(checkpoint(1));
+        CheckpointProof.parse(readJSON('published/QA-proof-revision-12.json')).verify(checkpoint(2));
 
-        expect(() => { CheckpointProof.parse(readJSON('published/QA-proof-revision-10.json')).verify(checkpoint(1)); })
-            .toThrow("The proof is for the checkpoint '3c01ffa486accb09a57f8499b6d85ba723ab0049c89cfa9d481719293651d237', not for '81acd400403f5a2e1a59152afb16cd36f3f791d7c64c14103b6b7a9e80e09efb'!");
+        expect(() => { CheckpointProof.parse(readJSON('published/QA-proof-revision-12.json')).verify(checkpoint(1)); })
+            .toThrow("The proof is for the checkpoint '6c75a85e60ed7826c9a671ce526aa194c71de380ef0a494a8df28a214e782d06', not for 'dc6521c8cdcd575adabae7a842c1bd790583f9075b69568699369859be19046f'!");
 
         // Checkpoint 2 without checkpoint 1: it does not follow the latest one taken.
         const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         for (const commit of [ ...commits('published/QA-commits-since-checkpoint-0.json'), ...commits('published/QA-commits-since-checkpoint-1.json') ])
             history.append(commit);
         expect(() => history.takeCheckpoint(checkpoint(2)))
-            .toThrow("The checkpoint does not follow the latest checkpoint '4252751bcaf50a56ccb988ef5a87489e5be672bcc6eb81fc5d56c1f9008fe879' of the sequence 0 here!");
+            .toThrow("The checkpoint does not follow the latest checkpoint '1ae0687dd75a0243e6ac56e0982cc088dac2cfd2db0dfcb4bba6fa4cf13b5d2a' of the sequence 0 here!");
 
     });
 
@@ -357,7 +357,7 @@ describe('Example A6: witnesses sign the checkpoints', () => {
         for (const sequence of [ 0, 1, 2 ])
             witness.takeCheckpoint(checkpoint(sequence));
 
-        expect(witness.head.commit.revision).toBe(10);
+        expect(witness.head.commit.revision).toBe(12);
         expect(witness.checkpoints).toHaveLength(3);
 
         // Another checkpoint 2, made for another view of the history: a split view.
@@ -382,10 +382,10 @@ describe('Example A6: witnesses sign the checkpoints', () => {
         // Joined from checkpoint 2, signed by the roaming network operator and its witnesses.
         const snapshot = clone(readJSON('published/QA-checkpoint-2-snapshot.json') as JSONObject);
         snapshot['checkpoint'] = readJSON('published/QA-checkpoint-2.json');
-        expect(History.fromSnapshot(snapshot, anchoredIn(anchor, byOperatorAndWitnesses)).head.commit.revision).toBe(10);
+        expect(History.fromSnapshot(snapshot, anchoredIn(anchor, byOperatorAndWitnesses)).head.commit.revision).toBe(12);
 
-        // The proof of revision 8 in checkpoint 1 is witnessed evidence.
-        CheckpointProof.parse(readJSON('published/QA-proof-revision-8.json')).verify(checkpoint(1));
+        // The proof of revision 10 in checkpoint 1 is witnessed evidence.
+        CheckpointProof.parse(readJSON('published/QA-proof-revision-10.json')).verify(checkpoint(1));
 
         // Checkpoint 2 without its witnesses.
         const withoutWitnesses = clone(readJSON('published/QA-checkpoint-2.json') as JSONObject);
@@ -409,7 +409,7 @@ describe('Example A7: compaction with an archive, after the checkpoints', () => 
 
         const infos = (readJSON('published/QA-archive.json') as JSONArray).map(parseArchiveSegmentInfo);
         verifySegmentLine(infos);
-        expect(infos.map(info => `${info.number}: revisions ${info.fromRevision} to ${info.toRevision}`)).toEqual([ '1: revisions 0 to 7', '2: revisions 7 to 9' ]);
+        expect(infos.map(info => `${info.number}: revisions ${info.fromRevision} to ${info.toRevision}`)).toEqual([ '1: revisions 0 to 9', '2: revisions 9 to 11' ]);
 
         for (const [number, sequence] of [ [ 1, 0 ], [ 2, 1 ] ] as const) {
             const segment = ArchiveSegment.parse(readJSON(`published/QA-archive-${number}.json`));
@@ -417,8 +417,8 @@ describe('Example A7: compaction with an archive, after the checkpoints', () => 
             segment.verifyAgainst(checkpoint(sequence), history);
         }
 
-        // The proof of revision 4, from the archive, in checkpoint 0.
-        CheckpointProof.parse(readJSON('published/QA-proof-revision-4-archived.json')).verify(checkpoint(0));
+        // The proof of revision 6, from the archive, in checkpoint 0.
+        CheckpointProof.parse(readJSON('published/QA-proof-revision-6-archived.json')).verify(checkpoint(0));
 
     });
 
@@ -426,7 +426,7 @@ describe('Example A7: compaction with an archive, after the checkpoints', () => 
 
         const changedCommit = clone(readJSON('published/QA-archive-2.json') as JSONObject);
         defined((changedCommit['commits'] as JSONObject[])[0])['revision'] = 17;
-        expect(() => ArchiveSegment.parse(changedCommit).replay(byOperator)).toThrow("The commit identification '3322c7146788ee30ff50c4d12507f9bb2630f5f34f93372153d206190c3c8877' is not the one of its content, 'afe2ac7427789e2aef728410d6f68c27e201bcc3a4609e5c8c738a06a5d29942'!");
+        expect(() => ArchiveSegment.parse(changedCommit).replay(byOperator)).toThrow("The commit identification '0cd7705f32b15771b76b612b0785353a454333056447f89f66575a74faac0719' is not the one of its content, 'ea6683a5c4e16493d8c260a31a6695f77c4119933c72e3ad370f4491f6fb0c0b'!");
 
         const otherBase = parseJSON(readText('published/QA-archive-2.json').replace('"en": "Jena Nord"', '"en": "Jena Nord, moved"'));
         expect(() => ArchiveSegment.parse(otherBase).replay(byOperator)).toThrow(/ETag/);
@@ -442,7 +442,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
 
         const line = [ checkpoint(2), checkpoint(3), checkpoint(4) ];
         verifyCheckpointLine(line);
-        expect(defined(line[2]).id).toBe('ce0f07304130091499e4354236dc00451475f0a5ea1eb95242e78d2656cde754');
+        expect(defined(line[2]).id).toBe('5b459ff84130484da405eb7b419c89abfca89bdba1bc4972c6c801264b4fc454');
 
         const statements = parsePriceStatements(readJSON('published/QA-checkpoint-4-priceStatements.json'));
         expect(statements).toHaveLength(3);
@@ -469,7 +469,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
         proof.priceStatement.verify('QA', 'DE*GEF', signingKeys);
 
         // Joined with a statement less, or with a statement of another price.
-        expect(() => { verifyCheckpointPriceStatements(defined(line[2]), statements.slice(1)); }).toThrow("The price statements are not those the checkpoint 'ce0f07304130091499e4354236dc00451475f0a5ea1eb95242e78d2656cde754' names!");
+        expect(() => { verifyCheckpointPriceStatements(defined(line[2]), statements.slice(1)); }).toThrow("The price statements are not those the checkpoint '5b459ff84130484da405eb7b419c89abfca89bdba1bc4972c6c801264b4fc454' names!");
 
         const changed = readText('published/QA-checkpoint-4-priceStatements.json').replace('"price": 0.59', '"price": 0.49');
         const other   = parsePriceStatements(parseJSON(changed));
@@ -477,7 +477,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
 
         // A statement signed by the infrastructure key would be refused: that key may not sign price statements.
         const infrastructureKey = defined(signingKeys.find(key => key.usages.includes('infrastructure')));
-        expect(infrastructureKey.id).toBe('ff8a51dcdf5bb8c62b8123e1f5df979a6403eceff743c730cfb3fb6189c3287f');
+        expect(infrastructureKey.id).toBe('a0e9f8b6ddcf26dd986d3594a12b6154fd5305bd4901056bbf8a69ace3b106cf');
         expect(infrastructureKey.maySign('priceStatements')).toBe(false);
 
     });
@@ -513,8 +513,8 @@ describe('Example A8: price statements, named by checkpoints', () => {
     it('joins from checkpoint 4 with its price statements', () => {
 
         const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-4-snapshot.json'), anchoredIn(anchor, byOperator));
-        expect(joined.head.commit.revision).toBe(13);
-        expect(joined.head.commit.id).toBe('cc3bf0c6ab2ce347ed092c210d44d1e25022027b79e45086c3c1314e9df9a5e4');
+        expect(joined.head.commit.revision).toBe(15);
+        expect(joined.head.commit.id).toBe('800eebf9644fa9259ef1bab7cc0a908bbe87977b59033fc4cb66c07a769dec44');
         verifyCheckpointPriceStatements(defined(joined.checkpoints[0]), parsePriceStatements(readJSON('published/QA-checkpoint-4-priceStatements.json')));
 
     });

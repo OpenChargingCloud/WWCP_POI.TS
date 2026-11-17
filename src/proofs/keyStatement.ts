@@ -210,6 +210,125 @@ export class KeyStatement {
                          otherIdentityKeys:  readonly POIPublicKey[] = [],
                          options:            { minConsensus?: number, at?: number } = {}): { signedBy: Set<string>, holderOf: Map<string, string> } {
 
+        return this.verifyRequiring(trustedHolders, otherIdentityKeys, Math.max(options.minConsensus ?? 1, this.minConsensus), options.at);
+
+    }
+
+    /**
+     * Verifies the given key statements of one roaming network operator, the oldest first, as a server gives them
+     * (`GET ~/RNs/{RN_Id}/keyStatements`, `{ "keyStatements": [ … ] }`), against identity keys the verifier trusts by their
+     * `@id`s per holder, e.g. those of a trust anchor it scanned some time ago: the succession from what it trusts to the
+     * last of them (8.6), as `TryVerifyChain` of the C# implementation, in its words. The statements before the first one
+     * verified as a single one is (`verifyHolders`), e.g. those older than the trust anchor, are passed over. Every
+     * statement after it follows the one before: of the same roaming network and operator; signed not before it and while
+     * it was valid; signed by identity keys the one before names, of as many of its holders as its `minConsensus`
+     * requires, so a second holder joins the only one and one of three leaves; and signed by its own identity keys of as
+     * many holders as its own `minConsensus` requires. The last one is valid at `at`, when given.
+     *
+     * Returns the last key statement, the one of the head of the server that gave them, and the holder of each of its
+     * identity keys by its `@id`. Nothing of a chain refused is trusted.
+     */
+    public static verifyChain(keyStatements:   readonly KeyStatement[],
+                              trustedHolders:  readonly (readonly string[])[],
+                              options:         { minConsensus?: number, at?: number, otherIdentityKeys?: readonly POIPublicKey[] } = {}): { verified: KeyStatement, holderOf: Map<string, string> } {
+
+        const others  = options.otherIdentityKeys ?? [];
+        const count   = keyStatements.length;
+
+        let before:      KeyStatement | undefined;
+        let firstError:  string | undefined;
+
+        keyStatements.forEach((statement, index) => {
+
+            // A statement but the last was replaced by the one after it: valid then, whatever became of it since.
+            const at = keyStatements[index + 1]?.signedAt ?? options.at;
+            const of = `The key statement ${String(index + 1)} of ${String(count)}`;
+
+            if (before === undefined) {
+
+                // Not yet on trusted ground: as a single statement is verified, or passed over.
+                try {
+                    statement.verifyHolders(trustedHolders, others, { ...(options.minConsensus === undefined ? {} : { minConsensus: options.minConsensus }), ...(at === undefined ? {} : { at }) });
+                    before = statement;
+                }
+                catch (e) {
+                    if (!(e instanceof POIError))
+                        throw e;
+                    firstError ??= e.message;
+                }
+
+                return;
+
+            }
+
+            if (statement.roamingNetworkId !== before.roamingNetworkId || statement.roamingNetworkOperatorId !== before.roamingNetworkOperatorId)
+                throw new POIError(`${of} is one of the roaming network operator '${statement.roamingNetworkOperatorId}' of '${statement.roamingNetworkId}', not of '${before.roamingNetworkOperatorId}' of '${before.roamingNetworkId}'!`);
+
+            if (statement.signedAt < before.signedAt)
+                throw new POIError(`${of} was signed before the one it follows!`);
+
+            const keys = [ ...before.identityKeys, ...others ];
+
+            // By the quorum before, among the keys the statement before names, as it names their holders ...
+            try {
+                statement.verifyRequiring(before.holders, keys, before.minConsensus, at);
+            }
+            catch (e) {
+                if (!(e instanceof POIError))
+                    throw e;
+                throw new POIError(`${of} does not follow the one before: ${e.message}`);
+            }
+
+            // ... and by its own quorum, among its own keys.
+            try {
+                statement.verifyRequiring(statement.holders, keys, statement.minConsensus, at);
+            }
+            catch (e) {
+                if (!(e instanceof POIError))
+                    throw e;
+                throw new POIError(`${of} is not signed by its own quorum: ${e.message}`);
+            }
+
+            before = statement;
+
+        });
+
+        if (before === undefined)
+            throw new POIError(count === 0
+                                   ? 'No key statement is given!'
+                                   : `None of the ${String(count)} key statements is signed by the trusted identity keys: ${firstError ?? ''}`);
+
+        const verified: KeyStatement = before;
+
+        return { verified, holderOf: new Map(verified.identityKeys.map(key => [ key.id, key.holderOrUnnamed ] as const)) };
+
+    }
+
+    /**
+     * Reads what a server gives as the key statements of a roaming network operator one after the other, the oldest first
+     * (`GET ~/RNs/{RN_Id}/keyStatements`): `{ "keyStatements": [ … ] }`, each read as `parse` reads it.
+     */
+    public static parseChain(value: JSONValue | undefined): KeyStatement[] {
+
+        const statements = get(requireObject(value, 'The key statements'), 'keyStatements');
+
+        if (!isArray(statements))
+            throw new POIError('The keyStatements must be a JSON array of key statements!');
+
+        return statements.map(statement => KeyStatement.parse(statement));
+
+    }
+
+    /**
+     * As `verifyHolders`, signed by trusted keys of as many holders as given, whatever its own `minConsensus`: as the
+     * successor of a statement trusted, the quorum of that one alone decides who holds the keys after it (8.6), so a second
+     * holder joins the only one. That it is signed by its own quorum, the version embedding it is refused without.
+     */
+    public verifyRequiring(trustedHolders:     readonly (readonly string[])[],
+                            otherIdentityKeys:  readonly POIPublicKey[],
+                            required:           number,
+                            at:                 number | undefined): { signedBy: Set<string>, holderOf: Map<string, string> } {
+
         const trusted = new Map<string, number>();
 
         trustedHolders.forEach((keys, holder) => {
@@ -247,7 +366,6 @@ export class KeyStatement {
             nameOf.get(holder) ?? `\u0000${trustedHolders[holder]?.[0] ?? ''}`;
 
         const keys      = [ ...this.identityKeys, ...otherIdentityKeys ];
-        const required  = Math.max(options.minConsensus ?? 1, this.minConsensus);
         const holders   = new Set<number>();
 
         const [ only ] = this.signatures;
@@ -277,8 +395,8 @@ export class KeyStatement {
         if (holders.size < required)
             throw new POIError(`The key statement is signed by trusted identity keys of ${holders.size} holder${holders.size === 1 ? '' : 's'}, not of ${required}!`);
 
-        if (options.at !== undefined && !this.isValidAt(options.at))
-            throw new POIError(`The key statement is not valid at ${toTimestamp(options.at)}: it was signed at ${toTimestamp(this.signedAt)} and is valid until ${toTimestamp(this.validUntil)}!`);
+        if (at !== undefined && !this.isValidAt(at))
+            throw new POIError(`The key statement is not valid at ${toTimestamp(at)}: it was signed at ${toTimestamp(this.signedAt)} and is valid until ${toTimestamp(this.validUntil)}!`);
 
         const trustedThen = new Map(this.identityKeys.map(key => [ key.id, key.holderOrUnnamed ] as const));
 

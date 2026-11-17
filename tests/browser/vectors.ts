@@ -10,7 +10,8 @@ import { VECTORS_RUN }    from '../at.ts';
 const files: Record<string, string> = import.meta.glob([
     '../vectors/*/published/QA-trustAnchor.txt',
     '../vectors/*/published/QA-trustAnchor-mldsa.txt',
-    '../vectors/*/published/QA-genesis.json',
+    '../vectors/*/published/QA-revision2.json',
+    '../vectors/*/published/QA-revision2-commit.json',
     '../vectors/*/published/QA-epoch-2-checkpoint-0-priceStatements.json',
     '../vectors/*/proofs/QA-proof-station-DE_GEF_S1.json',
     '../vectors/*/driver/evidence-DE_GEF_E1_1.json',

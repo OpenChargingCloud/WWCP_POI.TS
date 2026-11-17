@@ -46,16 +46,16 @@ describe('Example A10: the evidence of a charging session, months later', () => 
 
         // a) Checkpoints 4 and 5, signed by the quorum of OCC with its keys as the station proof gives them, and by both witnesses.
         expect(verified.checkpoints.map(({ checkpoint, signatures }) => `Checkpoint ${checkpoint.sequence}: revision ${checkpoint.revision}, signed by ${signatures.signedBy.join(', ')}, witnessed by ${signatures.witnessedBy.join(', ')}`)).toEqual([
-            'Checkpoint 4: revision 13, signed by AlphaOrg, BetaOrg, GammaOrg, witnessed by calibration.example, association.example',
-            'Checkpoint 5: revision 14, signed by AlphaOrg, BetaOrg, GammaOrg, witnessed by calibration.example, association.example',
+            'Checkpoint 4: revision 15, signed by AlphaOrg, BetaOrg, GammaOrg, witnessed by calibration.example, association.example',
+            'Checkpoint 5: revision 16, signed by AlphaOrg, BetaOrg, GammaOrg, witnessed by calibration.example, association.example',
         ]);
 
         // b) As charging began: the station proof attested, the price statement valid.
-        expect(toTimestamp(started)).toBe('2026-11-12T21:54:33.637Z');
+        expect(toTimestamp(started)).toBe('2026-11-16T20:30:16.403Z');
         expect(verified.station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
 
-        // c) Revision 13, the version of the station proof: in checkpoint 4, witnessed.
-        expect(verified.station.revision).toBe(13);
+        // c) Revision 15, the version of the station proof: in checkpoint 4, witnessed.
+        expect(verified.station.revision).toBe(15);
         expect(defined(verified.versionCheckpoint).sequence).toBe(4);
 
         // d) The price statement, sequence 2: after checkpoint 4, before checkpoint 5, witnessed.
@@ -75,7 +75,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const meterModel  = defined(meterBy.model);
         expect(`${asText(station.chargingStation['@id'])}: ${asText((madeBy.manufacturer['name'] as JSONObject)['en'])} ${asText(model['@id'])}`).toBe('DE*GEF*S1: GraphDefined Charging Stations GD-DC300');
         expect(`${asText(meter['@id'])}: ${asText((meterBy.manufacturer['name'] as JSONObject)['en'])} ${asText(meterModel['@id'])}, serial ${asText(meter['serialNumber'])}, ${(meter['signatureMethods'] as string[]).join(', ')}, key ${asText(defined((meter['publicKeys'] as JSONObject[])[0])['@id']).slice(0, 8)}`)
-            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key c191068c');
+            .toBe('DE*GEF*M1*1: Kernberg DC Metering KDM-500, serial DCM-2026-001-1, OCMF, key b729f68a');
         expect(`${asText(model['maxPower'])} W, hardware ${(model['hardwareRevisions'] as string[]).join('/')}, firmware ${(model['firmwareVersions'] as string[]).join('/')}; class ${asText(meterModel['accuracyClass'])}`)
             .toBe('300000 W, hardware 1.0/1.1, firmware 2.4.0/2.5.0; class B');
         expect(station.warnings).toEqual([]);
@@ -90,10 +90,10 @@ describe('Example A10: the evidence of a charging session, months later', () => 
     it('needs the checkpoints months later: the attestations alone have ended', () => {
 
         const monthsLater = toTimestamp(started + 90 * 24 * 60 * 60 * 1000);
-        expect(monthsLater).toBe('2027-02-10T21:54:33.637Z');
+        expect(monthsLater).toBe('2027-02-14T20:30:16.403Z');
 
         expect(() => ChargingStationProof.parse(evidence.chargingStationProof).verify(anchor, monthsLater))
-            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:3649704cbe4dbaae2d736cec68d105d2a1c22adb70119ef8382626265da76b58 of the proof, not of 2!');
+            .toThrow('Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:4048920fa8a68a3f732bde006eed905a9159905c0681bcd784d5e2f26a116dc1 of the proof, not of 2!');
 
         // The commit proof in the witnessed checkpoint 4 still proves the version of the station proof.
         const proof  = ChargingStationProof.parse(evidence.chargingStationProof);
@@ -118,7 +118,7 @@ describe('Example A10: the evidence of a charging session, months later', () => 
         const other = clone(evidence.chargingStationProof as JSONObject);
         defined(evseOf(other))['maxPower'] = 300000;
         expect(() => ChargingStationProof.parse(other).verifyAgainstCommitProof(CheckpointProof.parse(evidence.commitProof)))
-            .toThrow('The proof leads to effectiveTree:sha256:hex:79c8557269c744bf4894f936f4c4e8c4cc663831db48a643801b0b9d7daa2ae1, not to effectiveTree:sha256:hex:3649704cbe4dbaae2d736cec68d105d2a1c22adb70119ef8382626265da76b58!');
+            .toThrow('The proof leads to effectiveTree:sha256:hex:1a02e84864f4f984b5d770838cb8dd38c866aa8f67191dcb90f9cb64c6c06b6c, not to effectiveTree:sha256:hex:4048920fa8a68a3f732bde006eed905a9159905c0681bcd784d5e2f26a116dc1!');
 
         // e) Checkpoint 5 as it was before its witnesses signed it.
         const unwitnessed = clone((json['checkpoints'] as JSONArray)[1] as JSONObject);

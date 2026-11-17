@@ -23,7 +23,7 @@ import { effectiveContent }          from './effective.ts';
 import { ignoringCase, inRoamingNetwork } from './identifications.ts';
 import { trimmed }                   from './versionTexts.ts';
 import { partyKeysOf }               from './partyKeys.ts';
-import { invalidNetworkProperties, invalidOperatorMetadata, invalidOperatorTexts, invalidReading, invalidTreeHashAlgorithms } from './reading.ts';
+import { invalidNetworkProperties, invalidOperatorMetadata, invalidOperatorTexts, invalidNetworkURLs, invalidReading, invalidTreeHashAlgorithms } from './reading.ts';
 import { invalidReferences, whileChecking } from './references.ts';
 import { asRead, notWrittenAsHeld }  from './writtenForm.ts';
 import { effectiveTreeETag }         from './tree.ts';
@@ -85,8 +85,13 @@ export class RoamingNetworkOperator {
      * `minConsensus`, or not signed by identity keys of `minConsensus` holders valid at `signedAt`; a certificate of
      * another operator or not signed by an identity key of the holder of its signing key, valid at `signedAt`; a signing key
      * certified twice in different forms. The validity of the statement in time is not checked here.
+     *
+     * Its quorum fits its keys in every version, not between the changes of one change set, which change them one by one,
+     * e.g. a second holder joining the only one (4.1, "Holders joining and leaving"): read `between changes` it is not
+     * checked, and of the version `after` a change set it is refused in the words of the quorum alone, as WWCP_POI3 does
+     * (`TryParseBetweenChanges`, `QuorumError`).
      */
-    public static parse(value: JSONValue | undefined, roamingNetworkId: string): RoamingNetworkOperator {
+    public static parse(value: JSONValue | undefined, roamingNetworkId: string, quorum: 'version' | 'between changes' | 'after' = 'version'): RoamingNetworkOperator {
 
         const json = requireObject(value, 'The roaming network operator');
         const id   = mandatoryText(json, '@id', 'The identification of the roaming network operator');
@@ -148,23 +153,33 @@ export class RoamingNetworkOperator {
         if (both !== undefined)
             throw invalid(`The key '${both.id}' of the roaming network operator '${id}' must not be both a signing and an identity key!`);
 
-        for (const [kind, keys] of [ [ 'signing', signingKeys ], [ 'identity', identityKeys ] ] as const) {
+        const quorumError = quorum === 'between changes' ? undefined : ((): string | undefined => {
 
-            const holders = holdersOf(keys).size;
+            for (const [kind, keys] of [ [ 'signing', signingKeys ], [ 'identity', identityKeys ] ] as const) {
 
-            if (holders === 0) {
-                if (minConsensus > 1)
-                    throw invalid(`The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders!`);
-                continue;
+                const holders = holdersOf(keys).size;
+
+                if (holders === 0) {
+                    if (minConsensus > 1)
+                        return `The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders!`;
+                    continue;
+                }
+
+                if (minConsensus > holders)
+                    return `The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders, not of ${holders}!`;
+
+                if (2 * minConsensus <= holders)
+                    return `The minConsensus ${minConsensus} of the roaming network operator '${id}' must be more than half of the ${holders} holders of its ${kind} keys!`;
+
             }
 
-            if (minConsensus > holders)
-                throw invalid(`The minConsensus ${minConsensus} of the roaming network operator '${id}' needs ${kind} keys of as many holders, not of ${holders}!`);
+            return undefined;
 
-            if (2 * minConsensus <= holders)
-                throw invalid(`The minConsensus ${minConsensus} of the roaming network operator '${id}' must be more than half of the ${holders} holders of its ${kind} keys!`);
+        })();
 
-        }
+        // Of a version, refused as the operator is read; after a change set, as the roaming network is made of it, first.
+        if (quorumError !== undefined)
+            throw quorum === 'after' ? new KeyStatementError(quorumError) : invalid(quorumError);
 
         // What the roaming network refuses of its operator as it is made of it (KeyStatementError of WWCP_POI3), in its order:
         // a key statement of another roaming network, then the certificates, then the rest of the key statement.
@@ -223,12 +238,13 @@ export class RoamingNetworkOperator {
 /**
  * The error, when WWCP_POI3 refuses the roaming network operator a change of a change set changed, as it reads it again right
  * after the change (`TryApplyRegistryChange`): as `RoamingNetworkOperator.parse` reads it, but for what the roaming network
- * refuses of it as it is made of it, after the last change. Undefined for none.
+ * refuses of it as it is made of it, after the last change, and but for its quorum, which fits its keys after the last change
+ * (`TryParseBetweenChanges`). Undefined for none.
  */
 export function invalidRoamingNetworkOperator(json: JSONObject, roamingNetworkId: string): string | undefined {
 
     try {
-        RoamingNetworkOperator.parse(json, roamingNetworkId);
+        RoamingNetworkOperator.parse(json, roamingNetworkId, 'between changes');
         return undefined;
     }
     catch (e) {
@@ -255,7 +271,9 @@ export class RoamingNetwork {
         /** The content: the representation without its `eTags`, with its `@context` (section 2). */
         public readonly content:             JSONObject,
         public readonly operator:            RoamingNetworkOperator | undefined,
-        public readonly treeHashAlgorithms:  readonly HashAlgorithm[]
+        public readonly treeHashAlgorithms:  readonly HashAlgorithm[],
+        /** The URLs of its copies, `urls` (section 2): ~/RNs/{RN_Id} at every server holding it, the preferred one first; none when it names none. */
+        public readonly urls:                readonly string[]
     ) {}
 
 
@@ -310,6 +328,17 @@ export class RoamingNetwork {
             treeHashAlgorithms = treeHashAlgorithmsJSON as HashAlgorithm[];
         }
 
+        // Its URLs, as POINetworkURLs of WWCP_POI3 reads them after its tree hash algorithms, in its words.
+        const urlsJSON = get(json, 'urls');
+
+        if (urlsJSON !== undefined) {
+            const invalid = invalidNetworkURLs(urlsJSON, id);
+            if (invalid !== undefined)
+                throw new POIError(invalid);
+        }
+
+        const urls = isArray(urlsJSON) ? urlsJSON.filter(url => typeof url === 'string') : [];
+
         if (get(json, 'signingKeys') !== undefined || get(json, 'identityKeys') !== undefined)
             throw new POIError("A roaming network has no keys of its own: they are the keys of its operator, 'operator'!");
 
@@ -319,7 +348,7 @@ export class RoamingNetwork {
         const operatorJSON = get(json, 'operator');
         const operator     = operatorJSON === undefined ? undefined : ((): RoamingNetworkOperator | undefined => {
                                  try {
-                                     return RoamingNetworkOperator.parse(operatorJSON, id);
+                                     return RoamingNetworkOperator.parse(operatorJSON, id, of === 'version' ? 'version' : 'after');
                                  }
                                  catch (e) {
                                      if (!(e instanceof KeyStatementError))
@@ -338,7 +367,7 @@ export class RoamingNetwork {
         if (refusal !== undefined)
             throw new POIError(refusal);
 
-        const network      = new RoamingNetwork(id, content, operator, treeHashAlgorithms);
+        const network      = new RoamingNetwork(id, content, operator, treeHashAlgorithms, urls);
 
         const eTagsJSON = get(json, 'eTags');
 

@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+- WWCP_POI `c1b641b` ported: the holders of a roaming network operator join and leave one by one, a roaming network
+  names the URLs of its copies, and the key statements of its operator one after the other lead from an old trust
+  anchor to the keys of today.
+  - **The quorum of a roaming network operator fits its keys in every version, not between the changes of one change
+    set** (SPECIFICATION.md 4.1, "Holders joining and leaving"): a change set changes its keys and its `minConsensus`
+    one by one, e.g. a second holder joining the only one. A change set is authorized by the version before, as
+    before. A version after a change set whose quorum does not fit its keys is refused in the words of the quorum
+    alone, without "Change N:" and without "The given JSON representation of a roaming network operator is
+    invalid:", before what the roaming network refuses of its key statement. This changes a refusal 0.4.0 gave: of
+    `minConsensus` 9 it was "Change 0: The given JSON representation of a roaming network operator is invalid: The
+    minConsensus 9 …", it is "The minConsensus 9 of the roaming network operator 'OCC' needs signing keys of as many
+    holders, not of 3!". A quorum of one is written as none: an `UpdateProperty` of `minConsensus` to 1 is refused
+    ("… is given as '1', which the content does not hold at all!"), it is removed; a version writing
+    `"minConsensus": 1` is refused as not written as the content holds it.
+  - **`urls` of a roaming network** (section 2): the URLs of its copies, `~/RNs/{RN_Id}` at every server holding
+    it, part of its content and so of its ETags; `RoamingNetwork.urls`. An array of 1 to 16 absolute https URLs of
+    this roaming network, each at most 512 characters and once, without user information, a query, a fragment or a
+    trailing slash, in their order; read and refused in the words and the order of WWCP_POI3
+    (`POINetworkURLs`), held as Hermod writes a URL. Owned by the roaming network operator, changed as a whole
+    (`UpdateProperty`, `RemoveProperty`), not element by element. 0.4.0 refused a version naming `urls` as not
+    written as the content holds it.
+  - **`KeyStatement.verifyChain(keyStatements, trustedHolders, { minConsensus, at, otherIdentityKeys })`**
+    (section 8.6, `TryVerifyChain` of WWCP_POI3, in its words) verifies the key statements of one roaming network
+    operator, the oldest first, as `GET ~/RNs/{RN_Id}/keyStatements` gives them
+    (`KeyStatement.parseChain` reads `{ "keyStatements": [ … ] }`): those before the first one verified as a
+    single one is are passed over; every one after it is of the same roaming network and operator, signed not before
+    the one it follows and while that was valid, by identity keys that one names of as many of its holders as its
+    `minConsensus` requires, and by its own quorum; the last one valid at `at`. It returns the last statement
+    and the holder of each of its identity keys, or throws. `KeyStatement.verifyRequiring` is the check of one
+    statement with the number of holders given.
+  - **`OperatorTrust.followedBy`** asks the quorum trusted before of a later key statement, no longer the larger of
+    it and the quorum of the later statement, which the holders known before could not give where a holder joins: a
+    version is refused whose key statement its own quorum did not sign.
+  - Probed against WWCP_POI3 at `c1b641b`: 41 versions of QA with other `urls` and quorums
+    (`RoamingNetwork.TryParse`), the same verdict and words for each; 65 change sets of `urls`, of the quorum
+    and of holders joining and leaving (`TryApplyPendingChangeSet`), the same for 64, the one left a line ending
+    within the JSON it names; the 282 change sets the tests of changes apply, the same for each but the one the probe
+    does not check the signatures of; the ETags of the 20 networks of the EV Taler tests, the same.
+
+- The frozen run is `csharp-c1b641b` (WWCP_POI `c1b641b`, Hermod `a58a53af`, Styx `a6b9f9fb`), AT
+  `2026-11-16T20:31:00.000Z`, made by WWCPPOIConformanceTests (`21be7d4`), with `poi-history.json`,
+  `poi-refusals.json`, `poi-qidigital.json` and `poi-evtaler.json` of it, vendored byte for byte. Example A1
+  begins with AlphaOrg alone (revision 0, the genesis, checked against `QA-trustAnchor-revision0.txt`), then BetaOrg
+  joins, two of two (revision 1), and GammaOrg, two of three (revision 2); every revision of epoch 1 after it is two
+  later (the checkpoints 0 to 6 at 9, 11, 12, 14, 15, 16 and 18), epoch 2 as before. New files: the revisions 0 to 2
+  with their commits and trust anchors, `QA-keyStatements.json`; `QA-proof-revision-4/8/10` are `-6/-10/-12`.
+  The trust anchor names the three URLs of the roaming network, its QR code has 591 characters. The tests and
+  `examples/validate-examples.ts` check the genesis from the trust anchor of revision 0 and follow the key statements
+  to the keys of today; the values of the tests WWCP_POI3 calculated are those of `c1b641b` for this run.
+
 - WWCP_POI3 refuses what this library refuses of a change set, since WWCP_POI `bc554b2`, the change 0.4.0 names as
   proposed for it on top of `62390ca`: a property it does not read, of the change set, of a change or of a
   precondition; a `createdAt` not written as `yyyy-MM-ddTHH:mm:ss.fffZ`; a roaming network given as a number. No change

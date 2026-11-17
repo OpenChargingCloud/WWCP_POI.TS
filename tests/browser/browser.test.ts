@@ -4,23 +4,9 @@ import { AT }                   from '../at.ts';
 import { readJSON, readText }   from './vectors.ts';
 
 import { ChargingStationProof, RoamingNetworkOperator, TrustContext, TrustAnchor, parseEvidence, parseTrustedWitnesses, verifyChargingStation, verifyEvidence, verifyPriceStatements, verifyVersion } from '../../src/index.ts';
-import { get, isObject, type JSONValue } from '../../src/json/value.ts';
-
 
 // The library in a real browser, Chromium without a window through Playwright, as an EV driver's app runs it: the
 // cryptography of the @noble family and the CBOR of MetrologicalCBOR.TS, without Buffer, WebCrypto or node:* modules.
-
-/** A property of a JSON object of the test vectors. */
-function property(value: JSONValue, name: string): JSONValue {
-
-    const item = isObject(value) ? get(value, name) : undefined;
-
-    if (item === undefined)
-        throw new Error(`The test vector has no '${name}'!`);
-
-    return item;
-
-}
 
 
 describe('The library in Chromium', () => {
@@ -33,10 +19,10 @@ describe('The library in Chromium', () => {
 
     test('checks QA from its trust anchor: the key statement, the signatures of the commit, its JSON, CBOR and effective tree ETags', () => {
 
-        const genesis = readJSON('published/QA-genesis.json');
-        const version = verifyVersion(TrustAnchor.parse(readText('published/QA-trustAnchor.txt')), property(genesis, 'roamingNetwork'), property(genesis, 'commit'), AT);
+        // QA as example A1 left it, revision 2: AlphaOrg, BetaOrg and GammaOrg hold the keys of OCC.
+        const version = verifyVersion(TrustAnchor.parse(readText('published/QA-trustAnchor.txt')), readJSON('published/QA-revision2.json'), readJSON('published/QA-revision2-commit.json'), AT);
 
-        expect(version.commit.revision).toBe(0);
+        expect(version.commit.revision).toBe(2);
         expect(version.signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(version.warnings).toEqual([]);
 

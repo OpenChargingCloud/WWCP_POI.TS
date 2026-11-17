@@ -126,7 +126,7 @@ describe('The lastChange of what embeds a changed entity (4)', () => {
         expect([ ...types ].sort()).toEqual([
             'ChargingPool', 'ChargingStation', 'ChargingStationGroup', 'ChargingStationManufacturer', 'ChargingStationModel', 'ChargingStationOperator',
             'ChargingStationTemplate', 'ChargingTariff', 'ConformityAssessmentBody', 'ConformityCertificate', 'EVSE', 'EVSEGroup', 'EVSETemplate',
-            'EnergyMeterManufacturer', 'EnergyMeterModel', 'EnergyMeterTemplate', 'RoamingNetworkOperator', 'TransparencySoftware',
+            'EnergyMeterManufacturer', 'EnergyMeterModel', 'EnergyMeterTemplate', 'RoamingNetwork', 'RoamingNetworkOperator', 'TransparencySoftware',
             'TransparencySoftwareManufacturer',
         ]);
 
@@ -134,17 +134,17 @@ describe('The lastChange of what embeds a changed entity (4)', () => {
 
     it('refuses afterETags leaving what embeds a changed entity as it was', () => {
 
-        // Revision 10: the maxPower of two charging stations and of their EVSEs.
-        const changeSet = defined(changeSetsJSON[9]);
-        const before    = defined(versions[9]);
-        const after     = entities(defined(versions[10]).content);
+        // Revision 12: the maxPower of two charging stations and of their EVSEs.
+        const changeSet = defined(changeSetsJSON[11]);
+        const before    = defined(versions[11]);
+        const after     = entities(defined(versions[12]).content);
         const changed   = (changeSet['changes'] as JSONObject[]).map(change => pathOf(change, after, entities(before.content)));
         const embedders = new Set(changed.flatMap(path => embedding(path, after)).filter(path => !changed.includes(path) && path !== `/${before.id}`));
 
         expect([ ...embedders ].map(path => defined(path.split('/').at(-1))).sort()).toEqual([ 'DE*GEF', 'DE*GEF*P3', 'DE*GEF*P4' ]);
 
         // The content as the specification said before: the charging pools and the operator not touched.
-        const content  = clone(defined(versions[10]).content);
+        const content  = clone(defined(versions[12]).content);
         const inClone  = entities(content);
         const previous = entities(before.content);
 
@@ -159,7 +159,7 @@ describe('The lastChange of what embeds a changed entity (4)', () => {
             return ChangeSet.parse(json);
         };
 
-        expect(applyChangeSet(before, unsigned(), { checkOwnership: false }).matchesCommitETags(defined(versions[10]).eTags())).toBe(true);
+        expect(applyChangeSet(before, unsigned(), { checkOwnership: false }).matchesCommitETags(defined(versions[12]).eTags())).toBe(true);
         expect(() => applyChangeSet(before, unsigned(RoamingNetwork.parse(content).changeSetETags().map(eTag => etagToJSON(eTag))), { checkOwnership: false }))
             .toThrow(/The result does not match the change set/);
 

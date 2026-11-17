@@ -1,6 +1,6 @@
 // The built package as an app uses it: imported by its name, through the exports of package.json, in plain Node without
-// any bundler or transpiler. Checks the genesis of QA against its trust anchor and the proof of a charging station of
-// epoch 2, and prints what it checked as JSON.
+// any bundler or transpiler. Checks QA as example A1 left it, revision 2, against its trust anchor and the proof of a
+// charging station of epoch 2, and prints what it checked as JSON.
 //
 //   node tests/build/consumer.mjs <directory of the test vectors> <time>
 
@@ -12,8 +12,7 @@ import { TrustAnchor, parseJSON, verifyChargingStation, verifyVersion } from '@o
 const [ vectors, at ] = process.argv.slice(2);
 const read            = name => readFileSync(join(vectors, name), 'utf8');
 
-const genesis  = parseJSON(read('published/QA-genesis.json'));
-const version  = verifyVersion(TrustAnchor.parse(read('published/QA-trustAnchor.txt')), genesis.roamingNetwork, genesis.commit, at);
+const version  = verifyVersion(TrustAnchor.parse(read('published/QA-trustAnchor.txt')), parseJSON(read('published/QA-revision2.json')), parseJSON(read('published/QA-revision2-commit.json')), at);
 const station  = verifyChargingStation(TrustAnchor.parse(read('published/QA-trustAnchor-mldsa.txt')), parseJSON(read('proofs/QA-proof-station-DE_GEF_S1.json')), { at });
 
 console.log(JSON.stringify({

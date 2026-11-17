@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { defined, readJSON } from './helpers.ts';
-import { anchor, checkpoint, commits, commitsOfEpoch1, following, fromGenesis, genesis, witnesses } from './qa.ts';
+import { anchor0, checkpoint, commits, commitsOfEpoch1, following, fromGenesis, genesis, witnesses } from './qa.ts';
 
 import { RoamingNetwork }     from '../src/network/roamingNetwork.ts';
 import { Checkpoint }         from '../src/history/checkpoint.ts';
@@ -17,7 +17,7 @@ describe('Replaying the history of QA commit by commit, through both epochs', ()
 
     it('takes epoch 1 from its genesis, its checkpoints up to the final one, epoch 2 since its genesis, and reaches the head', () => {
 
-        const verifier = following(anchor, genesis, witnesses, 2);
+        const verifier = following(anchor0, genesis, witnesses, 2);
         const epoch1   = History.fromSnapshot(readJSON('published/QA-genesis.json'), fromGenesis(verifier));
 
         for (const commit of commitsOfEpoch1())
@@ -26,7 +26,7 @@ describe('Replaying the history of QA commit by commit, through both epochs', ()
         for (const sequence of [ 0, 1, 2, 3, 4, 5, 6 ])
             epoch1.takeCheckpoint(checkpoint(sequence));
 
-        expect(epoch1.head.commit.revision).toBe(16);
+        expect(epoch1.head.commit.revision).toBe(18);
         expect(epoch1.finalCheckpoint?.sequence).toBe(6);
         expect(epoch1.epochStatus).toBe('closing');
 

@@ -139,8 +139,13 @@ describe('The roaming network itself and its operator changed as WWCP_POI3 takes
         expect(refusal(update('RoamingNetworkOperator', 'OCC', 'name', { en: 'x' }, { parentEntityType: 'ChargingStationOperator', parentEntityId: 'DE*GEF' })))
             .toBe("Change 0: a roaming network operator of this roaming network belongs to RoamingNetwork 'QA', not to ChargingStationOperator 'DE*GEF'!");
         expect(refusal(update('RoamingNetworkOperator', 'OCC', 'name', { en: 'x' }, { parentEntityType: 'RoamingNetwork', parentEntityId: 'QA' }))).toBe('taken');
+        // Its quorum fits its keys in the version after the change set, not between its changes (4.1, WWCP_POI c1b641b):
+        // refused in the words of the quorum alone, of no change.
         expect(refusal(update('RoamingNetworkOperator', 'OCC', 'minConsensus', 9)))
-            .toBe("Change 0: The given JSON representation of a roaming network operator is invalid: The minConsensus 9 of the roaming network operator 'OCC' needs signing keys of as many holders, not of 3!");
+            .toBe("The minConsensus 9 of the roaming network operator 'OCC' needs signing keys of as many holders, not of 3!");
+        // A quorum of one is written as none: removed, not given as 1.
+        expect(refusal(update('RoamingNetworkOperator', 'OCC', 'minConsensus', 1)))
+            .toBe("Change 0: the property 'minConsensus' of the roaming network operator 'OCC' is given as '1', which the content does not hold at all!");
 
     });
 

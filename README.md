@@ -33,7 +33,7 @@ establish production witness services or independently verified actual measureme
 **Milestone 1: the examples of WWCP_POI, checked in TypeScript.** The examples A1 to A16 of
 [WWCP_POI/examples](https://github.com/OpenChargingCloud/WWCP_POI/tree/master/examples) are checked from what the C#
 examples publish, as their `Validate()` methods check them, and the same for proofs of charging stations the C#
-implementation makes: in the tests from the run of WWCP_POI `76d3653` vendored here, and every night from a new run of
+implementation makes: in the tests from the run of WWCP_POI `c1b641b` vendored here, and every night from a new run of
 WWCP_POI master, with new keys. EV Taler phase 2, which example A16 shows, is also checked on the proof of example A15
 and probed against WWCP_POI3. See [Tests](#tests).
 
@@ -320,8 +320,10 @@ never edit them here, and its `VendoredCopiesTests` fail when these copies drift
   and the verifier extensions (`poi-verifier.json`) checked against the fixtures of ChargyWebApp below as
   WWCP_POI3 checks them (the format: the
   [README of the vectors](https://github.com/OpenChargingCloud/WWCPPOIConformanceTests/blob/master/test-vectors/README.md));
-- `tests/vectors/csharp-76d3653`, what one run of the C# examples A1 to A16 of WWCP_POI at commit `76d3653` published
-  (public data only; its output is `csharp-output.log` there), the EV Taler session of example A16 among it, and in
+- `tests/vectors/csharp-c1b641b`, what one run of the C# examples A1 to A16 of WWCP_POI at commit `c1b641b` published
+  (public data only; its output is `csharp-output.log` there): QA beginning with AlphaOrg alone, BetaOrg and GammaOrg
+  joining (the revisions 0 to 2, each with its commit and the trust anchor of its time, and the key statements of OCC
+  one after the other, `QA-keyStatements.json`), the EV Taler session of example A16 among it, and in
   `proofs/`, what `proofs/MakeProofs.cs.txt` made of the same history with the C# implementation: proofs of charging
   stations of epoch 2, the commits of epoch 2 up to the head, revision 11 after the EV Taler merchant of example A15 and
   Jena Paradies naming EV Taler with a secure dynamic QR code, and

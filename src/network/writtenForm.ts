@@ -153,7 +153,7 @@ const ENTITY_PROPERTIES: Readonly<Record<string, readonly string[]>> = {
                                           'energyMeterManufacturers', 'gridOperatorIds', 'gridOperators', 'lastChange',
                                           'name', 'operator', 'parkingOperatorIds', 'parkingOperators',
                                           'transparencySoftwareManufacturerIds', 'transparencySoftwareManufacturers',
-                                          'treeHashAlgorithms' ],
+                                          'treeHashAlgorithms', 'urls' ],
     'operator':                         [ '@context', '@id', 'address', 'created', 'customData', 'dataSource',
                                           'description', 'eMailAddress', 'homepage', 'hotline', 'hotlineEMailAddress',
                                           'identityKeys', 'keyStatement', 'lastChange', 'minConsensus', 'name',
@@ -467,6 +467,10 @@ function writtenText(property: string, text: string): string {
     if (property === 'exceptionalOpenings' || property === 'exceptionalClosings')
         return periodOf(text) ?? text;
 
+    // The URLs of a roaming network as Hermod writes them: trimmed, with the scheme https unless they name one.
+    if (property === 'urls')
+        return hermodURL(text)?.text ?? text;
+
     const names = NAMED_VALUES[property];
 
     return names?.find(name => name.toLowerCase() === trimmed(text).toLowerCase()) ?? trimmed(text);
@@ -482,7 +486,10 @@ function writtenTexts(items: JSONArray, property: string): string[] | undefined 
 
     const texts = items.map(item => typeof item === 'string' ? writtenText(property, item) : undefined);
 
-    if (texts.some(text => text === undefined) || texts.every((text, index) => text === trimmed(asText(items[index]))))
+    // The URLs of a roaming network are no identifications trimmed as read: each is held as Hermod writes it.
+    const asGiven = (index: number): string => property === 'urls' ? asText(items[index]) : trimmed(asText(items[index]));
+
+    if (texts.some(text => text === undefined) || texts.every((text, index) => text === asGiven(index)))
         return undefined;
 
     const written = texts as string[];
@@ -742,6 +749,10 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
         if (key === 'dataLicenseIds')
             return 'the content leaves it out';
 
+        // The quorum of a roaming network operator of one: written only where more than one holder must sign.
+        if (key === 'minConsensus' && kind === 'operator' && element === 1)
+            return 'the content leaves it out';
+
         if (element === '' && kind !== undefined && LEFT_OUT_WHEN_EMPTY_TEXT[kind]?.includes(key) === true)
             return 'the content leaves it out';
 
@@ -786,6 +797,11 @@ export function notWritten(value: JSONValue, property: string | undefined, path:
 
             // A text written otherwise than trimmed, e.g. a NUTS code in lower case: the list is compared element by element
             // with the one WWCP_POI writes.
+            // The URLs of a roaming network trimmed first, as WWCP_POI names it, then as Hermod writes them.
+            if (name === 'urls' && item.some(element => typeof element === 'string' && trimmed(element) !== element))
+                return { path: at, reason: 'the texts of its elements are trimmed',
+                         held: heldAt(place, item.map(element => typeof element === 'string' ? trimmed(element) : element)) };
+
             const written = name === undefined ? undefined : writtenTexts(item, name);
             const differs = written?.findIndex((text, index) => text !== item[index]) ?? -1;
 

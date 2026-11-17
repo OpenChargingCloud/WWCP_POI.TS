@@ -17,11 +17,11 @@ import { join }                     from 'node:path';
 
 import {
     ArchiveSegment, Checkpoint, CheckpointProof, Decimal, DigitalCalibrationCertificate, DigitalCertificateOfConformity,
-    DigitalDeclarationOfConformity, EVTalerContractTerms, EVTalerSettlement, History, NetDecimal, OperatorTrust, POIPublicKey,
+    DigitalDeclarationOfConformity, EVTalerContractTerms, EVTalerSettlement, History, KeyStatement, NetDecimal, OperatorTrust, POIPublicKey,
     PriceStatement, PriceStatementProof, QIDigitalItem, RoamingNetwork, RuntimeStatus, TrustAnchor, clone, describeVersion,
     etagToText, evTalerExchangesAt, evTalerMerchantOf, evTalerTariffOf, get, isArray, isObject, parseArchiveSegmentInfo,
     parseEvidence, parseFrame, parseJSON, parsePriceStatements, parseStatusUpdate, parseTrustedWitnesses, paymentOptionName,
-    toTimestamp, verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures,
+    sameValue, toTimestamp, verifyChargingStation, verifyCheckpointLine, verifyCheckpointPriceStatements, verifyCheckpointSignatures,
     verifyEvidence, verifyPriceStatements, verifySegmentLine, verifyVersion, writeAmount,
     type EVTalerExchange, type EVTalerMeasurementKey, type EVTalerMeterReading, type EVTalerSignedMeterValue,
     type EVTalerVerifiedStep, type HistoryOptions, type JSONArray, type JSONObject, type JSONValue, type QIDigitalI18NText,
@@ -104,8 +104,8 @@ function verifyOCMF(value: EVTalerSignedMeterValue, key: EVTalerMeasurementKey):
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-76d3653');
-const time       = at ?? (directory.includes('csharp-76d3653') ? '2026-11-12T21:55:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-c1b641b');
+const time       = at ?? (directory.includes('csharp-c1b641b') ? '2026-11-16T20:31:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');
@@ -144,13 +144,23 @@ console.log(`Checking ${directory}, at ${time}`);
 
 const anchor     = TrustAnchor.parse(text('published/QA-trustAnchor.txt'));
 const witnesses  = parseTrustedWitnesses(json('trusted/witnesses.json'));
-const genesis    = json('published/QA-genesis.json') as JSONObject;
-const first      = verifyVersion(anchor, defined(genesis['roamingNetwork'], 'roaming network in the genesis'), defined(genesis['commit'], 'commit in the genesis'), time);
+// QA as example A1 left it, revision 2: AlphaOrg, BetaOrg and GammaOrg hold the keys of OCC, two of them decide.
+const first      = verifyVersion(anchor, json('published/QA-revision2.json'), json('published/QA-revision2-commit.json'), time);
 const trust      = first.trust;
 
-/** As example A4: commits signed as the roaming network operator by its quorum, checkpoints as well. */
+// QA as it began, revision 0, with AlphaOrg alone, checked from the trust anchor of that time; then BetaOrg joined.
+const anchor0    = TrustAnchor.parse(text('published/QA-trustAnchor-revision0.txt'));
+const genesis    = json('published/QA-genesis.json') as JSONObject;
+const began      = verifyVersion(anchor0, defined(genesis['roamingNetwork'], 'roaming network in the genesis'), defined(genesis['commit'], 'commit in the genesis'), time);
+const early      = [ began.trust, began.trust.followedBy(RoamingNetwork.parse(json('published/QA-revision1.json')), time) ];
+
+/** The trust in OCC as the given version states its keys: of the revisions 0 and 1, of those since. */
+const trustIn = (network: RoamingNetwork): OperatorTrust =>
+    early.find(known => sameValue(known.keyStatement.json, network.operator?.keyStatement?.json)) ?? trust;
+
+/** As example A4: commits signed as the roaming network operator by its quorum, as their version states its keys, checkpoints as well. */
 const byOperator: HistoryOptions = {
-    verifyCommit:      commit     => { trust.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
+    verifyCommit:      (commit, _before, after) => { trustIn(after).verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit'); },
     verifyCheckpoint:  checkpoint => verifyCheckpointSignatures(checkpoint, trust).verified,
 };
 
@@ -159,9 +169,20 @@ function following(trustAnchor: TrustAnchor, root: RoamingNetwork, trusted: read
     let current = OperatorTrust.of(trustAnchor, root, time);
     return {
         get trust(): OperatorTrust { return current; },
+        // Signed by the quorum of the version before or, where the holders changed, of its own version.
         verifyCommit: (commit, _before, after): void => {
-            current.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
-            current = current.followedBy(after, time);
+            const next     = current.followedBy(after, time);
+            const signedBy = (trusted: OperatorTrust): unknown =>
+                trusted.verifyOperatorSignatures(commit.signatures, (signature, key) => { commit.verifySignature(signature, key); }, 'the commit');
+            try {
+                signedBy(current);
+            }
+            catch (e) {
+                if (next === current)
+                    throw e;
+                signedBy(next);
+            }
+            current = next;
         },
         verifyCheckpoint: checkpoint => verifyCheckpointSignatures(checkpoint, current, { witnesses: trusted, requiredWitnesses: trusted.length }).verified,
     };
@@ -187,6 +208,26 @@ step('Example A1: checking QA from its trust anchor', () => {
 
     console.log(`QA is checked: revision ${first.commit.revision}, commit ${first.commit.id}, signed by ${first.signedBy.join(' and ')}`);
     console.log(`beforeETags of the next change set: ${first.network.changeSetETags().map(etagToText).join(', ')}`);
+    console.log(`Its copies: ${first.network.urls.join(', ')}`);
+
+    // How somebody who pinned QA when AlphaOrg held its keys alone gets to the keys of today: from the QR code of revision 0
+    // and the key statements of OCC one after the other, as GET ~/RNs/QA/keyStatements gives them.
+    console.log(`QA as it began: revision ${began.commit.revision}, signed by ${began.signedBy.join(' and ')}`);
+
+    const statements = KeyStatement.parseChain(json('published/QA-keyStatements.json'));
+    console.log(`Pinned at revision 0: ${anchor0.holders.length} holder, minConsensus ${anchor0.minConsensus}; today: ${anchor.holders.length} holders, minConsensus ${anchor.minConsensus}; ${statements.length} key statements`);
+
+    refused('The key statement of today alone', () => defined(statements.at(-1), 'key statement of today').verifyHolders(anchor0.holders, [], { minConsensus: anchor0.minConsensus, at: Date.parse(time) }));
+
+    const { verified, holderOf } = KeyStatement.verifyChain(statements, anchor0.holders, { minConsensus: anchor0.minConsensus, at: Date.parse(time) });
+    console.log(`One after the other: the keys of ${[ ...new Set(holderOf.values()) ].sort().join(', ')}, minConsensus ${verified.minConsensus}`);
+
+    const keysOf = (holders: readonly (readonly string[])[]): string => holders.map(keys => [ ...keys ].sort().join(';')).sort().join('|');
+
+    if (keysOf(verified.holders) !== keysOf(anchor.holders) || verified.minConsensus !== anchor.minConsensus)
+        throw new Error('the key statements do not lead to the trust anchor of today');
+
+    console.log('They are the keys and the quorum of the trust anchor of today.');
 
 });
 
@@ -306,7 +347,7 @@ step('Example A5: a correction between two checkpoints', () => {
 
 step('Example A6: witnesses sign the checkpoints', () => {
 
-    // From the genesis, its key statement checked against the trust anchor above (verifyVersion): taken unanchored.
+    // From the genesis, its key statement checked against the trust anchor of revision 0 above (verifyVersion): taken unanchored.
     const witness = History.fromSnapshot(json('published/QA-genesis.json'), { ...byOperator, unanchored: true });
 
     for (const commit of commits('published/QA-commits-since-genesis.json'))
