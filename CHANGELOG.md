@@ -52,6 +52,15 @@
   `examples/validate-examples.ts` check the genesis from the trust anchor of revision 0 and follow the key statements
   to the keys of today; the values of the tests WWCP_POI3 calculated are those of `c1b641b` for this run.
 
+- `poi-histories.json` and `poi-refusals.json` of WWCPPOIConformanceTests `d8c91dd` vendored byte for byte, 61
+  vectors new, all taken and refused here already, in the words of WWCP_POI3 at `c1b641b`. `poi-histories.json`,
+  154 replays, 37 of them of a fourth history, of a roaming network whose operator two holders hold: its `urls`
+  named, in other forms, in another order and removed, and refused signed by one holder, with another old value,
+  changed element by element and of 13 values; a holder joining and leaving, the keys or the quorum first, and
+  refused without the new identity key, by one holder, by identity keys alone, and where the version after breaks the
+  rule of the quorum. `poi-refusals.json`, 343 vectors, 24 of them versions: 19 of `urls`, among them their place
+  after the tree hash algorithms and before the operator, and 5 of the quorum.
+
 - WWCP_POI3 refuses what this library refuses of a change set, since WWCP_POI `bc554b2`, the change 0.4.0 names as
   proposed for it on top of `62390ca`: a property it does not read, of the change set, of a change or of a
   precondition; a `createdAt` not written as `yyyy-MM-ddTHH:mm:ss.fffZ`; a roaming network given as a number. No change
