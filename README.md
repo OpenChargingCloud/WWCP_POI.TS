@@ -263,8 +263,9 @@ of that holds; `TrustContext.create` evaluates the same and throws otherwise.
 The context binds what is verified with it to the roaming network, its operator and the signed content of the key
 statement, which a statement embedded without its JSON-LD context gives as well. Another key statement, even one signed
 genuinely, needs another evaluation: a context does not follow the keys of the operator to their successors by itself.
-Other valid signatures, or the same in another order, do not change the content; every signature given and the trusted
-quorum are checked again.
+Other valid signatures, or the same in another order, do not change the content; every signature given whose key is
+named or given and the trusted quorum are checked again. A signature by a key neither the statement names nor the
+application gave, e.g. one of the statement before that left with this one, is passed over and counts for no holder.
 
 `OperatorTrust.of` and `fromOperatorJSON`, `verifyVersion`, `verifyChargingStation`, `ChargingStationProof.verify` and
 `verifyCheckpoint` take a context in place of a trust anchor. A context is evaluated for one time: `at` is that time or

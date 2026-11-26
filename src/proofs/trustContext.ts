@@ -49,7 +49,9 @@ export interface TrustEvaluation {
 /**
  * A locally authorized bootstrap policy and a verified statement, evaluated at one time. The application supplies
  * trusted key IDs, from its bundled roots and explicit user decisions after applying local exclusions. The library
- * intersects them with the original holder groups and verifies every signature, holder consistency, time and quorum.
+ * intersects them with the original holder groups and verifies every signature whose key is given, holder consistency,
+ * time and quorum; a signature by a key neither the statement names nor the application gave is passed over and counts
+ * for no holder.
  * Importing an anchor is not authorization. This object is not a revocation service: recreate it from current local
  * decisions for each operation. It is not persisted, and cannot be constructed from a serialized green flag.
  */
@@ -98,25 +100,28 @@ export class TrustContext {
         const trusted = new Set(options.trustedIdentityKeyIds);
         const holders = anchor.holders.map(holder => holder.filter(id => trusted.has(id)));
         const pool = [...statement.identityKeys, ...(options.otherIdentityKeys ?? [])];
-        const signedBy = new Set(statement.signatures.map(signature => signature.keyId));
-        const trustedHolderCount = holders.filter(holder => holder.some(id => signedBy.has(id))).length;
+        const signedBy = new Set<string>();
         let signaturesValid = true;
         let keysValid = true;
         let verificationError: string | undefined;
         try {
             for (const signature of statement.signatures) {
+                // By a key that is not given, e.g. one of the statement before that left with this one: passed over,
+                // as it can not be verified here, and counted for nothing.
                 const key = pool.find(key => key.id === signature.keyId);
                 if (key === undefined)
-                    throw new POIError('The public key of a signer was not provided');
+                    continue;
                 statement.verifySignature(signature, key);
                 if (!key.isValidAt(statement.signedAt))
                     keysValid = false;
+                signedBy.add(signature.keyId);
             }
         }
         catch (error) {
             signaturesValid = false;
             verificationError = error instanceof Error ? error.message : String(error);
         }
+        const trustedHolderCount = holders.filter(holder => holder.some(id => signedBy.has(id))).length;
         let quorumValid = false;
         try {
             statement.verifyHolders(holders, options.otherIdentityKeys, { minConsensus: anchor.minConsensus, at });

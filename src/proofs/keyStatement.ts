@@ -196,8 +196,9 @@ export class KeyStatement {
 
     /**
      * Verifies the statement as a verifier trusting identity keys by their `@id`s per holder does (8.6), e.g. as a trust
-     * anchor names them, as `TryVerify` of the C# implementation: every signature valid, by an identity key it or the
-     * operator names, valid at `signedAt`; signed by trusted keys of as many holders as the larger of the given
+     * anchor names them, as `TryVerify` of the C# implementation: every signature by an identity key it names or the
+     * verifier was given valid, that key valid at `signedAt`; a signature by another key, e.g. one of the statement before
+     * that it names no longer, passed over and counted for nothing; signed by trusted keys of as many holders as the larger of the given
      * `minConsensus` and its own require, counted as the verifier knows them, never as the statement names them; the
      * trusted keys it names named as the verifier knows their holders, one holder for the keys of one, another for those of
      * every other; valid at `at`, when given. So no holder counts twice by naming a key of its own as another's.
@@ -375,10 +376,13 @@ export class KeyStatement {
 
         for (const signature of this.signatures) {
 
+            // By a key neither the statement names nor the verifier was given, e.g. one of the statement before that
+            // left with this one: passed over, as it can not be verified here and counts for nothing. Where the
+            // statements are followed one after the other, the one before gives it (verifyChain).
             const identityKey = keys.find(key => key.id === signature.keyId);
 
             if (identityKey === undefined)
-                throw new POIError(`The identity key '${signature.keyId}' that signed the key statement is not given!`);
+                continue;
 
             if (!identityKey.isValidAt(this.signedAt))
                 throw new POIError(`The identity key '${signature.keyId}' was not valid when the key statement was signed!`);

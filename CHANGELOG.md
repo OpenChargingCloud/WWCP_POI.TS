@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- WWCP_POI `5219653` ported: a key statement may carry signatures of identity keys it names no longer
+  (SPECIFICATION.md 8.6), of a holder that leaves or of a key replaced by one of another holder. A signature by a key
+  neither the statement names nor the verifier was given is passed over and counts for no holder, in
+  `KeyStatement.verify`, `verifyHolders`, `verifyRequiring` and `verifyChain`, where a version embeds the statement and
+  in `TrustContext.evaluate`, whose `trustedHolderCount` counts only signatures it verified. 0.5.0 refused such a
+  statement, "The identity key '…' that signed the key statement is not given!", and `TrustContext.evaluate` gave its
+  signatures as invalid, "The public key of a signer was not provided": both are gone. Followed after the statement
+  before (`verifyChain`), which gives the key, such a signature is what leads from the keys trusted to the new ones.
+  Nothing 0.5.0 took is refused. Of the 17 commits of WWCP_POI after `c1b641b`, up to `464e712`, this is the one that
+  changes what a verifier takes; the others are of its servers, its examples and its tests.
+  Probed against WWCP_POI3 at `464e712`: 68 results of `TryVerify`, `TryVerifyChain` and
+  `RoamingNetworkTrustContext.Evaluate` on 14 key statements of holders joining, leaving and replaced, signed also by
+  those that left and by somebody else, the same verdict, words and holders for each, where 0.5.0 differed in 35; nine
+  versions of QA whose key statement carries such signatures (`RoamingNetwork.TryParse`), the same for each.
+  `tests/keyStatementSuccession.test.ts`.
+
 - For development, Vitest 5.1.2, Vite 8.4.0 (Rolldown 1.3.4), ESLint 10.15.0, typescript-eslint 8.74.0, Playwright 1.65.1
   and @types/node 26.6.11, and the dependencies beneath them as far as their ranges allow. TypeScript stays at 6.0:
   typescript-eslint 8.74.0 still requires a version below 6.1. What the package depends on is unchanged.
