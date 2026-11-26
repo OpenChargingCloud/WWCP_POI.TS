@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- For development, Vitest 5.1.2, Vite 8.4.0 (Rolldown 1.3.4), ESLint 10.15.0, typescript-eslint 8.74.0, Playwright 1.65.1
+  and @types/node 26.6.11, and the dependencies beneath them as far as their ranges allow. TypeScript stays at 6.0:
+  typescript-eslint 8.74.0 still requires a version below 6.1. What the package depends on is unchanged.
+
+
 ## 0.5.0 (2026-11-17)
 
 The holders of the keys of a roaming network operator join and leave, and a roaming network names where its copies are:
