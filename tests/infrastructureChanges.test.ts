@@ -16,7 +16,7 @@ import type { JSONObject } from '../src/json/value.ts';
 // considers equal, e.g. `DEGEFP1` for `DE*GEF*P1`, as WWCP_POI3 finds it (RoamingNetwork.InfrastructureChanges.cs,
 // `StoredId`): the entity, its parent and its operator, and who must sign the change. The words are those of WWCP_POI
 // 8b0580f for the same changes of the same version (`TryApplyPendingChangeSet`, `TryCheckCoSigning`), the after ETags
-// those of WWCP_POI c1b641b (`CreateChangeSet`).
+// those of WWCP_POI 039303b (`CreateChangeSet`).
 
 const AT      = '2026-11-05T10:00:00.000Z';
 const before  = RoamingNetwork.parse(rich());
@@ -82,45 +82,45 @@ describe('Infrastructure named in every spelling its identification type conside
         // Without the stars of the operator, in lower case where the type compares without case.
         for (const id of [ 'DE*GEF*P1', 'DEGEFP1', 'DEGEF*P1', 'degefP1' ])
             applied([ update('ChargingPool', id) ],
-                    [ '4b2572d8bcaa05dc8201a503db83cb1d42be5079e6eb3441af883d7453d781eb', 'a546cdccab94514244f0073b72e88d30dfbd651d3dd55520341dba5ff0033a33' ]);
+                    [ '5503a51270de770b1204227acc95ba8d17ec0c3e44bd2edbc66babcce762988b', '65a11cc293518181394473deb03d3511494b83d5636df008092a2eacc8125ce5' ]);
 
         // The stars of a suffix do not count.
         for (const id of [ 'DE*GEF*E1*1', 'DEGEFE11', 'DE*GEF*E11' ])
             applied([ update('EVSE', id) ],
-                    [ '8a1aa592b9a11018361dbc18ac9ed1d4ab61621bae399c592ca4f74266d1bcdd', '3e564cd4d6d8a183a33d14f72daf5f7392892f5fad49fc9c25bc4b801206503a' ]);
+                    [ 'cf4977149be62419b1a0b6a4bf1beefd15cbd9a0e717ff3305720740542c43a1', 'dde24235310352799863319eec3501aec1650b2af4693ef5d02f766e838652e2' ]);
 
         for (const id of [ 'DE*GEF*T_AC', 'DE*GEF*T_A*C', 'DEGEFT_AC' ])
             applied([ update('ChargingTariff', id) ],
-                    [ '0785240b5463d8044c6e21b35d9ec0380974df8914587913a23ed0b12e26f551', '58f2f9dbbb37064981bfb7733a1517dd613ec4874df8556729d641d17ea4a61d' ]);
+                    [ '36912a70216b346abc1df1d68c1458ed8f4bd7a30e009f9fca3daf08a1e18d1f', 'fbd641fb813dd904f534e83bfb90e0b04237b2d418a1b0c123e6fb76af37bd57' ]);
 
         applied([ { kind: 'Remove', entityType: 'ChargingTariffGroup', entityId: 'DEGEFTG_ALL' } ],
-                [ '25db2482bfb365649caf2f58c2c58ce74d2577e314beb5c9311e6d480da4ca1c', '0762fb3c4ae6a7a2bf976fc2ab12fb11838647b4e7ca92ff7f0f37be3c990696' ]);
+                [ 'df25ee788696711816190358043738c3dcaf5c92d2f396e913258084c75a2881', 'bc9e1a462fa9050521a505df806d213bbc71dfe09de828ee4cbdbbbf6997b18d' ]);
 
         // Added by one change, changed by the next in another spelling.
         applied([ add('EVSEGroup', 'DE*GEF*EG9', group('DE*GEF*EG9')), { kind: 'UpdateProperty', entityType: 'EVSEGroup', entityId: 'DEGEFEG9', propertyName: 'name', newValue: name } ],
-                [ 'c5393aa578995f529d3c221f96ba9233573796869a3f9215e7dfb6da3aa4eebb', '4c60959b39eca85f09648694a2f84dced4bcdb6a7c7d8747faed6f7f3a4aff8b' ]);
+                [ '44e171d1734fe7830944f26c00113ca1c8cd8f0e883339c8a3f4beeb7b737bfe', '6a1bdc39d55e2f445df1b6b520f1b8f4af22dddf67ed6c96d8ee1e2d60cbbb30' ]);
 
     });
 
     it('below its parent, in every spelling of the parent', () => {
 
         applied([ update('ChargingStation', 'DE*GEF*S1', { parentEntityType: 'ChargingPool', parentEntityId: 'DEGEFP1' }) ],
-                [ '39849e86737e3ac95a8262a22767de919da9dc0b6bae17dc980f5323fed60dc4', '53424210907b0ec53d9c34cefd58445cdb13fff8237985559809d0b33b5e1185' ]);
+                [ '29de7521f4475741e957802e235848d8bb73c12e094a549ad16ef0aac0d0011b', '626ff1d40ef9da7a13e4a3f2b722924ad76490e965efc39ddf2aee81e022bc3f' ]);
 
         for (const operator of [ 'DE*GEF', 'DEGEF', 'de*gef', ' DE*GEF' ])
             applied([ add('EVSEGroup', 'DE*GEF*EG9', group('DE*GEF*EG9'), 'ChargingStationOperator', operator) ],
-                    [ '6ef4e121cca3f1e8af8cfedef073a4519e6f47ae1c2c60e027901e3bdb5c9fba', '0ba8ac8cf4ae1a046de1b19fb7f15b64c2279c469d458f386e5591cdff67298d' ]);
+                    [ 'e7a8d0bc8a5cf07d35ee1172543cfa99deaafda90c94341cf62e98e8fe93eac2', '936e4a74855764ce0f5ca397c6718b80c9167599a68495a1d7d283c74f29cbfb' ]);
 
         for (const pool of [ 'DE*GEF*P1', 'DEGEFP1', 'de*gef*P1' ])
             applied([ add('ChargingStation', 'DE*GEF*S9', { '@id': 'DE*GEF*S9' }, 'ChargingPool', pool) ],
-                    [ '7f622f85d89667fea84a0e05c7850fd2bdd0767255cc988de15bae499ec8b84f', '5be50382af1f9e1f0368f3becd0496969b605301f30ce6e1621d75e2155fe387' ]);
+                    [ '4d9bef2a0b39e570bd7680ca4cb82797027e59aa59b8e6ef9999bef522d354cf', 'a396f9952bbf1c643e777de1d0551803f3e364036d5128d75c35ee9e3f072248' ]);
 
     });
 
     it('trimmed as read: its kind, entity type and identification, which its identification is of', () => {
 
         applied([ { kind: ' UpdateProperty', entityType: 'ChargingPool ', entityId: ' DE*GEF*P1', propertyName: 'name', newValue: name } ],
-                [ '4b2572d8bcaa05dc8201a503db83cb1d42be5079e6eb3441af883d7453d781eb', 'a546cdccab94514244f0073b72e88d30dfbd651d3dd55520341dba5ff0033a33' ]);
+                [ '5503a51270de770b1204227acc95ba8d17ec0c3e44bd2edbc66babcce762988b', '65a11cc293518181394473deb03d3511494b83d5636df008092a2eacc8125ce5' ]);
 
         // Identified by them untrimmed, the SHA-256 of its canonical JSON as given, it is identified otherwise.
         const json  = changeSetJSON([ update('ChargingPool', ' DE*GEF*P1') ]);

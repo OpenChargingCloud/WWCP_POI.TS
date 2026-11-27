@@ -59,9 +59,9 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
         expect(keyIds(gef['signingKeys'])).toEqual(keyIds(sent['signingKeys']));
         expect(keyIds(gef['identityKeys'])).toEqual(keyIds(sent['identityKeys']));
         expect(POIPublicKey.parseAll(gef['signingKeys'], 'keys').map(key => `${key.id} for ${key.usages.join(', ')}`)).toEqual([
-            '20dd53280b75220ae75bcdc957bfe759bc408b0d24841a2416e72f7692297390 for party',
-            '8c0c6670e6e6745b83fe76f132c20d17c29dd5fef0dd206191b3058b7081e873 for priceStatements, tariffs',
-            'a0e9f8b6ddcf26dd986d3594a12b6154fd5305bd4901056bbf8a69ace3b106cf for infrastructure',
+            '076d043df5850fc9f36bc4973923bc295d72cd4b6754af732e405d6df4da6f19 for party',
+            '292001ef359628123f09a2832c3fdcb445d684a1f740761a15b14f2e7517944f for infrastructure',
+            '76a16cb7d24c9060d8b4eefd56356509b405112101b3b54cdcfc693076ca9a4f for priceStatements, tariffs',
         ]);
 
         // The manufacturers with the models they stated, as C# printed them.
@@ -93,7 +93,7 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
         const committed = Commit.parse((commits('published/QA-commits-since-genesis.json'))[2]);
         const after     = applyChangeSet(before, ChangeSet.parse(committed.changeSet));
         expect(after.matchesCommitETags(committed.eTags)).toBe(true);
-        expect(committed.id).toBe('14f230771ef717b1dcb2cc43bffc83105d096765f9f6f0cb5b3982fa5084b251');
+        expect(committed.id).toBe('5ef5cc1fef70326072462cbc0b4d436b4e0059914c8efc7148cc9388ae517fbd');
 
         // Without the signatures of the identity keys of DE*GEF, there is no proof of possession.
         const withoutProof = clone(defined(committed.changeSet));
@@ -112,7 +112,7 @@ describe('Example A2: the charging station operator DE*GEF and the manufacturers
         const before   = history.head.network;
         const models   = Commit.parse(all[3]);
         expect(models.revision).toBe(4);
-        expect(models.id).toBe('6facbeb7e29da3b10597dea02663a947e2160bb753c2d445551ecf98cf9695df');
+        expect(models.id).toBe('fa25ffbaf7fb35e31d4e0e78c87fc8ad80a2fdd1475336413eb2c484db60056f');
         expect(ChangeSet.parse(models.changeSet).changes.map(change => `${change.kind} ${change.entityType} ${change.entityId} of ${change.parentEntityId ?? ''}`)).toEqual([
             'Add ChargingStationModel GD-DC300 of GraphDefined', 'Add ChargingStationModel GD-AC44 of GraphDefined', 'Add EnergyMeterModel KDM-500 of KERNBERG', 'Add EnergyMeterModel SM-3 of SAALE',
         ]);
@@ -185,10 +185,10 @@ describe('Example A3: two pools, their templates, their energy meters and their 
                     }
 
         expect(meters).toEqual([
-            'DE*GEF*M1*1 KERNBERG KDM-500, serial DCM-2026-001-1, OCMF, key b729f68a',
-            'DE*GEF*M1*2 KERNBERG KDM-500, serial DCM-2026-001-2, OCMF, key 4cd2464d',
-            'DE*GEF*M2*1 SAALE SM-3, serial ACM-2026-002-1, OCMF, key 261fcf21',
-            'DE*GEF*M2*2 SAALE SM-3, serial ACM-2026-002-2, OCMF, key 1faa3dfb',
+            'DE*GEF*M1*1 KERNBERG KDM-500, serial DCM-2026-001-1, OCMF, key 89bf4ca1',
+            'DE*GEF*M1*2 KERNBERG KDM-500, serial DCM-2026-001-2, OCMF, key abfbba97',
+            'DE*GEF*M2*1 SAALE SM-3, serial ACM-2026-002-1, OCMF, key 82440062',
+            'DE*GEF*M2*2 SAALE SM-3, serial ACM-2026-002-2, OCMF, key fe721566',
         ]);
 
     });
@@ -203,7 +203,7 @@ describe('Example A3: two pools, their templates, their energy meters and their 
         // The commit of revision 6 with the signature of its change set claimed by the key of DE*GEF for its tariffs.
         const pool       = clone(defined(Commit.parse(all[5]).changeSet));
         const signature  = defined((pool['signatures'] as JSONObject[])[0]);
-        signature['keyId'] = '8c0c6670e6e6745b83fe76f132c20d17c29dd5fef0dd206191b3058b7081e873';
+        signature['keyId'] = '76a16cb7d24c9060d8b4eefd56356509b405112101b3b54cdcfc693076ca9a4f';
         expect(() => applyChangeSet(history.head.network, ChangeSet.parse(pool))).toThrow(/is invalid/);
 
         // Unsigned, it needs a signature of DE*GEF.
@@ -221,7 +221,7 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
 
         const checkpoint0 = checkpoint(0);
         expect(verifyCheckpointSignatures(checkpoint0, trust).signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
-        expect(checkpoint0.id).toBe('1ae0687dd75a0243e6ac56e0982cc088dac2cfd2db0dfcb4bba6fa4cf13b5d2a');
+        expect(checkpoint0.id).toBe('593ccbf67aee8090017da8180271fed5f5affb8e18307e3df168aa29f5eaee47');
         expect(checkpoint0.revision).toBe(9);
         expect(checkpoint0.commits.size).toBe(10);
 
@@ -233,7 +233,7 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
             joined.append(commit);
 
         expect(joined.head.commit.revision).toBe(11);
-        expect(joined.head.commit.id).toBe('8d5447bd5433275bf3f7694310de40cdb75c2bbbbaacabb8fe30ba2d719d866e');
+        expect(joined.head.commit.id).toBe('20708c34462f59b01382a19c793b75381f4df8bb3bdffaefc143618243c53a00');
 
         expect(pools(joined.head.network, 3, 4)).toEqual([
             'DE*GEF*S5 300 kW: DE*GEF*E5*1 DC 150 kW, DE*GEF*E5*2 DC 150 kW',
@@ -255,7 +255,7 @@ describe('Example A4: the first checkpoint, and joining from it', () => {
         // A checkpoint of another revision: its @id is no longer the digest of its content.
         const changedCheckpoint = clone(readJSON('published/QA-checkpoint-0.json') as JSONObject);
         changedCheckpoint['revision'] = 5;
-        expect(() => Checkpoint.parse(changedCheckpoint)).toThrow("The checkpoint identification '1ae0687dd75a0243e6ac56e0982cc088dac2cfd2db0dfcb4bba6fa4cf13b5d2a' is not the one of its content, '2453cc22432b6080464034a21edf4413036d6f6205ff0e0c55ab4522d70709b5'!");
+        expect(() => Checkpoint.parse(changedCheckpoint)).toThrow("The checkpoint identification '593ccbf67aee8090017da8180271fed5f5affb8e18307e3df168aa29f5eaee47' is not the one of its content, '32f233d743e0ba8be5489cdeaab62329679882e9b7044224869174f0e9474442'!");
 
         // A version of the checkpoint changed: it does not lead to the ETags of the checkpoint.
         const changedSnapshot = parseJSON(readText('published/QA-checkpoint-0-snapshot.json').replace('"en": "Jena Paradies"', '"en": "Jena Paradies, moved"'));
@@ -331,14 +331,14 @@ describe('Example A5: a correction between two checkpoints', () => {
         CheckpointProof.parse(readJSON('published/QA-proof-revision-12.json')).verify(checkpoint(2));
 
         expect(() => { CheckpointProof.parse(readJSON('published/QA-proof-revision-12.json')).verify(checkpoint(1)); })
-            .toThrow("The proof is for the checkpoint '6c75a85e60ed7826c9a671ce526aa194c71de380ef0a494a8df28a214e782d06', not for 'dc6521c8cdcd575adabae7a842c1bd790583f9075b69568699369859be19046f'!");
+            .toThrow("The proof is for the checkpoint 'f7becc5310b2a03225e21a4fd541f34ba56cd084c2f21d1700d75fd80038bca0', not for '4b18b7c61c1f05573ca222593a4c2b757c67d6d7ddfe646f0a766f7d97ea3622'!");
 
         // Checkpoint 2 without checkpoint 1: it does not follow the latest one taken.
         const history = History.fromSnapshot(readJSON('published/QA-checkpoint-0-snapshot.json'), anchoredIn(anchor, byOperator));
         for (const commit of [ ...commits('published/QA-commits-since-checkpoint-0.json'), ...commits('published/QA-commits-since-checkpoint-1.json') ])
             history.append(commit);
         expect(() => history.takeCheckpoint(checkpoint(2)))
-            .toThrow("The checkpoint does not follow the latest checkpoint '1ae0687dd75a0243e6ac56e0982cc088dac2cfd2db0dfcb4bba6fa4cf13b5d2a' of the sequence 0 here!");
+            .toThrow("The checkpoint does not follow the latest checkpoint '593ccbf67aee8090017da8180271fed5f5affb8e18307e3df168aa29f5eaee47' of the sequence 0 here!");
 
     });
 
@@ -426,7 +426,7 @@ describe('Example A7: compaction with an archive, after the checkpoints', () => 
 
         const changedCommit = clone(readJSON('published/QA-archive-2.json') as JSONObject);
         defined((changedCommit['commits'] as JSONObject[])[0])['revision'] = 17;
-        expect(() => ArchiveSegment.parse(changedCommit).replay(byOperator)).toThrow("The commit identification '0cd7705f32b15771b76b612b0785353a454333056447f89f66575a74faac0719' is not the one of its content, 'ea6683a5c4e16493d8c260a31a6695f77c4119933c72e3ad370f4491f6fb0c0b'!");
+        expect(() => ArchiveSegment.parse(changedCommit).replay(byOperator)).toThrow("The commit identification 'bc6abde023abf33fd1b487ac5cb221d04b225d9980b849ed3e1a96c4bcc12e26' is not the one of its content, '19f2479c479ff3a66760c8f58666c2e0dc5ad45b4468d32acb71292e35e0081e'!");
 
         const otherBase = parseJSON(readText('published/QA-archive-2.json').replace('"en": "Jena Nord"', '"en": "Jena Nord, moved"'));
         expect(() => ArchiveSegment.parse(otherBase).replay(byOperator)).toThrow(/ETag/);
@@ -442,7 +442,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
 
         const line = [ checkpoint(2), checkpoint(3), checkpoint(4) ];
         verifyCheckpointLine(line);
-        expect(defined(line[2]).id).toBe('5b459ff84130484da405eb7b419c89abfca89bdba1bc4972c6c801264b4fc454');
+        expect(defined(line[2]).id).toBe('ad5bae7df0d0a51b3d71bfc3b8ff02dc4d7afdf4684491af3f9f0dde0e5cd3f1');
 
         const statements = parsePriceStatements(readJSON('published/QA-checkpoint-4-priceStatements.json'));
         expect(statements).toHaveLength(3);
@@ -469,7 +469,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
         proof.priceStatement.verify('QA', 'DE*GEF', signingKeys);
 
         // Joined with a statement less, or with a statement of another price.
-        expect(() => { verifyCheckpointPriceStatements(defined(line[2]), statements.slice(1)); }).toThrow("The price statements are not those the checkpoint '5b459ff84130484da405eb7b419c89abfca89bdba1bc4972c6c801264b4fc454' names!");
+        expect(() => { verifyCheckpointPriceStatements(defined(line[2]), statements.slice(1)); }).toThrow("The price statements are not those the checkpoint 'ad5bae7df0d0a51b3d71bfc3b8ff02dc4d7afdf4684491af3f9f0dde0e5cd3f1' names!");
 
         const changed = readText('published/QA-checkpoint-4-priceStatements.json').replace('"price": 0.59', '"price": 0.49');
         const other   = parsePriceStatements(parseJSON(changed));
@@ -477,7 +477,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
 
         // A statement signed by the infrastructure key would be refused: that key may not sign price statements.
         const infrastructureKey = defined(signingKeys.find(key => key.usages.includes('infrastructure')));
-        expect(infrastructureKey.id).toBe('a0e9f8b6ddcf26dd986d3594a12b6154fd5305bd4901056bbf8a69ace3b106cf');
+        expect(infrastructureKey.id).toBe('292001ef359628123f09a2832c3fdcb445d684a1f740761a15b14f2e7517944f');
         expect(infrastructureKey.maySign('priceStatements')).toBe(false);
 
     });
@@ -514,7 +514,7 @@ describe('Example A8: price statements, named by checkpoints', () => {
 
         const joined = History.fromSnapshot(readJSON('published/QA-checkpoint-4-snapshot.json'), anchoredIn(anchor, byOperator));
         expect(joined.head.commit.revision).toBe(15);
-        expect(joined.head.commit.id).toBe('800eebf9644fa9259ef1bab7cc0a908bbe87977b59033fc4cb66c07a769dec44');
+        expect(joined.head.commit.id).toBe('cf7c7437dcc78a23aca54a8d63a8ee55d2c5304a696c95ad805173aa934374c8');
         verifyCheckpointPriceStatements(defined(joined.checkpoints[0]), parsePriceStatements(readJSON('published/QA-checkpoint-4-priceStatements.json')));
 
     });

@@ -89,7 +89,7 @@ describe('Payment options, an open set of names (WWCP_POI ec3dace)', () => {
     it('unites those of a charging pool and its templates without case, its own first, in the order of their texts', () => {
 
         // As WWCP_POI3 calculates the effective tree of it: EVTaler of the pool and evtaler of its template are one; the pool
-        // with its secure dynamic QR code, the ETags those WWCP_POI3 at c1b641b calculates.
+        // with its secure dynamic QR code, the ETags those WWCP_POI3 at 039303b calculates.
         const network = RoamingNetwork.parse(qa((gef, pool) => {
             gef['chargingPoolTemplates'] = [ templateNaming([ 'Cash', 'evtaler' ]) ];
             pool['templateIds']          = [ TEMPLATE_ID ];
@@ -102,9 +102,9 @@ describe('Payment options, an open set of names (WWCP_POI ec3dace)', () => {
 
         expect(pool['paymentOptions']).toEqual([ 'Cash', 'EVTaler' ]);
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:1c29ad44be52d7dff22faf56caa2374e549d88234f3396f05c3cb5bcd2752cc6',
-            'cbor:sha256:hex:ad0354f2de9c8ca0f60790e3680a182decb0c60cd9cf42404a198ac9d4b85a44',
-            'effectiveTree:sha256:hex:466cc4b01f5e2bbde7e881f20c705d410b8616399ded634b1507e4065d2c4b5e',
+            'json:sha256:hex:7b7dcfadedd1507581e9a0d3ef589ee91fd58b226b24dfd7b5cff677e2dc54fd',
+            'cbor:sha256:hex:d3d0b5d85c8fdf46d662ea77141485a5c261e023258571e813274bde54a76ff6',
+            'effectiveTree:sha256:hex:3b3090014c68d055d4a76789bba359028712b5c461e2fcca07aa9386c90b387e',
         ]);
 
     });
@@ -120,9 +120,9 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
 
         // The ETags WWCP_POI3 calculates of the same content: its canonical JSON, its CBOR, its effective tree.
         expect(network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:f5db382f61f81f165241253c7ea52464716322c6b92e0a12f91b4006dec5e7bc',
-            'cbor:sha256:hex:72ae404b7a84f135d7e74c9402c8a4200ba486ad2b4049f3e64d2b13fe967b5c',
-            'effectiveTree:sha256:hex:1a4ef9345826ad167829641c078137267d8ebd7dd86db7001ece0b06da20f1c1',
+            'json:sha256:hex:1478f8c652de1d69a9a73ea5356e9860f2713257a58e372d1f007582784b1807',
+            'cbor:sha256:hex:1d6379d736c71536a45f988a656235b1870352d3867c36dc64edd7060bba249a',
+            'effectiveTree:sha256:hex:7f2d305ffb68c133cd1ce2790ef04bd0d716e303c0f2d3b3919ed1473f946790',
         ]);
 
         const read = evTalerMerchantOf(merchant()) as EVTalerMerchant;
@@ -135,18 +135,18 @@ describe('The EV Taler merchant of a charging station operator (WWCP_POI ec3dace
         expect((evTalerMerchantOf(unordered) as EVTalerMerchant).exchanges.map(exchange => exchange.currency)).toEqual([ 'EUR', 'CHF' ]);
 
         // Where drivers ask for offers, if given (WWCP_POI 62390ca): written after the exchanges and only when given, so that
-        // a merchant without it is written as before, byte for byte; the ETags WWCP_POI3 at c1b641b calculates of it.
+        // a merchant without it is written as before, byte for byte; the ETags WWCP_POI3 at 039303b calculates of it.
         expect(read.offersURL).toBeUndefined();
         expect((evTalerMerchantOf({ ...merchant(), offersURL: OFFERS_URL }) as EVTalerMerchant).offersURL).toBe(OFFERS_URL);
         expect(RoamingNetwork.parse(qa(gef => { (gef['evTaler'] as JSONObject)['offersURL'] = OFFERS_URL; })).eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:906e03a39f2909fb8aa016057b111ee5c6a078f0d4d0a7b38933c0c922dff703',
-            'cbor:sha256:hex:79cf64c1a07a2b4cfaf0a94b35691ecc9ecee5a2159853628f6b962a35b646b3',
-            'effectiveTree:sha256:hex:438159fefe64199944501b2c1a84194101d32ac2f6d83a853ada29cf13d6f0ec',
+            'json:sha256:hex:76ec071f141d6decbd9c80e650557589e1d79f62def717db831ca0c88fb805a0',
+            'cbor:sha256:hex:b506e733f4b26b222a3ca789c1613affa1d079d899653bcecaf994d71232fe6b',
+            'effectiveTree:sha256:hex:cb307d2fda44d2402b3811a89b6f8c0f7ce344cabf6cdc90bd9f1f37003b4f00',
         ]);
 
         // Its scheme in another case is a URL Hermod writes as given, so it is held so.
         expect(RoamingNetwork.parse(qa(gef => { (gef['evTaler'] as JSONObject)['offersURL'] = 'HTTPS://poi.gef.example/RNs/QA/'; })).eTags().map(etagToText)[0])
-            .toBe('json:sha256:hex:ab9ffc993fd147803b93b19407107ecdb89d879bb5f0cdb0a68a55bbfe8748da');
+            .toBe('json:sha256:hex:89bb5578e8f759b2f80aea3cc7e867e7f9e27d6c7fa8d8530a32574b8a3014ee');
 
         expect(isTalerPublicKey(EUR_EXCHANGE)).toBe(true);
         expect(isTalerPublicKey(EUR_EXCHANGE.toLowerCase())).toBe(false);

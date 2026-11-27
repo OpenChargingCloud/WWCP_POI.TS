@@ -31,7 +31,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(station.attestedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(station.revision).toBe(11);
         expect(station.commitId).toHaveLength(128);
-        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:d9e47bd59ded5466319c40d9b51c095df2ff0b79b9428d2fec3cbabcc11aeeef');
+        expect(etagToText(station.eTag)).toBe('effectiveTree:sha256:hex:f48cbd9697d2245cbe330e226fcb4a64b044c68a1a24a5604d893d72d78afe99');
         expect(station.chargingStation['@id']).toBe('DE*GEF*S1');
         expect(station.chargingStation['maxPower']).toBe(300000);
         expect(station.evses.map(evse => evse['@id'])).toEqual([ 'DE*GEF*E1*1', 'DE*GEF*E1*2' ]);
@@ -95,7 +95,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(asText(defined((element['priceComponents'] as JSONObject[])[0])['price'])).toBe('0.59');
 
         // After its validUntil there is no current price.
-        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-11-16T21:35:00.000Z' }).size).toBe(0);
+        expect(verifyPriceStatements(station, readJSON('published/QA-epoch-2-checkpoint-0-priceStatements.json'), { at: '2026-11-26T23:07:00.000Z' }).size).toBe(0);
 
     });
 
@@ -148,7 +148,7 @@ describe('The proof of a charging station, as an app checks it', () => {
         expect(() => verifyChargingStation(anchor, changed, { at: AT })).toThrow(/attest the root/);
 
         // The attestations are valid for 15 minutes.
-        expect(() => verifyChargingStation(anchor, proof, { at: '2026-11-16T20:48:00.000Z' })).toThrow(/of 0 holders/);
+        expect(() => verifyChargingStation(anchor, proof, { at: '2026-11-26T22:20:00.000Z' })).toThrow(/of 0 holders/);
 
         // One attestation is not enough for a quorum of two.
         const one = clone(proof);

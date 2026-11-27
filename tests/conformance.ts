@@ -95,8 +95,18 @@ export const specification = load('poi-specification.json') as {
     readonly trustAnchors:       ReadonlyArray<Vector & { json: string, qrCode: string, roamingNetworkId: string, urls: string[], keys: string[], minConsensus: number }>;
 };
 
+/** What a chain of key statements leads to: the holder of every identity key trusted then, or why it is refused. */
+export interface KeyStatementChainOutcome {
+    readonly expected:   'accepted' | 'refused';
+    readonly at:         string;
+    readonly holderOf?:  Readonly<Record<string, string>>;
+    readonly reason?:    string;
+}
+
 export const trust = load('poi-trust.json') as {
-    readonly stationProofs:  ReadonlyArray<Vector & { expected: 'accepted' | 'refused', trustAnchor: string, proof: string, at: string, evseId: string, root: string }>;
+    readonly stationProofs:       ReadonlyArray<Vector & { expected: 'accepted' | 'refused', trustAnchor: string, proof: string, at: string, evseId: string, root: string }>;
+    /** The key statements of an operator, the oldest first, as JSON text of `{ "keyStatements": [ … ] }`, against identity keys trusted per holder. */
+    readonly keyStatementChains:  ReadonlyArray<Vector & KeyStatementChainOutcome & { keyStatements: string, trustedHolders: string[][], minConsensus?: number, otherIdentityKeys?: string[] }>;
 };
 
 /** A step of a replay: its document a file of the frozen run (poi-history.json), or one of its history (poi-histories.json). */
@@ -119,6 +129,8 @@ export const history = load('poi-history.json') as {
     readonly priceStatements:   ReadonlyArray<Vector & DocumentRef & { sequence: number, digest: string, previous?: string }>;
     readonly trustAnchors:      ReadonlyArray<Vector & { file: string, roamingNetworkId: string, urls: string[], keys: string[], minConsensus: number, json: string }>;
     readonly stationProofs:     ReadonlyArray<Vector & DocumentRef & { trustAnchor: string, at: string, commitId: string, revision: number, root: string, chargingStations: Array<{ chargingStationId: string | null, evseIds: string[] }> }>;
+    /** The key statements the run published (`file`), against a trust anchor of the run (`trustAnchor`, a file of it). */
+    readonly keyStatementChains:  ReadonlyArray<Vector & DocumentRef & KeyStatementChainOutcome & { trustAnchor: string }>;
     readonly replays:           ReadonlyArray<Vector & { commitAndCheckpointSignatures: string, steps: ReplayStep[] }>;
 };
 

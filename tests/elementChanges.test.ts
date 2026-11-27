@@ -11,7 +11,7 @@ import type { JSONObject, JSONValue } from '../src/json/value.ts';
 
 // Element changes (SPECIFICATION.md section 4, elements.ts): AddElement, RemoveElement, ReplaceElement,
 // UpdateElementProperty and RemoveElementProperty address one element of a property of an entity by their element path,
-// and amount to the change of that property. The after ETags are those WWCP_POI3 at c1b641b calculated for the same changes
+// and amount to the change of that property. The after ETags are those WWCP_POI3 at 039303b calculated for the same changes
 // of the same version (`CreateChangeSet`): a change set is taken only where this library ends in the very same content.
 
 const AT  = '2026-11-05T10:00:00.000Z';
@@ -85,39 +85,39 @@ describe('Element changes of an array of identified objects', () => {
 
         // The first element makes the array; another one goes where the ordinal order of the identifications puts it.
         applied([ evse('AddElement', [ seg('chargingConnectors', '1') ], { newValue: C1 }) ],
-                [ 'c029692c72436fa0dafd9c4ae87f8f8ba2e634814f04982871eff0c1e329dd36', 'eef4e398a89fea10a9694455c5c7d99a68c7eb0e814f4c8db257a77f104ba0e3' ]);
+                [ '0bb646b676a581544102c7906ff004a314f766296ffccbf0461460c35fc4bde6', 'a0f6cd717e31af9a3ea4820fa2880af9b0d6a819258ec97816eaf279221580ef' ]);
 
         applied([ evse('AddElement', [ seg('chargingConnectors', '2') ], { newValue: C2 }) ],
-                [ '99e85d4f3a838ac06890b4a4b49901947f1ce1c8fb4bab0623bf2599d0a29390', '8ad4323174e74649539438bd74051cb52cf899e275bc5e6886e46f7c7f0a594d' ], withConnectors);
+                [ '4cbd8e370855ba298424c45d3911508b72d7361e94ef9e2d4edd1296ae8d5ccf', '291afb42b469f120a0fc100ba1f2a66520c74c3f25595b29cf30c01ba77dd56f' ], withConnectors);
 
         // Removed, also by the old value it names.
         for (const oldValue of [ {}, { oldValue: C1 } ] as JSONObject[])
             applied([ evse('RemoveElement', [ seg('chargingConnectors', '1') ], oldValue) ],
-                    [ '74df0200689d1e17b4e95b6633e1bef6049b5b83bdcd02adbbfce7abbb399a06', '6d77177de4a7fa9207e93198ea9d9e4a8b233ec8621a3fbbeafbee8688ee7797' ], withConnectors);
+                    [ 'bcc0205897f8c2003e07b877ca8b5fc19466a2bdad6c667e8424ddaadea5e554', '8af8f2d91d1e2644f1bb60e5963b76c33b615e25c1462cb09bb1da1da2c6e3d2' ], withConnectors);
 
         applied([ evse('ReplaceElement', [ seg('chargingConnectors', '1') ], { newValue: { ...C1, format: 'SOCKET' } }) ],
-                [ '9703eef10ab13a65e684e47b03407f28da36e2ea7d9f59640f9054507cc2b2dc', '3ad82d46ca92769aa09272ee6f9f50242d9ec37cfbc8aa0505e5def807be3a7f' ], withConnectors);
+                [ '77fccdf07a6a8b31e6dfa90ab257bc24de2b77d229ad962e1b353337f4e2fefd', '316d9822dae8b749ce1e45546ca4b249e76610d9277f883a5a265515848e127a' ], withConnectors);
 
         for (const oldValue of [ {}, { oldValue: 'CABLE' } ] as JSONObject[])
             applied([ evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'format', newValue: 'SOCKET', ...oldValue }) ],
-                    [ 'a87ab4387b280c7696d6459468f38c99b7a46351c9e3f51f0e01af86d93a643c', 'f195c4f9778eb8d2673beb55b410256992e750dfe2760a0fdbfbd97de525dcb3' ], withConnectors);
+                    [ '27db0a6acb9eaa9d96779864baac9d659ab579e6cdcc7f38d750a8ec291b96d3', '4f3c1525d094a727714be4a972b04b310b550454a1c9c35fdcf0c17f3de2c4a0' ], withConnectors);
 
         // An old value of JSON null expects the property absent.
         applied([ evse('UpdateElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'maxPower', oldValue: null, newValue: 22000 }) ],
-                [ 'b952c4cfed9ed3db6daccd3511e61d8bc62873ec7dd88960cacb74dc3647db26', 'fd33ca0e203d31a58fdd64ef85ad3b040d06a8490d7a258e7791603d293cee69' ], withConnectors);
+                [ '34f97aea298edba9f616a4a6ed2b2bc4efb49964c60b5b2a66d027990de9673b', '11447af73b22cc9ec25bfa6ad585c599650d3335169d9995b027f8fb43dd747a' ], withConnectors);
 
         applied([ evse('RemoveElementProperty', [ seg('chargingConnectors', '3') ], { propertyName: 'format' }) ],
-                [ 'be3bc54fe559923ce84a9eaf9097edf9afdcd66fe9ea659c509dd02d9a9da2f4', '95a6ac90dc00964fc97feabbfc879580c8600339b913d6501753906f88aee3b9' ], withConnectors);
+                [ '0ad0f8fe81471d0ca6481fda9dd85ca4cf89f12c09d8e44a7e485cf9cf1e7d33', '1c947064e00ad787361c64125e6a8f7052a8c949af0af81ea94a49960e6171f9' ], withConnectors);
 
         // Changes of one property one after the other, and of an entity an earlier change added.
         applied([ evse('AddElement', [ seg('chargingConnectors', '2') ], { newValue: C2 }), evse('UpdateElementProperty', [ seg('chargingConnectors', '1') ], { propertyName: 'format', newValue: 'SOCKET' }) ],
-                [ '1982eac3e2b3d5b604d0399f65f3eb8032bc607c09236992230ad10d3c34c262', '45e7afd6a68a3ea567e313f253ea9aaf5da29b001734839d1a5eec3d321bb0dc' ],
+                [ '2f6d22e3f7e56753f7a081167072444ed761f4f647efa7fd80bdf03da4391139', '50889c75184fb073f52ed557fedf4d95770acf77248ea1c11e470e30fed6ab3c' ],
                 RoamingNetwork.parse(rich(({ evse }) => { evse['chargingConnectors'] = [ { ...C1 } ]; })));
 
         applied([ { kind: 'Add', entityType: 'EVSE', entityId: 'DE*GEF*E1*3', newValue: { '@id': 'DE*GEF*E1*3', currentTypes: [ 'DC' ], templateIds: [ 'DE*GEF*ET_DC' ] },
                     parentEntityType: 'ChargingStation', parentEntityId: 'DE*GEF*S1' },
                   element('AddElement', 'EVSE', 'DE*GEF*E1*3', [ seg('chargingConnectors', '2') ], { newValue: C2 }) ],
-                [ 'afda8d84240be324fdb1d9299b5006d569e8cedd6069dfb9e9520911d1479564', '6676e0a4315d84f01ce1c6ecde24b1313aa8c1719011ffb74d1745934f7b367b' ]);
+                [ '53a79df05892029d7f9726e5acdd2aa0cbdfaceea70a4cb7d0fef5a353e109b3', '269e2bca6147337afb0d3893d87f03b8b583d51b91fff71117059d89442e1f0b' ]);
 
     });
 
@@ -168,43 +168,43 @@ describe('Element changes of one identified object, of values and of arrays of i
         // The energy meter of an EVSE: by its property, also naming its identification, and deeper.
         for (const path of [ [ seg('energyMeter') ], [ seg('energyMeter', 'DE*GEF*M1*1') ] ])
             applied([ evse('UpdateElementProperty', path, { propertyName: 'serialNumber', newValue: 'DCM-2026-001-9' }) ],
-                    [ '0348aa97d907d77344165cf9f3dfbe5ea02a17fda0732d38300292de706f7c2b', '69f46773a2d9b0b0b6efaf69142cdb3b67e29232fc51ed4829ca82cefcfa02c2' ]);
+                    [ '7d16570ee469c4c11a9c8b2782bc5bc071a860030d03f80e8ffd8b268c7a7377', 'a30b9a62ca907c89d15703fadbc3ced28465d7b3dbd3f311b019c9e62a723b67' ]);
 
         applied([ evse('RemoveElement', [ seg('energyMeter') ]) ],
-                [ '6803ded4b8b9d1e19cec689e6620c592c7a8c778c514e02c398f2d56994f0dba', '97baaf9a2635ddeaf6ef62534a72725909bfa3a7826930477e92760de9df60d4' ]);
-        applied([ evse('RemoveElement', [ seg('energyMeter'), seg('publicKeys', 'b729f68ac2883c4ff7aa42f7acfea964036b95bde152e14bb521823ce7f61047') ]) ],
-                [ '44adeabdb3714ca422c0b2c6406f30a46e954b98b26dfdf224a095002effca40', '327f46eecea419dc4932a0fade0e0e5373545a375411262efdbe04f240a73755' ]);
+                [ '090f7ee41286a485dc9920c255c9d8583e1a7c7ab496574381deeb4d8f8f0c35', '93fe347879b775b9d9ee615a8d4ee6130943893f29fef0c67c51f98e284a7c90' ]);
+        applied([ evse('RemoveElement', [ seg('energyMeter'), seg('publicKeys', '89bf4ca165cba224fce3211110c94072c60ec880bc90ba42ccdf7a3d065c20d4') ]) ],
+                [ 'd39b49769dfb6d6a74ae7d6a26ded1769756ccdf522f57f7dde2d7b4576954ca', 'a8cc5b3ae97f72a3856de2d747065e1321ed9269ad804639f2ca85e71ee3cc20' ]);
         applied([ evse('AddElement', [ seg('energyMeter'), seg('templateIds', 'DE*GEF*EMT_AC') ], { newValue: 'DE*GEF*EMT_AC' }) ],
-                [ 'f7a9e41073580faeaf394c3f552a2498be54565d55dfe80a9be82fb0e3c63441', '5eb061c5e2593099263957deabb774a8694b83cbcd22728594bfeb91541b0daf' ]);
+                [ 'ac9283a36098ccff85caad615fcb3245b74ac82fb2d5fa447ddac8a12aa7beb1', '123e821e733bbc0c91769dc3939ae46bb2e4d8c5991fcb1997792bd2062bd7b0' ]);
 
         // The value of a property, its JSON-LD context named or not.
         for (const path of [ [ seg('maxPower') ], [ { '@context': 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/elementPathSegment/v1', propertyName: 'maxPower' } ] ])
             applied([ evse('RemoveElement', path) ],
-                    [ '19498ef15d9ac58c6e746bb071a92d48e77a2a33fd7c40ab53bb9941bcf83904', 'fc309549abe4d2165e994793189375eeba8ab63054c81278171f026c63dfc329' ]);
+                    [ '60c91bb3c6fdb91bb0756a9d34fe22391acdd405f8058c230c14d566b9013818', '3ca18b137d7933b57baba964c6bb57431808d1200934997b85a097b5a7078440' ]);
         applied([ evse('AddElement', [ seg('physicalReference') ], { newValue: 'Left' }) ],
-                [ '468ec9147ed5140a1a6f119178152f33a2bbcd4329b85fdbeaf942cc728ad362', 'ceaa32917a7a1110aaa439250f459ded6f037c154be5cc9f8b67f598f0439be0' ]);
+                [ '065607ec370140df3d18d20ef13d3ad83357cb69c380bc08ab2fa8e1aadcc79f', '8e9331f11fbabbbdfa221c22b6ab08235d7878a85e0e7e351d7f46a95db7f348' ]);
 
         // Members of a group, compared as their type compares them, in the ordinal order of the identifications.
         applied([ element('AddElement', 'EVSEGroup', 'DE*GEF*EG_AC', [ seg('EVSEIds', 'DE*GEF*E1*1') ], { newValue: 'DE*GEF*E1*1' }) ],
-                [ '72551e9f780b5cd3824f73880364c3f977c86d740d26c8820a67558c57072563', '84177138a358c32d7d8ea20ecd1eb0163ac2f0061bedf4ee8e90266c9f5ee753' ]);
+                [ '3225d7c31263a81d746c27c85b07a845cd664ffa8619a771a2896920b56b7275', 'c4df6378828a233c3c32345d34d4bb807f5e6936e7a0e3ab9330c906f796b8be' ]);
         applied([ element('AddElement', 'EVSEGroup', 'DE*GEF*EG_AC', [ seg('EVSEIds', 'DE*GEF*E5*1') ], { newValue: 'DE*GEF*E5*1' }) ],
-                [ 'f940afbec141b43f7c33f099ebfd724d32ab3ff52f46110c0b30141860bd97f2', '06adc441b92d75cf0486da8bbda1128c72c4e51c3c1452d918d8f0b85748daae' ]);
+                [ 'b1a954559440d1e45ba64ce963612275e2bf01d638b39288f6ab7fa238e9dfa9', 'd854c7024d2e0af4807109b20d314f76465c92832aaf93af7035471c92473e8d' ]);
         for (const id of [ 'DE*GEF*E2*1', 'DEGEFE21' ])
             applied([ element('RemoveElement', 'EVSEGroup', 'DE*GEF*EG_AC', [ seg('EVSEIds', id) ]) ],
-                    [ '8b9f0e519b47a7f81d7d3c954926135ed1c4ea193ba38058573808adce84efc6', 'c21fbb14bf27324865d0ef090f81e86be6028a52f04b42a1cc41b033340a8842' ]);
+                    [ 'cb36c0e62b05e34ccd0ac1aaecd2a99514c7742897697ebb00c0f51d9c245059', '7d3ce1db2e19e2529d37e73fc54f06aedac025bdd118b6805aca061750ccb971' ]);
 
         // The last element removed, the array is.
         applied([ element('RemoveElement', 'ChargingPoolGroup', 'DE*GEF*PG_ALL', [ seg('chargingPoolIds', 'DE*GEF*P1') ]) ],
-                [ 'a6cd372c978fff17ffbf3c49d3df580e4e16eeb2c4a09be9b62392ec00f808f8', 'b950906151957c05d443b9bd798cfce7e81e98f1fe389329280fa177cbd278fe' ]);
+                [ 'f6812133fd0738e9066905f089bee99b365a328ef47dcf7461679a20775496f1', 'da9c39886ceba4a8ef070428f36357d5044f3e577a562b3101f87faeafd3fd69' ]);
 
         // Templates, whose order is content: at the end.
         applied([ element('AddElement', 'ChargingStation', 'DE*GEF*S1', [ seg('templateIds', 'DE*GEF*ST_AC') ], { newValue: 'DE*GEF*ST_AC' }) ],
-                [ '33589e1044229400d738b92316fab95ff1b7aab3deeac371b4a75caa7964cf36', '8c545ebbae619deb94ef80d2fb8d2b6ff7026f6d8f3e28ea51b3fd2017072335' ]);
+                [ '3db0d8f74e8439ddcaadbc20cc8b5080cd14c741e43375dc132c92a2e6b87978', 'f9fa585bfa092a496f5c3ff47a6cc2ce1eff62ac41261cc47da8d89463a7cf17' ]);
 
         applied([ element('UpdateElementProperty', 'ChargingPool', 'DE*GEF*P1', [ seg('name') ], { propertyName: 'de', newValue: 'Jena Paradies' }) ],
-                [ 'a9533457d5e792507bc4eef2403c8c6b7375c9089680f828df2aecf31f686ba4', '09c0ce33211ddbef8a73ef5277e064befb14909c24660b88c76b5efea3e27a2b' ]);
+                [ '508cf6e4203d007d21bd0b4b1f0c6efa75109ae1093f5f90899e4a6763e0c6de', '64572aa0404c4e89d7984d245b4283f6fae9dd41eaae895d5fab3a2adb909fbb' ]);
         applied([ element('AddElement', 'ChargingPool', 'DE*GEF*P1', [ seg('brands', 'P-Brand') ], { newValue: { '@id': 'P-Brand', name: { en: 'P' } } }) ],
-                [ '60723dc83d39be00c1464959ca9060bb88bec636c911a5d5a6b5c4c3419605ed', '0252967aaab63d51801c0057623aee5ae1964fb51cc3c3a57aebf6335b941f35' ]);
+                [ '98e69def57aef8549f7cec4369488258563458e3f43ca8b33bc90128e8ff64dd', 'ca630240040fa2ddb30eca4dc6213b50c931593b0421210bc51acd6fa230ea34' ]);
 
     });
 
@@ -249,32 +249,32 @@ describe('Element changes of parties, the roaming network and the entities parti
     it('as WWCP_POI3 applies them', () => {
 
         applied([ element('UpdateElementProperty', 'ChargingStationOperator', 'DE*GEF', [ seg('brands', 'gef-brand') ], { propertyName: 'name', newValue: { en: 'GEF!' } }) ],
-                [ '25c388d046d34c0d1ec094e44893dd2916014386532bd8d1b0c95505437a27e6', '458ca75381b3674607f501ffdb43dbffa96cc4eca28991be8bef297bb2366f6b' ]);
+                [ '91d37b4b705b30e2f2327df51386d828af267fa9470846181f27fbf19177319d', 'aef0e1482a3c942102049785c01dc09be8e581359c8f8ca6ae8f09cf24e88377' ]);
         applied([ element('AddElement', 'ConformityAssessmentBody', 'PTB', [ seg('notifiedFor', 'CRA') ], { newValue: 'CRA' }) ],
-                [ '9f3c2d24a3b76ca663ecbd9693c9cf12ceac7424f5a64ee28273ab8ff68c7b25', '7619ca40dd4993ba4d4a0a776a66ca900a94ac8148482c3bf57a09d17300d354' ]);
+                [ 'a65c5592bad6438742b688e8c585b6a1f6052430845c99f68e72e35286c1eada', '24e72ec502ecdefbb35a4779b95fe8a32aa1de798e9e4ae0ff98fa45367c19f0' ]);
         applied([ element('AddElement', 'ChargingStationModel', 'GD-DC300', [ seg('firmwareVersions', '2.6.0') ], { newValue: '2.6.0', parentEntityType: 'ChargingStationManufacturer', parentEntityId: 'GraphDefined' }) ],
-                [ '2f8128a9dd1ea5ba0e6c8e9fa883593aa8b24bb9abfe0b03c663b80ea82e6391', 'b7528e382dc64c1bfd60bd07fc6d896309e787612f2ee8a427fb543205c07497' ]);
+                [ '23b959d1688899b391e1ad8ea5936c5478a24fdb448f31a137a3084c3789df3a', 'e1300df152453c7ded49f87dbd52f6586dd22d86fb94ae3aeb8b39fa4dcee59e' ]);
         applied([ element('UpdateElementProperty', 'RoamingNetwork', QA.id, [ seg('name') ], { propertyName: 'de', newValue: 'Qualitätssicherung' }) ],
-                [ '62b012c3a9af0a0a934fef9601231fcd6ab064697320b04902131c36d5239cc9', '84e54cd5bd37aff433b0ccbde07ca3a9a06dac9f7373820c08cf04d70811e094' ]);
+                [ '006c98731af72cdef5949b8a2869382e25e2b6cfa35a0efa46fa859d187e324b', '9fed67cbd714f03ff55d3c1406062911a470910ebf2baf5766b20357dbd567ff' ]);
         applied([ element('UpdateElementProperty', 'RoamingNetworkOperator', QA.operator?.id ?? '', [ seg('name') ], { propertyName: 'de', newValue: 'OCC' }) ],
-                [ 'c4284c23ce798fcab8dad017bac7c2341d22cef55d372e7a7216c619879d7556', '2c683be81c9466e2d8ade8a366e0da6363d59b625845e473b771c01107738b2f' ]);
+                [ '80acfff657b8934316833e4f39e6ccc0f06e5110446c3b374ac4f35107ce3fca', 'c691052bb0da31ca4e3a7c5fd496c1650b4bee898ceb51fef56b59781f3a5b77' ]);
 
         applied([ element('UpdateElementProperty', 'ChargingTariffOffer', 'offer-1', [ seg('discount') ], { propertyName: 'percent', newValue: 20 }) ],
-                [ '4543f5f47288a637ec8d37b5a0796f92b75f0e207ae594c848e837d9469510ce', 'eaa6007b6516ff4e3f39a57a7197c780b310cdb6a61474b772fc438c6dc061c3' ]);
+                [ 'c3d4b1b7b03be9f494919e20bb5f64f068b8894f2676abb616a16d93df4028bd', 'fab2e296fbf152b57034c68233fc2f6c378c3374e09eafd1aba85942c7e42549' ]);
         applied([ element('AddElement', 'EVSEGroup', 'DE*GDF*EG_FAV', [ seg('EVSEIds', 'DE*GEF*E2*1') ], { newValue: 'DE*GEF*E2*1' }) ],
-                [ 'ba103c90a7c2aee5b00b34e33f60b15c596ef0916388bdb263c4c71c500d2478', '2b838dac0b24dd78ade7c06443c63ad84b63bdce982c553e25e48f07f87e2573' ]);
+                [ '2d87cb19838e6698a0173b038a41f24c0d025292cfa6315121bacbb1d13883af', '5686d684188ca6d9c3a82104161c4c52ed5a8317d3b513388da5f969fe1cfe54' ]);
         applied([ element('UpdateElementProperty', 'GridConnectionPoint', 'gcp-1', [ seg('energyMeter') ], { propertyName: 'serialNumber', newValue: 'GCP-1' }) ],
-                [ '6ecc0123c95d9d586b4011abcdbf1704e24d950d2e7982a6cd39f656bb98165b', 'a358cad6b42dec9b5f8131742ae9afa609e92d24376adf9e80dc7ce059447a71' ]);
+                [ '272f2cb7993cb5beb2c676454e1bf09662bf6eca370aa14368d900e5de32ee2c', 'f52ee24ef66de123a895bcdde8c8cce984b83a6049cbee35bbb8de6bb468fbd7' ]);
         applied([ element('RemoveElement', 'EnergyMeterGroup', 'net-meters', [ seg('energyMeterIds', 'GCP-METER-1') ]) ],
-                [ 'b7d59e402725d99db9c6dda1cb302a92bbf17d61005516917470bf4d7223e6a6', 'd92c872d9a41ca891e4818aa26f0e5a7f45141b4ad03c4c2ebdfb0d56a433113' ]);
+                [ '53b96df6b5f2e7572beebd716668068fc0409f23dfed35ee0e665fef8135537e', 'b46ce4266c6a8c66e18d58e8336df517d28f042107c4aa3cb1b21f9ae8783111' ]);
         applied([ element('RemoveElement', 'ParkingSpace', 'space-1', [ seg('parkingSensorIds', 'SENSOR-1') ]) ],
-                [ '3fe6388468bad5fcc611ad52955026fee55860e15434389e85c17741341ce908', 'e8c4520742ad5d6a6c545a6c62797653afc598e81ed36fde615ac240b2120ef8' ]);
+                [ '42ba249890b65f676baae3965e82764c467c9e30f2dddcad622e013fd94aa4be', '242471d8f2655c86236fd86d279dda194449696a7f1d39b17e8628b3ae45e953' ]);
 
     });
 
     it('keys and tree hash algorithms changed as a whole, refused in the words of WWCP_POI3', () => {
 
-        expect(refusal([ element('RemoveElement', 'ChargingStationOperator', 'DE*GEF', [ seg('signingKeys', '2cffb7299872665f61379379dfdc6368b609ddaf8c93ca836e57ccb8e077b3bc') ]) ]))
+        expect(refusal([ element('RemoveElement', 'ChargingStationOperator', 'DE*GEF', [ seg('signingKeys', '5ce28ad6fa62e1a55c399197d219f4e65db4c09ff0d83f1400a2ef6401f37175') ]) ]))
             .toBe("Change 0: the signingKeys of the charging station operator 'DE*GEF' are changed as a whole, not element by element!");
         expect(refusal([ element('AddElement', 'RoamingNetwork', QA.id, [ seg('treeHashAlgorithms', 'SHA-512') ], { newValue: 'SHA-512' }) ]))
             .toBe(`Change 0: the treeHashAlgorithms of the roaming network '${QA.id}' are changed as a whole, not element by element!`);

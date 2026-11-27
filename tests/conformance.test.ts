@@ -4,7 +4,7 @@ import {
     applies, canonical, chargyDocument, deviates, encodings, evTaler, histories, history, historyDocument, patched, qiDigital, qiDigitalDocument,
     refusals, runDocument, runText, specification, trust, verifier, type AnchoredSnapshotCase, type DocumentRef, type DocumentStep,
     type EVTalerRatesGiven, type EVTalerVector, type HistoryReplayVector, type QIDigitalCase, type QIDigitalVector, type RefusalVector, type ReplayStep, type TrustCase, type VerifierCase, type VerifierPolicy,
-    type VerifierVector,
+    type KeyStatementChainOutcome, type VerifierVector,
 } from './conformance.ts';
 
 import { parseJSON, parseJSONObject }       from '../src/json/parse.ts';
@@ -338,6 +338,57 @@ describe('Golden vectors: histories WWCPPOIConformanceTests signed, what they ta
             else
                 expect(() => replayStep(current, last, documentOf, options)).toThrow(vector.reason);
 
+        });
+
+});
+
+
+/**
+ * Holds a chain of key statements to what its vector expects: the last statement verified and the holder of every identity
+ * key trusted then, or the reason, in its words; where it ends with what the cryptography says, up to there.
+ */
+function expectChain(vector: KeyStatementChainOutcome & { knownDeviations?: readonly string[] }, verify: () => { verified: KeyStatement, holderOf: Map<string, string>, last: KeyStatement | undefined }): void {
+
+    if (deviates(vector))
+        throw new Error('This library is known to deviate in no chain of key statements');
+
+    if (vector.expected === 'accepted') {
+        const { verified, holderOf, last } = verify();
+        expect(verified).toBe(last);
+        expect(Object.fromEntries([ ...holderOf ].sort(([ a ], [ b ]) => a < b ? -1 : a > b ? 1 : 0))).toEqual(Object.fromEntries(Object.entries(vector.holderOf ?? {}).sort(([ a ], [ b ]) => a < b ? -1 : a > b ? 1 : 0)));
+        return;
+    }
+
+    if (vector.reason === undefined)
+        throw new Error('A chain of key statements refused names its reason');
+
+    expect(verify).toThrow(vector.reason);
+
+}
+
+
+describe('Golden vectors: the key statements of an operator one after the other, from identity keys trusted to the last of them (8.6)', () => {
+
+    for (const vector of trust.keyStatementChains.filter(applies))
+        it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
+            expectChain(vector, () => {
+                const statements = KeyStatement.parseChain(parseJSON(vector.keyStatements));
+                return { ...KeyStatement.verifyChain(statements,
+                                                     vector.trustedHolders,
+                                                     { minConsensus:       vector.minConsensus ?? 1,
+                                                       at:                 Date.parse(vector.at),
+                                                       otherIdentityKeys:  (vector.otherIdentityKeys ?? []).map(key => POIPublicKey.parse(parseJSON(key))) }),
+                         last: statements.at(-1) };
+            });
+        });
+
+    for (const vector of history.keyStatementChains.filter(applies))
+        it(`${vector.id} (${vector.expected}): ${vector.description}`, () => {
+            const anchor = TrustAnchor.parse(runText(vector.trustAnchor).trim());
+            expectChain(vector, () => {
+                const statements = KeyStatement.parseChain(runDocument(vector));
+                return { ...KeyStatement.verifyChain(statements, anchor.holders, { minConsensus: anchor.minConsensus, at: Date.parse(vector.at) }), last: statements.at(-1) };
+            });
         });
 
 });

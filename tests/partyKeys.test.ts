@@ -48,12 +48,12 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
         const network = qa(n => { key(gef(n), 'signingKeys')['usages'] = [ 'priceStatements', 'tariffs', 'zzz' ]; });
         const given   = JSON.stringify(key(gef(network), 'signingKeys'));
 
-        expect(refusal(network)).toBe(`Invalid signing key '${given}': The usage 'zzz' of the public key '2cffb7299872665f61379379dfdc6368b609ddaf8c93ca836e57ccb8e077b3bc' ${UNKNOWN}`);
+        expect(refusal(network)).toBe(`Invalid signing key '${given}': The usage 'zzz' of the public key '2a10ef4ed6e0e425d5b2e4797d711341b726aedb14a1b1c06703b13166711988' ${UNKNOWN}`);
 
         expect(refusal(qa(n => { key(gef(n), 'identityKeys')['usages'] = [ 'zzz' ]; })))
-            .toMatch(/^Invalid identity key '\{"@id":"4d2a31bb.*\}': The usage 'zzz' of the public key '4d2a31bb8d54a5439a10efdff8b599e07766819ef0c3b9a0915419775a106126' is unknown/u);
+            .toMatch(/^Invalid identity key '\{"@id":"6127a0b2.*\}': The usage 'zzz' of the public key '6127a0b27d4b0886f571cb728e8dfa98fb699b21af70502dfcb97e8b45321477' is unknown/u);
         expect(refusal(qa(n => { key(gef(n), 'signingKeys')['usages'] = [ 'tariffs', 'priceStatements' ]; })))
-            .toMatch(/': The usages of the public key '2cffb7299872665f61379379dfdc6368b609ddaf8c93ca836e57ccb8e077b3bc' are written in their ordinal order!$/u);
+            .toMatch(/': The usages of the public key '2a10ef4ed6e0e425d5b2e4797d711341b726aedb14a1b1c06703b13166711988' are written in their ordinal order!$/u);
         expect(refusal(qa(n => { gef(n)['signingKeys'] = {}; }))).toBe('The signing key must be a JSON array!');
         expect(refusal(qa(n => { gef(n)['identityKeys'] = 'x'; }))).toBe('The identity key must be a JSON array!');
         expect(refusal(qa(n => { gef(n)['signingKeys'] = [ 'x' ]; }))).toBe(`Invalid signing key '"x"'!`);
@@ -61,7 +61,7 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
 
         // Every party, the keys of a manufacturer as well.
         expect(refusal(qa(n => { key(party(n, 'chargingStationManufacturers', 'GraphDefined'), 'signingKeys')['usages'] = [ 'zzz' ]; })))
-            .toMatch(/^Invalid signing key '\{"@id":"1d5b25a3.*\}': The usage 'zzz' of the public key '1d5b25a3934dfe6a9d101f102aa4713998a5276c2b93a43cdea9f9859c4689b7' is unknown/u);
+            .toMatch(/^Invalid signing key '\{"@id":"77b08552.*\}': The usage 'zzz' of the public key '77b08552917dcb24c65fe73ce4a1f1509a92b89912ff23f561d36526514122c7' is unknown/u);
 
     });
 
@@ -79,16 +79,16 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
             .toBe(invalid('a charging station operator', "A signing key of the charging station operator 'DE*GEF' must not be given twice!"));
 
         expect(refusal(qa(n => { keys(gef(n), 'signingKeys').push(clone(key(gef(n), 'identityKeys'))); })))
-            .toBe(invalid('a charging station operator', "The key '4d2a31bb8d54a5439a10efdff8b599e07766819ef0c3b9a0915419775a106126' of the charging station operator 'DE*GEF' must not be both a signing and an identity key!"));
+            .toBe(invalid('a charging station operator', "The key '6127a0b27d4b0886f571cb728e8dfa98fb699b21af70502dfcb97e8b45321477' of the charging station operator 'DE*GEF' must not be both a signing and an identity key!"));
         expect(refusal(qa(n => { key(gef(n), 'identityKeys')['usages'] = [ 'party' ]; })))
-            .toBe(invalid('a charging station operator', "The identity key '4d2a31bb8d54a5439a10efdff8b599e07766819ef0c3b9a0915419775a106126' of the charging station operator 'DE*GEF' names no usages: they are of signing keys!"));
+            .toBe(invalid('a charging station operator', "The identity key '6127a0b27d4b0886f571cb728e8dfa98fb699b21af70502dfcb97e8b45321477' of the charging station operator 'DE*GEF' names no usages: they are of signing keys!"));
 
         expect(refusal(qa(n => { const body = party(n, 'conformityAssessmentBodies', 'EM-LAB'); keys(body, 'signingKeys').push(clone(key(body, 'signingKeys'))); })))
             .toBe(invalid('a conformity assessment body', "A signing key of the conformity assessment body 'EM-LAB' must not be given twice!"));
         expect(refusal(qa(n => { const meters = party(n, 'energyMeterManufacturers', 'KERNBERG'); keys(meters, 'identityKeys').push(clone(key(meters, 'identityKeys'))); })))
             .toBe(invalid('an energy meter manufacturer', "An identity key of the energy meter manufacturer 'KERNBERG' must not be given twice!"));
         expect(refusal(qa(n => { key(party(n, 'transparencySoftwareManufacturers', 'GraphDefined'), 'identityKeys')['usages'] = [ 'software' ]; })))
-            .toBe(invalid('a transparency software manufacturer', "The identity key '8be18f5d85911af9e9f26740350d31aa770787898a6710b6745c258686de5a1c' of the transparency software manufacturer 'GraphDefined' names no usages: they are of signing keys!"));
+            .toBe(invalid('a transparency software manufacturer', "The identity key '815edaf050120785e493934e5b5fac179d116e730001672b99342aa3fd0d8e46' of the transparency software manufacturer 'GraphDefined' names no usages: they are of signing keys!"));
 
     });
 
@@ -98,7 +98,7 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
         expect(refusal(qa(n => {
             key(party(n, 'conformityAssessmentBodies', 'EM-LAB'), 'signingKeys')['usages'] = [ 'zzz' ];
             key(gef(n), 'signingKeys')['usages'] = [ 'yyy' ];
-        }))).toMatch(/^Invalid signing key '\{"@id":"bb4f2331/u);
+        }))).toMatch(/^Invalid signing key '\{"@id":"6cd3e24d/u);
 
         // WWCP_POI3 takes them and writes them in the order of their identifications; refused as the content holds them so.
         expect(refusal(qa(n => { keys(gef(n), 'signingKeys').reverse(); (gef(n)['identityKeys'] as JSONArray).reverse(); })))
@@ -108,7 +108,7 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
 
         // Also a property of a key WWCP_POI3 does not read, which it leaves out.
         expect(refusal(qa(n => { key(gef(n), 'signingKeys')['x'] = 1; })))
-            .toMatch(/^Invalid signing key '\{"@id":"2cffb729.*\}': The public key '2cffb7299872665f61379379dfdc6368b609ddaf8c93ca836e57ccb8e077b3bc' must not name the property 'x'!$/u);
+            .toMatch(/^Invalid signing key '\{"@id":"2a10ef4e.*\}': The public key '2a10ef4ed6e0e425d5b2e4797d711341b726aedb14a1b1c06703b13166711988' must not name the property 'x'!$/u);
         expect(refusal(qa(n => { key(gef(n), 'signingKeys')['usages'] = [ 'payments', 'priceStatements', 'tariffs' ]; }))).toBe('taken');
 
     });
@@ -120,14 +120,14 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
         expect(refusal(qa(n => { keys(operator(n), 'identityKeys').push(clone(key(operator(n), 'identityKeys'))); })))
             .toBe("The given JSON representation of a roaming network operator is invalid: An identity key of the roaming network operator 'OCC' must not be given twice!");
         expect(refusal(qa(n => { key(operator(n), 'identityKeys')['usages'] = [ 'party' ]; })))
-            .toBe("The given JSON representation of a roaming network operator is invalid: The identity key '001253a830f0ec730ef59a0b825df8df9f81e03b1545bf4b4947e4114b830bca' of the roaming network operator 'OCC' names no usages: they are of signing keys!");
+            .toBe("The given JSON representation of a roaming network operator is invalid: The identity key '2891edec09073b4b116780c99faa1c5d1e0e94697c7f0ab9dcfe7c7d3dec26a5' of the roaming network operator 'OCC' names no usages: they are of signing keys!");
         // What the roaming network refuses of its operator as it is made of it, as an argument of its constructor.
         expect(refusal(qa(n => { (operator(n)['keyStatement'] as JSONObject)['roamingNetworkId'] = 'QB'; })))
             .toBe("The given JSON representation of a roaming network is invalid: The key statement of the roaming network operator 'OCC' is one of the roaming network 'QB', not of 'QA'! (Parameter 'Operator')");
         expect(refusal(qa(n => { (operator(n)['keyStatement'] as JSONObject)['roamingNetworkOperatorId'] = 'OCD'; })))
             .toBe("The given JSON representation of a roaming network is invalid: The key statement of the roaming network operator 'OCC' is one of 'OCD'! (Parameter 'Operator')");
         expect(refusal(qa(n => { key(operator(n), 'identityKeys')['usages'] = [ 'zzz' ]; })))
-            .toMatch(/^Invalid identity key '\{"@id":"001253a8.*\}': The usage 'zzz' of the public key '001253a830f0ec730ef59a0b825df8df9f81e03b1545bf4b4947e4114b830bca' is unknown/u);
+            .toMatch(/^Invalid identity key '\{"@id":"2891edec.*\}': The usage 'zzz' of the public key '2891edec09073b4b116780c99faa1c5d1e0e94697c7f0ab9dcfe7c7d3dec26a5' is unknown/u);
 
     });
 
@@ -136,7 +136,7 @@ describe('The keys of the parties of a roaming network, read with it (D12)', () 
 
 describe('A key, in the words and order of POIPublicKey.TryParse of WWCP_POI3', () => {
 
-    const GEF_KEY  = '2cffb7299872665f61379379dfdc6368b609ddaf8c93ca836e57ccb8e077b3bc';
+    const GEF_KEY  = '2a10ef4ed6e0e425d5b2e4797d711341b726aedb14a1b1c06703b13166711988';
 
     /** The first signing key of DE*GEF (ML-DSA), or of the manufacturer GraphDefined (EC2), changed by `change`. */
     const keyOf = (change: (key: JSONObject) => void, manufacturer = false): JSONObject => {
@@ -197,7 +197,7 @@ describe('A key, in the words and order of POIPublicKey.TryParse of WWCP_POI3', 
 
         // Another CBOR of the same key, its label 1 in two bytes: written again, another text than the one hashed.
         expect(refused(keyOf(json => { json['key'] = base64([ 0xA4, 0x18, 0x01, ...bytesOf(json['key'] as string).slice(2) ]); }, true)))
-            .toBe("Invalid COSE key: Invalid deterministic CBOR: the key of the public key '1d5b25a3934dfe6a9d101f102aa4713998a5276c2b93a43cdea9f9859c4689b7' is not written as the deterministic CBOR of its COSE key!");
+            .toBe("Invalid COSE key: Invalid deterministic CBOR: the key of the public key '77b08552917dcb24c65fe73ce4a1f1509a92b89912ff23f561d36526514122c7' is not written as the deterministic CBOR of its COSE key!");
 
         // EC2 with d: a private key, whatever its identification.
         const withPrivatePart = (json: JSONObject): void => {

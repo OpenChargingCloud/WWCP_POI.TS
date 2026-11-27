@@ -1,0 +1,235 @@
+{
+  "@id": "5e829fca531c3e5898644470d71dc8d9c0f679f4a092c225de694706b0f84c95",
+  "@context": "https://open.charging.cloud/contexts/wwcp/roamingNetwork/changeSet/v3",
+  "roamingNetworkId": "QA",
+  "createdAt": "2026-11-26T22:02:03.681Z",
+  "description": {
+    "en": "DE*GEF, GraphDefined Charging Solutions, and the manufacturers of its charging stations and energy meters"
+  },
+  "signatures": [
+    {
+      "algorithm": "ES512",
+      "keyId": "39797fda9a43d715b90163b13ed8d8a82b517b8210d239d3e7bc64a4b4ad90ef",
+      "value": "AY/6MxZ9z40BwnmusZjfUdO3s6uuH6Kz7sjf67QNDnNT/MDWaxKbEIOhtCwfu2IfH8epL9vj14hYkUQQcfIGkDuVAYtOZsfLN6c19HrVo1atBTnExL5ysoe/s/j2BBK4KRy/cqfJgnIabz/QUUYsQL/PlB0LOQtIyqEiH3veAHbsgDxD"
+    },
+    {
+      "algorithm": "Ed448",
+      "keyId": "0fad8f41a10deab7800a061883015fe997154063a5a520f95cf3b34429ccceba",
+      "value": "WVKlF4zjD38H7crWStngDzWZFbLxWn/mqDoLT0dNvsaMgfpVISTQMMZhUHJ8M89f9pZgXdrN1OOAYzahn/rGV/ewVvJ8nfCYZbVIuxpmikyN9mHIcabWrnKiz4ov0vah85zd5BF/kBMZWlHvqE2BGzYA"
+    },
+    {
+      "algorithm": "ES512",
+      "keyId": "76e2290846de26e6316daf6021a76811335c03fed494fed087614c1bbcd7cc6a",
+      "value": "AIdgyGKorosh82dfvOXZ3xKividsupDytsNDSinYn3gSo5drv6HDp8liSPskABRQmgLGQxjDdWCkTMw+9JX7EccjAaq3Yz7HYHC452agGL7NcHsww2G6DyeKQLUlIJ1WFCsiLdgFbGh2qjZD9bLfy7FdwL7wmngov5+xEkU59Ax/2vsi"
+    },
+    {
+      "algorithm": "ES512",
+      "keyId": "54f49279c518d358ce78de1809bccde7c0c9434c99d0da74e8633f8bc6c8651f",
+      "value": "ASxy6LG+Tursbv0KGe90ci8hlMwuzN++fkmHckCHFj3oGnS9IDxMGIYIasc1tjIh6pNfn60CF3xtwkd7DvehpCsvAQxnyzz90v0Wo2YJrT0O3WKy2eABuHcvdiNYCc353UPlp7630/q7HafO+92XrM9oxo7SYzL8ElnleT+TVuI2jvEZ"
+    },
+    {
+      "algorithm": "ES512",
+      "keyId": "1e3d0557febbbef478c748958e25b4bcea90ec1c242803e8343892ce0c5a7cb3",
+      "value": "AUSp9FYjrMrmu8CphDh7qOyz3h8L/pxfRa47+SsRFYDZN+CjQFMwurxcJXbX6XjUVWfUdAH0+/9xbv4i1o6JFuYqAHj7E1TStkuP/LqyUoQilMvLzy9llGx2pWI2RQhgjLiX8SGS/IdnyAtvmebsglBkNoS3nIKVncuYfT0FDJJSuV9x"
+    }
+  ],
+  "changes": [
+    {
+      "kind": "Add",
+      "entityType": "ChargingStationOperator",
+      "entityId": "DE*GEF",
+      "newValue": {
+        "@id": "DE*GEF",
+        "name": {
+          "en": "GraphDefined Charging Solutions"
+        },
+        "description": {
+          "en": "GraphDefined the first Charging Station Operator on the Open Charging Cloud"
+        },
+        "signingKeys": [
+          {
+            "@id": "076d043df5850fc9f36bc4973923bc295d72cd4b6754af732e405d6df4da6f19",
+            "key": "pAECIAEhWCDqHjt+8UuWRifyDKoJdWyG8NldHazF6yCsnp8EEOM2MiJYIAuy2KG6SX5A5cve/zPtllcmONILQCFV57EhHst+gDyf",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "party"
+            ]
+          },
+          {
+            "@id": "292001ef359628123f09a2832c3fdcb445d684a1f740761a15b14f2e7517944f",
+            "key": "pAECIAEhWCCMiZW2LtGyJVqUnDjToP6DC6VXWzftnIsKnOXVOzFWGCJYIC8r4f0dBNjNrIBoKA6o73W2D9RBUTqQQkr8EM4HwC3q",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "infrastructure"
+            ]
+          },
+          {
+            "@id": "76a16cb7d24c9060d8b4eefd56356509b405112101b3b54cdcfc693076ca9a4f",
+            "key": "pAECIAEhWCAi4vZjdZ3YVPtFq/ydL2heC2rCtTyat9lYhT22nHZEsSJYIMVDrAQJlNaOBGINSQDx+uPYElcaAJslgy7lT/xfNrg9",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "priceStatements",
+              "tariffs"
+            ]
+          }
+        ],
+        "identityKeys": [
+          {
+            "@id": "0fad8f41a10deab7800a061883015fe997154063a5a520f95cf3b34429ccceba",
+            "key": "owEBIAchWDkG/DIpX5W/QkJrHRqVT81ivShNB3D6V8DxHwAM1oEPumO+0MhyqKxKzqL/mQ7Ru2Xwehm9rCPAiAA="
+          },
+          {
+            "@id": "39797fda9a43d715b90163b13ed8d8a82b517b8210d239d3e7bc64a4b4ad90ef",
+            "key": "pAECIAMhWEIBnP3kSIyEKmaWD46Oh/lh4T2lAA/QtEHNbYLxZLRnm9oOmt4N9/7qYgmEa9EjbSo+cyWo8u5WYX1EDq6+o1LXO/ciWEIATBEnf5Novr14UbE/9YASIza05hARHi2VQGrz4QNASveiMB1FVQmYGB2VyJLo/oKGQQY1aUxUVpUnCoPeuLxbaiA="
+          }
+        ],
+        "created": "2026-11-26T22:02:03.040Z"
+      }
+    },
+    {
+      "kind": "Add",
+      "entityType": "ChargingStationManufacturer",
+      "entityId": "GraphDefined",
+      "newValue": {
+        "@id": "GraphDefined",
+        "name": {
+          "en": "GraphDefined Charging Stations"
+        },
+        "homepage": "https://stations.graphdefined.example",
+        "signingKeys": [
+          {
+            "@id": "77b08552917dcb24c65fe73ce4a1f1509a92b89912ff23f561d36526514122c7",
+            "key": "pAECIAEhWCDVZzzWtJy72dzOT/kraHYUFHJL1G+NiycwgOnvXInwFyJYIGjVvV52jFXAKXWYkBVpfu3KD23LPmUixIIZMg3dvcWR",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "models"
+            ]
+          },
+          {
+            "@id": "ee66e4be6e4dc9d8772431fb748fab3c0c93f0125cc7e79b34708b57084fc56c",
+            "key": "pAECIAEhWCBInJiqPZrYiMeNhpxkLwCGCaA1SIzZyDfOzQIe8By8YyJYIOnHqTcQG4JxN13MrG9ZszpCgf17YUYJFgyFCde7qYc5",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "party"
+            ]
+          }
+        ],
+        "identityKeys": [
+          {
+            "@id": "76e2290846de26e6316daf6021a76811335c03fed494fed087614c1bbcd7cc6a",
+            "key": "pAECIAMhWEIB2wkcetu+Mg9HDkc9/euQTLOprO38YoW8vb2ocPp1HVz2TQJB5iO3xgYdL5LD9srbSiFa9Z5cUhCZwkWGCDZsJzAiWEIAZ3NIgRUjCqP7sSln/tg5i1BRV0yMDzACIALqDMekhodaehjZr1YxwobLgFmZPIKzNPfDCzm049oiZbFhos1oEsk="
+          }
+        ],
+        "created": "2026-11-26T22:02:03.370Z"
+      }
+    },
+    {
+      "kind": "Add",
+      "entityType": "EnergyMeterManufacturer",
+      "entityId": "SAALE",
+      "newValue": {
+        "@id": "SAALE",
+        "name": {
+          "en": "Saale Metering"
+        },
+        "description": {
+          "en": "Calibrated AC energy meters"
+        },
+        "homepage": "https://saale-metering.example",
+        "signingKeys": [
+          {
+            "@id": "03c8dd39e546706e19c88c38b1d1146049a9910d70de8155fe08c4e71fe015de",
+            "key": "pAECIAEhWCABmFaBJMuscFio5uFjvSB9VsHPOwaobKv/xZvs2dhq1CJYIAwv6AKHtQtjSP3MEf3o/8jRWOdKjBUXKcq99954yhcn",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "models"
+            ]
+          },
+          {
+            "@id": "ff272dcdd6d588072bde15cbfff6956da516891687b6dbaaa71f28da8121b753",
+            "key": "pAECIAEhWCDGzoI2SdR+YS+lOjeFUuwH2eXvb3wutFHCjfuxmvANGCJYINxTiO/sy7LNdprD5iL66vvP72V1PlPJDkb1p+8iNToX",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "party"
+            ]
+          }
+        ],
+        "identityKeys": [
+          {
+            "@id": "54f49279c518d358ce78de1809bccde7c0c9434c99d0da74e8633f8bc6c8651f",
+            "key": "pAECIAMhWEIBUccPQlscdzuzvDbAk24Xqfoq+Qwl5Tm9r9DmrdikPyndKPQqZjI6XUZmngaVmP5M1ULGDrRFfurmzQeskS6hSTkiWEIAhqiHXZcAqmiNODnadu3vxTuqtWv/cDuWrIr/BOWEVJNaxj9hUnaO6Z8P/lRXlhQ/ZwB0aGZjYbJdk9qdx87khik="
+          }
+        ],
+        "created": "2026-11-26T22:02:03.484Z"
+      }
+    },
+    {
+      "kind": "Add",
+      "entityType": "EnergyMeterManufacturer",
+      "entityId": "KERNBERG",
+      "newValue": {
+        "@id": "KERNBERG",
+        "name": {
+          "en": "Kernberg DC Metering"
+        },
+        "description": {
+          "en": "Calibrated DC energy meters"
+        },
+        "homepage": "https://kernberg-metering.example",
+        "signingKeys": [
+          {
+            "@id": "92d7b5e5c965cc76351f1f81b5bd528d03c7bc4b01bdb5eceaeb514d29c47cc6",
+            "key": "pAECIAEhWCArVi+sbVeTb/7URhcT8MQe7SIsBWrKrgJ88MKpqQQpXSJYINz7BtaLVn6c9vZdp/kcuCgra/f8YW0IJ4+lJBoArhUy",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "models"
+            ]
+          },
+          {
+            "@id": "f1dca556dcfa49865c6dba510653871568642a0740d01a7d722aa6d81b8af846",
+            "key": "pAECIAEhWCD9A9HpcDcDfrDZzUYAsyWk4/NUgcex+Z3thkQEdVD5eCJYICF/uzdDrylcsdeMxDbe26PodgkKEQR87BRhvCKlX/0o",
+            "notAfter": "2027-11-26T22:02:02.855Z",
+            "usages": [
+              "party"
+            ]
+          }
+        ],
+        "identityKeys": [
+          {
+            "@id": "1e3d0557febbbef478c748958e25b4bcea90ec1c242803e8343892ce0c5a7cb3",
+            "key": "pAECIAMhWEIAcZMmxN230IsBZ8khz85Tx8cd9DGOe4H9CNfnQ6vYf7i9VzbmFJ1Xvk1GSja8JfO7Pv6ZvgoK7POTO2OxtR3By+giWEIA/0ZIR4b+DjeIWjkGO9TkAdVeLxkyMBl2Q48b4327lLq1Km3Z9rsKo65UMfzPqZwOQstF5jwbMhvszvNmWh+E3kg="
+          }
+        ],
+        "created": "2026-11-26T22:02:03.656Z"
+      }
+    }
+  ],
+  "beforeETags": [
+    [
+      "json",
+      "sha256",
+      "hex",
+      "62505fe74a88bdfe02a8ea73434fe28a8e26b0ba40c8f9b23f97eee39fa1fb40"
+    ],
+    [
+      "cbor",
+      "sha256",
+      "hex",
+      "9ffb090b0b4cf1b7f0a645c4cfd5f4864f41383b7e20c569434f7761eef97620"
+    ]
+  ],
+  "afterETags": [
+    [
+      "json",
+      "sha256",
+      "hex",
+      "d0a4cc5ea781d6c7afbe3dce33370295a5e7d37a03d554f44ac2d9a4a8546d94"
+    ],
+    [
+      "cbor",
+      "sha256",
+      "hex",
+      "3e6c7529c3a57dfd0e8646327d21e27ea16ecdbbcb5d68e72e3f9f24ce64a203"
+    ]
+  ]
+}

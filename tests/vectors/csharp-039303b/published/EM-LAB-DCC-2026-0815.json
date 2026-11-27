@@ -1,0 +1,171 @@
+{
+  "@context": "https://open.charging.cloud/contexts/wwcp/qiDigital/digitalCalibrationCertificate/v1",
+  "@id": "DCC-2026-0815",
+  "countryCode": "DE",
+  "calibrationLaboratoryId": "EM-LAB",
+  "calibrationLaboratoryCode": "D-K-12345-01-00",
+  "customer": "GraphDefined Charging Solutions",
+  "orderNumber": "PO-2026-0815",
+  "item": {
+    "type": "EnergyMeter",
+    "id": "DE*GEF*M2*1",
+    "manufacturerId": "SAALE",
+    "modelId": "SM-3",
+    "serialNumber": "ACM-2026-002-1",
+    "hardwareRevision": "1.4",
+    "firmwareVersion": "1.0.7"
+  },
+  "beginPerformanceDate": "2026-11-26T19:02:27.398Z",
+  "endPerformanceDate": "2026-11-26T21:02:27.398Z",
+  "performanceLocation": "Customer",
+  "respPersons": [
+    {
+      "name": "Dr. Erika Mustermann",
+      "role": "Head of laboratory",
+      "mainSigner": true
+    },
+    {
+      "name": "Max Mustermann",
+      "role": "Calibration engineer"
+    }
+  ],
+  "statements": [
+    {
+      "declaration": {
+        "en": "The meter conforms to its accuracy class B."
+      },
+      "refType": "basic_conformity",
+      "norm": "EN 50470-3:2022",
+      "conformity": "Pass"
+    }
+  ],
+  "measurementResults": [
+    {
+      "name": {
+        "en": "Measurement error of the active energy"
+      },
+      "usedMethods": [
+        {
+          "reference": "EN 50470-3:2022",
+          "title": {
+            "en": "Accuracy test of static meters"
+          }
+        }
+      ],
+      "influenceConditions": [
+        {
+          "refType": "basic_temperature",
+          "value": 23.1,
+          "unit": "\\degreecelsius",
+          "expandedUncertainty": 0.5,
+          "coverageFactor": 2
+        }
+      ],
+      "results": [
+        {
+          "name": {
+            "en": "Imin"
+          },
+          "refType": "basic_calibrationPoint",
+          "quantities": [
+            {
+              "refType": "basic_nominalValue",
+              "value": 0.25,
+              "unit": "\\ampere"
+            },
+            {
+              "refType": "basic_measurementError",
+              "value": 0.42,
+              "unit": "\\percent",
+              "expandedUncertainty": 0.08,
+              "coverageFactor": 2,
+              "coverageProbability": 0.95,
+              "toleranceLower": -1.5,
+              "toleranceUpper": 1.5,
+              "conformity": "Pass"
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Itr"
+          },
+          "refType": "basic_calibrationPoint",
+          "quantities": [
+            {
+              "refType": "basic_nominalValue",
+              "value": 0.5,
+              "unit": "\\ampere"
+            },
+            {
+              "refType": "basic_measurementError",
+              "value": -0.18,
+              "unit": "\\percent",
+              "expandedUncertainty": 0.08,
+              "coverageFactor": 2,
+              "coverageProbability": 0.95,
+              "toleranceLower": -1,
+              "toleranceUpper": 1,
+              "conformity": "Pass"
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Iref"
+          },
+          "refType": "basic_calibrationPoint",
+          "quantities": [
+            {
+              "refType": "basic_nominalValue",
+              "value": 5,
+              "unit": "\\ampere"
+            },
+            {
+              "refType": "basic_measurementError",
+              "value": 0.06,
+              "unit": "\\percent",
+              "expandedUncertainty": 0.08,
+              "coverageFactor": 2,
+              "coverageProbability": 0.95,
+              "toleranceLower": -1,
+              "toleranceUpper": 1,
+              "conformity": "Pass"
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Imax"
+          },
+          "refType": "basic_calibrationPoint",
+          "quantities": [
+            {
+              "refType": "basic_nominalValue",
+              "value": 63,
+              "unit": "\\ampere"
+            },
+            {
+              "refType": "basic_measurementError",
+              "value": -0.21,
+              "unit": "\\percent",
+              "expandedUncertainty": 0.08,
+              "coverageFactor": 2,
+              "coverageProbability": 0.95,
+              "toleranceLower": -1,
+              "toleranceUpper": 1,
+              "conformity": "Pass"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "recalibrationDue": "2034-11-26T22:02:27.398Z",
+  "signature": {
+    "signedAt": "2026-11-26T22:02:27.705Z",
+    "algorithm": "ML-DSA-65",
+    "keyId": "b9eea911d1f3e4de498732e30898a874a6ac8308a96b85b2f461746f49797bf4",
+    "value": "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"
+  }
+}

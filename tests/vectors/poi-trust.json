@@ -276,6 +276,510 @@
       "evseId": "DE*GEF*E1*1",
       "root": "effectiveTree:sha256:hex:73e1952614f042ffe015db0b6d63312f8c226d7feff1cfe8983ef679ff07cf83",
       "proof": "{\"@context\":\"https://open.charging.cloud/contexts/wwcp/roamingNetwork/proof/v1\",\"attestations\":[{\"algorithm\":\"Ed25519\",\"commitId\":\"a87b12861fc240698fbb2bfad4124e28ac4dab0a1c029502454c484c3e0db25a\",\"eTag\":[\"effectiveTree\",\"sha256\",\"hex\",\"73e1952614f042ffe015db0b6d63312f8c226d7feff1cfe8983ef679ff07cf83\"],\"keyId\":\"ea671729aa29c6140b5129b8d59e13fd9fbd4b96e37b3c5185fb11c3eeeac554\",\"revision\":0,\"roamingNetworkId\":\"rn1\",\"role\":\"roamingNetworkOperator\",\"signedAt\":\"2026-10-17T18:00:00.000Z\",\"signer\":\"DE*RNO\",\"validUntil\":\"2026-10-17T18:15:00.000Z\",\"value\":\"U9e/2AIU1fdrYTnJJZkXZEhGgx71PS6LrueAF3QHPOKCG5Cez20xnI4iclg97FdipYQzNREEghvcMzURObSWAA==\"},{\"algorithm\":\"Ed25519\",\"commitId\":\"a87b12861fc240698fbb2bfad4124e28ac4dab0a1c029502454c484c3e0db25a\",\"eTag\":[\"effectiveTree\",\"sha256\",\"hex\",\"73e1952614f042ffe015db0b6d63312f8c226d7feff1cfe8983ef679ff07cf83\"],\"keyId\":\"c29a94541867f6a46760339d47f71dee92f50f79212530f9ea28f681178c0a65\",\"revision\":0,\"roamingNetworkId\":\"rn1\",\"role\":\"roamingNetworkOperator\",\"signedAt\":\"2026-10-17T18:00:00.000Z\",\"signer\":\"DE*RNO\",\"validUntil\":\"2026-10-17T18:15:00.000Z\",\"value\":\"/FnO9uxSpNsVskJBURh/oPGyQsSap7iT4mz67EUbxX3GiktwT4Fv0cGSLQVr5omyVFw9FWLsz57RYFRqtCGLCQ==\"}],\"commitId\":\"a87b12861fc240698fbb2bfad4124e28ac4dab0a1c029502454c484c3e0db25a\",\"hashAlgorithm\":\"sha256\",\"revision\":0,\"roamingNetwork\":{\"@context\":\"https://open.charging.cloud/contexts/wwcp/roamingNetwork/v1\",\"@id\":\"rn1\",\"chargingStationOperators\":{\"@leaves\":[{\"@auditPath\":[],\"@entity\":{\"@id\":\"DE*GEF\",\"chargingPools\":{\"@leaves\":[{\"@auditPath\":[],\"@entity\":{\"@id\":\"DE*GEF*P1\",\"chargingStations\":{\"@leaves\":[{\"@auditPath\":[],\"@entity\":{\"@id\":\"DE*GEF*S1\",\"EVSEs\":[{\"@id\":\"DE*GEF*E1*1\",\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"maxPower\":22000,\"maxVoltage\":230.5}],\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\"},\"@index\":0}],\"@size\":1},\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\"},\"@index\":0}],\"@size\":1},\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"name\":{\"en\":\"Charging Station Operator 'DE*GEF'\"}},\"@index\":0}],\"@size\":1},\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"name\":{\"en\":\"Example\"},\"operator\":{\"@id\":\"DE*RNO\",\"created\":\"2026-01-01T00:00:00.000Z\",\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"},{\"@id\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCBvDw7rP7/5JcZtA+GdzkjV7cn/7lHNJq5x3Tnlb3/dog==\"}],\"keyStatement\":{\"identityKeys\":[{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"},{\"@id\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCBvDw7rP7/5JcZtA+GdzkjV7cn/7lHNJq5x3Tnlb3/dog==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"value\":\"KeflIVfxjUvCFblR4m3fTQN3bRPBcf3VTSRqx6UlHpDmdksMxZUS6QYlKHOpWm+ylBEgFNmrUbwLCNl25Ct4CA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"YlksiboMDAF5iokwEp95uH1IJQKc7iVMIzrXfTwhrNC2wDHRV924ZPqji8sdIE11zmVvDYfR0oHt/tv3iPy0Bg==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2026-11-16T00:00:00.000Z\"},\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"minConsensus\":2,\"name\":{\"en\":\"Roaming Network Operator\"},\"signingKeyCertificates\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"signingKey\":{\"@id\":\"ea671729aa29c6140b5129b8d59e13fd9fbd4b96e37b3c5185fb11c3eeeac554\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCAprLrhQbzK8LIuGpTTTQvHNh5SbQv+EsiXlLyTIpZt1w==\",\"notAfter\":\"2027-10-17T00:00:00.000Z\",\"usages\":[\"party\"]},\"value\":\"23Q0gxBCESQAIEUB9z0yJd8QFmovSbx/bCcfuj/j5+hSSSUcSuXTD2G3Zpasvwhvsqv2fEV2buDRocqM4ZNsCQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"signingKey\":{\"@id\":\"c29a94541867f6a46760339d47f71dee92f50f79212530f9ea28f681178c0a65\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCB0/KKjs4n7GmTZv1LMDdTClk84BMDPfHVehRPG24GY3A==\",\"notAfter\":\"2027-10-17T00:00:00.000Z\",\"usages\":[\"party\"]},\"value\":\"3K5b7onNqzIc2wz8fK1P1ZB0RcUeH4ed6XH7aQRuUpu+vX42RywcVMnJcuE6soUsybiPBYPZWl5nDtYKgLzVAg==\"}]}}}"
+    },
+    {
+      "id": "trust-statement-signer-not-named",
+      "description": "The key statement carries, next to the signatures of Alpha and Beta, one of an identity key neither it nor the operator names: passed over, it counts for nothing.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Embedding and Verification; WWCP_POI 5219653",
+      "expected": "accepted",
+      "trustAnchor": "{\"@context\":\"https://open.charging.cloud/contexts/wwcp/roamingNetwork/trustAnchor/v2\",\"@id\":\"rn1\",\"keys\":[\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\"],\"minConsensus\":2,\"name\":{\"en\":\"Example\"},\"urls\":[\"https://hub.example/poi/RNs/rn1\",\"https://mirror.example/poi/RNs/rn1\"]}",
+      "at": "2026-10-17T18:05:00.000Z",
+      "evseId": "DE*GEF*E1*1",
+      "root": "effectiveTree:sha256:hex:056fb7fc0ad7efaab4924ce81f0683b3bf3f60a320fae6fe44f7963b4fcd4af0",
+      "proof": "{\"@context\":\"https://open.charging.cloud/contexts/wwcp/roamingNetwork/proof/v1\",\"attestations\":[{\"algorithm\":\"Ed25519\",\"commitId\":\"a87b12861fc240698fbb2bfad4124e28ac4dab0a1c029502454c484c3e0db25a\",\"eTag\":[\"effectiveTree\",\"sha256\",\"hex\",\"056fb7fc0ad7efaab4924ce81f0683b3bf3f60a320fae6fe44f7963b4fcd4af0\"],\"keyId\":\"ea671729aa29c6140b5129b8d59e13fd9fbd4b96e37b3c5185fb11c3eeeac554\",\"revision\":0,\"roamingNetworkId\":\"rn1\",\"role\":\"roamingNetworkOperator\",\"signedAt\":\"2026-10-17T18:00:00.000Z\",\"signer\":\"DE*RNO\",\"validUntil\":\"2026-10-17T18:15:00.000Z\",\"value\":\"fA/pL5Z8Ah7/gg1+DoxmQqT7Q7Tyr5mH8AoeTt4Nh+Y/nRaqT6yGtp01M18E7VN2aR6r2HFUFmYu1uCls+C5CQ==\"},{\"algorithm\":\"Ed25519\",\"commitId\":\"a87b12861fc240698fbb2bfad4124e28ac4dab0a1c029502454c484c3e0db25a\",\"eTag\":[\"effectiveTree\",\"sha256\",\"hex\",\"056fb7fc0ad7efaab4924ce81f0683b3bf3f60a320fae6fe44f7963b4fcd4af0\"],\"keyId\":\"e09c2d45bc06a188c125646025d93f10dc74ee726ce2bb5e4b5e68b5591a9dd1\",\"revision\":0,\"roamingNetworkId\":\"rn1\",\"role\":\"roamingNetworkOperator\",\"signedAt\":\"2026-10-17T18:00:00.000Z\",\"signer\":\"DE*RNO\",\"validUntil\":\"2026-10-17T18:15:00.000Z\",\"value\":\"iJ8xLtnTqcHBmW/S1xi6PQ6aOfY/IQ7TPAxxiH4uSyS3dZP70+Gb4vpfcbEJ85XeKivvA6PTM8SaSt7c+lVZDw==\"}],\"commitId\":\"a87b12861fc240698fbb2bfad4124e28ac4dab0a1c029502454c484c3e0db25a\",\"hashAlgorithm\":\"sha256\",\"revision\":0,\"roamingNetwork\":{\"@context\":\"https://open.charging.cloud/contexts/wwcp/roamingNetwork/v1\",\"@id\":\"rn1\",\"chargingStationOperators\":{\"@leaves\":[{\"@auditPath\":[],\"@entity\":{\"@id\":\"DE*GEF\",\"chargingPools\":{\"@leaves\":[{\"@auditPath\":[],\"@entity\":{\"@id\":\"DE*GEF*P1\",\"chargingStations\":{\"@leaves\":[{\"@auditPath\":[],\"@entity\":{\"@id\":\"DE*GEF*S1\",\"EVSEs\":[{\"@id\":\"DE*GEF*E1*1\",\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"maxPower\":22000,\"maxVoltage\":230.5}],\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\"},\"@index\":0}],\"@size\":1},\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\"},\"@index\":0}],\"@size\":1},\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"name\":{\"en\":\"Charging Station Operator 'DE*GEF'\"}},\"@index\":0}],\"@size\":1},\"created\":\"2026-01-01T00:00:00.000Z\",\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"name\":{\"en\":\"Example\"},\"operator\":{\"@id\":\"DE*RNO\",\"created\":\"2026-01-01T00:00:00.000Z\",\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"keyStatement\":{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"FZyTQgtDgx3qvcVnBwQU0c4iyNT4CLIWXg1Lr/oF/YLMyRNwZXuWIhwusnDim5eW7++hApGcyrbeGruURLGQAg==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"IAYgeNI2NS/atdxYZW8ty/1IjBUTTqmkjE0tgW3fjs+3xDbaIhZrsHLWVV9y7MyMrD2K8zKpJ2w1P0DNzjo1Dw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"value\":\"IB8saookqHNagTmC8oDhcjTBvRLltarfAyPs1nIFflT6dvvjthNsiUCbskrXvHtKDRUf+0YWr8J8QbsiUaoHCA==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2026-11-16T00:00:00.000Z\"},\"lastChange\":\"2026-01-01T00:00:00.000Z\",\"minConsensus\":2,\"name\":{\"en\":\"Roaming Network Operator\"},\"signingKeyCertificates\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"signingKey\":{\"@id\":\"ea671729aa29c6140b5129b8d59e13fd9fbd4b96e37b3c5185fb11c3eeeac554\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCAprLrhQbzK8LIuGpTTTQvHNh5SbQv+EsiXlLyTIpZt1w==\",\"notAfter\":\"2027-10-17T00:00:00.000Z\",\"usages\":[\"party\"]},\"value\":\"QndT4IDJA/YPtnq47eZKRvELDUDEiXkEe9qHTzgIkjwNYPhkKuaTksr8iOb4aqahqS/+QSzcjJVx0M6bz5jICg==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"signingKey\":{\"@id\":\"e09c2d45bc06a188c125646025d93f10dc74ee726ce2bb5e4b5e68b5591a9dd1\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCA/dwjV9cwrxjO1nSs6LtkudHkiDG8IreIIvrzYWAq5Ow==\",\"notAfter\":\"2027-10-17T00:00:00.000Z\",\"usages\":[\"party\"]},\"value\":\"YCQowRLIGYhA7b/fh55wRRyisswQ/HT63QoFhztWya0XUghJMZythD7JdretqUJlrJHjrhVFlJbSJi7bG+/TDw==\"}]}}}"
+    }
+  ],
+  "keyStatementChains": [
+    {
+      "id": "chain-anchor-of-the-first",
+      "description": "Alpha alone, Beta joining, Gamma joining, against Alpha trusted alone, as a trust anchor of the first statement names it: each statement signed by the quorum before and by its own.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e": "Gamma",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-anchor-of-the-second",
+      "description": "The same statements against Alpha and Beta trusted, two of two: the first statement, signed by one holder, is passed over, the second is the trusted ground, the third follows it.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e": "Gamma",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-anchor-of-the-last",
+      "description": "The same statements against the three holders of today, two of three.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f"
+        ],
+        [
+          "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e": "Gamma",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-one-statement",
+      "description": "The last statement alone against the three holders of today: a chain of one is a single statement.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f"
+        ],
+        [
+          "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e": "Gamma",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-one-statement-older-anchor",
+      "description": "The last statement alone against Alpha trusted alone, whom the statement names with a quorum of two: its own minConsensus is the larger, and nothing leads from the one holder trusted to it.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "None of the 1 key statements is signed by the trusted identity keys: The key statement is signed by trusted identity keys of 1 holder, not of 2!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-a-statement-left-out",
+      "description": "The first and the third statement, without the second: Alpha alone, the quorum of the first, signed the third, as its own quorum of Alpha and Beta did. A server may leave statements out, never add keys the quorum before did not sign.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e": "Gamma",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-a-holder-leaves",
+      "description": "Gamma leaves: a fourth statement names Alpha and Beta again, signed by both, two of the three holders before and its own quorum.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"tqoHAzghLCMo1KiIksWqGNzeNApAe3JCZlSbeyCR3ArIHgzcbFhIcFdSjyX55937DI1Ymb1YJkQMIk2I/8JFCA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"50GCqeelV20NP72yjiVsx6oEJZhZBm9kBNYmdUlfli29E5AhRgdPJoHezTGCG7J0tJu5MfLlqJQZ60l4fj2JBg==\"}],\"signedAt\":\"2026-10-20T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-signed-by-the-one-leaving",
+      "description": "Gamma leaves, and the statement without it carries its signature, next to those of Alpha and Beta: a signature of an identity key of the statement before that it names no longer, found among the keys of the one before.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Verification and Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain, WWCP_POI 5219653",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"tqoHAzghLCMo1KiIksWqGNzeNApAe3JCZlSbeyCR3ArIHgzcbFhIcFdSjyX55937DI1Ymb1YJkQMIk2I/8JFCA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"value\":\"nCkZADbknWWiI5PjMeOnvFqD/t7qVrdYuaWfVwMChv7eOeXegrlZPdoEbheYD2gGL1/2VI+X9ZPrr2uKLIQeDA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"50GCqeelV20NP72yjiVsx6oEJZhZBm9kBNYmdUlfli29E5AhRgdPJoHezTGCG7J0tJu5MfLlqJQZ60l4fj2JBg==\"}],\"signedAt\":\"2026-10-20T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-decided-by-the-one-leaving",
+      "description": "Gamma leaves by the decision of Alpha and Gamma, two of the three holders before, where Beta signs as the second holder of the statement after: signed by Alpha, Gamma and Beta, it follows the one before by Alpha and Gamma as by Alpha and Beta.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Verification and Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain, WWCP_POI 5219653",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"tqoHAzghLCMo1KiIksWqGNzeNApAe3JCZlSbeyCR3ArIHgzcbFhIcFdSjyX55937DI1Ymb1YJkQMIk2I/8JFCA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"value\":\"nCkZADbknWWiI5PjMeOnvFqD/t7qVrdYuaWfVwMChv7eOeXegrlZPdoEbheYD2gGL1/2VI+X9ZPrr2uKLIQeDA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"50GCqeelV20NP72yjiVsx6oEJZhZBm9kBNYmdUlfli29E5AhRgdPJoHezTGCG7J0tJu5MfLlqJQZ60l4fj2JBg==\"}],\"signedAt\":\"2026-10-20T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f"
+        ],
+        [
+          "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-signer-not-named-alone",
+      "description": "The statement without Gamma that Gamma signed too, alone, against Alpha and Beta trusted: the signature by a key neither the statement names nor the verifier was given is passed over and counts for nothing, those of Alpha and Beta make the quorum.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Verification and Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain, WWCP_POI 5219653",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"tqoHAzghLCMo1KiIksWqGNzeNApAe3JCZlSbeyCR3ArIHgzcbFhIcFdSjyX55937DI1Ymb1YJkQMIk2I/8JFCA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"value\":\"nCkZADbknWWiI5PjMeOnvFqD/t7qVrdYuaWfVwMChv7eOeXegrlZPdoEbheYD2gGL1/2VI+X9ZPrr2uKLIQeDA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"50GCqeelV20NP72yjiVsx6oEJZhZBm9kBNYmdUlfli29E5AhRgdPJoHezTGCG7J0tJu5MfLlqJQZ60l4fj2JBg==\"}],\"signedAt\":\"2026-10-20T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-signer-not-named-given",
+      "description": "The same statement alone, the verifier given the identity key of Gamma among other identity keys: its signature is verified, and counts for nothing, Gamma not being trusted.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Verification and Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain, WWCP_POI 5219653",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"tqoHAzghLCMo1KiIksWqGNzeNApAe3JCZlSbeyCR3ArIHgzcbFhIcFdSjyX55937DI1Ymb1YJkQMIk2I/8JFCA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"value\":\"nCkZADbknWWiI5PjMeOnvFqD/t7qVrdYuaWfVwMChv7eOeXegrlZPdoEbheYD2gGL1/2VI+X9ZPrr2uKLIQeDA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"50GCqeelV20NP72yjiVsx6oEJZhZBm9kBNYmdUlfli29E5AhRgdPJoHezTGCG7J0tJu5MfLlqJQZ60l4fj2JBg==\"}],\"signedAt\":\"2026-10-20T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z",
+      "otherIdentityKeys": [
+        "{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"}"
+      ],
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-no-statement",
+      "description": "No key statement at all.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "No key statement is given!",
+      "keyStatements": "{\"keyStatements\":[]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-none-trusted",
+      "description": "Against an identity key none of the statements names: the first reason is the one of the first statement.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "None of the 3 key statements is signed by the trusted identity keys: The key statement is signed by the key '1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802', which is not trusted!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "f4aa101cb9a320d6beedd38a042b53006da3ff67d0ebe5b57e8291ad036dccc0"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-anchor-quorum-2",
+      "description": "Against Alpha trusted alone, the verifier requiring two holders: no statement is signed by two holders it trusts.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "None of the 3 key statements is signed by the trusted identity keys: The key statement is signed by trusted identity keys of 1 holder, not of 2!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "minConsensus": 2,
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-trusted-as-two-holders",
+      "description": "The identity key of Alpha trusted as one of two holders: a key has one holder.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "None of the 3 key statements is signed by the trusted identity keys: The identity key '1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802' is trusted as one of two holders!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ],
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-out-of-order",
+      "description": "The third statement before the second: the third, in its place, was not yet signed when the one after it was, so it was not valid then.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 2 of 3 does not follow the one before: The key statement is not valid at 2026-10-18T00:00:00.000Z: it was signed at 2026-10-19T00:00:00.000Z and is valid until 2027-10-17T00:00:00.000Z!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-not-by-the-quorum-before",
+      "description": "Gamma joins by a statement Alpha and Gamma signed, not Beta: one of the two holders before is no quorum of two.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 3 of 3 does not follow the one before: The key statement is signed by trusted identity keys of 1 holder, not of 2!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"value\":\"8nVDloJ6pBMEroS3UM8U9BAKcmwSZNem2Qo7qz7P+gxDHqvIrN51E8r0aobz9/bC2392G9bxa9ikyw6AlwV2Cw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-not-by-its-own-quorum",
+      "description": "Beta joins by a statement Alpha signed alone: the quorum before, but not its own of two.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 2 of 2 is not signed by its own quorum: The key statement is signed by trusted identity keys of 1 holder, not of 2!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-another-operator",
+      "description": "The second statement is one of another roaming network operator.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 2 of 2 is one of the roaming network operator 'DE*XYZ' of 'rn1', not of 'DE*RNO' of 'rn1'!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*XYZ\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"eQCxwX1+0vevOqNrz2RZ46o6RBXVvVsjWacBWFSVW3I9K61vXmjTjdSaocij8Z4BIeSDCb0DZQH+1UgMIihmCA==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"f09pZE5eHN3FCtD7vcGj/sEhZdeiYwnnICMG2lFLW87NCpO0HNx3vUPWqTPcspys0t5HpGoEoVq2KjD7pXlEBw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-another-network",
+      "description": "The second statement is one of another roaming network.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 2 of 2 is one of the roaming network operator 'DE*RNO' of 'rn2', not of 'DE*RNO' of 'rn1'!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn2\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"8TaV6zNrZnVGrAlhJUlNxnCjg1UdCJJo1xdYKh7JiSduKZA2wx52E6E1HuEgP8DWy99r51qIingyV0qIWqntCQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"9hQpQfVce7gfYmbTSkTZ5WqNlaGkquLtK8sxCfXsAc29W36p2YbeY5TQAZyRLiyvoYXn9KuDD5NN6IpjPFXYAg==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-last-expired",
+      "description": "A second after the last statement ended (validUntil).",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 3 of 3 does not follow the one before: The key statement is not valid at 2027-10-17T00:00:01.000Z: it was signed at 2026-10-19T00:00:00.000Z and is valid until 2027-10-17T00:00:00.000Z!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2027-10-17T00:00:01.000Z"
+    },
+    {
+      "id": "chain-last-of-the-future",
+      "description": "A second before the last statement was signed.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 3 of 3 does not follow the one before: The key statement is not valid at 2026-10-18T23:59:59.000Z: it was signed at 2026-10-19T00:00:00.000Z and is valid until 2027-10-17T00:00:00.000Z!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-18T23:59:59.000Z"
+    },
+    {
+      "id": "chain-before-ended-in-between",
+      "description": "The first statement ended long before the time checked, after the second replaced it: a statement but the last is valid when the one after it was signed, whatever became of it since.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"FD97agSJmbUL8srlp7iB+tr9LR6Phdhlon2lsj/MNu7lb8wzVkRDdcqDiDE5AF6flstCBhYK+tM6jQv7kqsrAQ==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2026-10-18T12:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e": "Gamma",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta"
+      }
+    },
+    {
+      "id": "chain-signed-after-the-first-ended",
+      "description": "The first statement had ended when the second was signed: it is no trusted ground then, and the second is none for Alpha trusted alone.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "None of the 3 key statements is signed by the trusted identity keys: The key statement is not valid at 2026-10-18T00:00:00.000Z: it was signed at 2026-10-17T00:00:00.000Z and is valid until 2026-10-17T12:00:00.000Z!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"I5mqAqosF7FHIBS99aelxEHJRe7SlXf+etBd9/Bz+H4H/046aAG6TCFOBPpwoCQDuuTm6nAlqVy82VuSCB62Bg==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2026-10-17T12:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-signed-after-the-one-before-ended",
+      "description": "The second statement had ended when the third was signed: the third does not follow it while it was valid.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 2 of 3 does not follow the one before: The key statement is not valid at 2026-10-19T00:00:00.000Z: it was signed at 2026-10-18T00:00:00.000Z and is valid until 2026-10-18T12:00:00.000Z!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"LLJ/P78t+X4tDw4Qr6/+aWk8mFCEMnx1ThiIbb95Y7rNbkZ+CRWZk+gYH2fdLJtQmdi1VO5SuV9pCqvamM7kDQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"hWfBWrGjTKsNKAbz7UaD5whfcIRNoe5M307o7yWOQOFRsrhzYUiAmB8pF1wZxow4hzJFY3WJcZoJGF2HwZaoDw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2026-10-18T12:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-signature",
+      "description": "The signature of Beta on the second statement replaced by the one of Alpha.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 2 of 3 does not follow the one before:",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-content-changed",
+      "description": "The third statement names a quorum of 1, as none of its signers signed it.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain",
+      "expected": "refused",
+      "reason": "The key statement 3 of 3 does not follow the one before:",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"KGwzFNTwe2gXDM458eqrkKA58GQIosC+6EP5+r+0gRMPrZDQBXCnQR1H3XfaX4+H6Q1rVYx67AT0zTJPaKowAw==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"L8aY1lHHft4tJfj4C7fnCp4iUytRrQfTKvmbZCqyTuRDi03ZFK+xKvXKSBtUY62MZiU1j0VFfFykUdDn3evyBw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"HoSp770vVL6rLGms0LETPZYiM6L2PBpTh1FNZaAR8yrv+olNndXzy7Ofw19kNPACKCkXnZNiMNQPKQ9J4oG8Bw==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"6b792c5c092b747718525decd0eef707974993ac09c42f71eb61caac3c92713e\",\"holder\":\"Gamma\",\"key\":\"owEBIAYhWCAT2ZCKcJJZku1UYAfSf1DaaLpyF+9irDzKeEUp/xBHHA==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"E20P1q5I6u0ot3a0v3BxgELpnrgHTunFZXM58sfRlH30kk+bZxOSFpRgi6oBKMFE/0etv6/nS+068MXc1PecBQ==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"0hlK9vN6kaLTzLXtFpm6nE+4+Kg7/YU6CX+UUlClB5EOioCNAb3gWHJLhzf0GGKe3QUuovPMvmUTJUQ0huhgCw==\"}],\"signedAt\":\"2026-10-19T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
+    },
+    {
+      "id": "chain-two-keys-of-one-holder",
+      "description": "Alpha holds two identity keys, Beta joins by a statement the second key of Alpha and Beta signed: either key of the one holder before decides, and two holders are the quorum after.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain; csharp-review 1",
+      "expected": "accepted",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCBvDw7rP7/5JcZtA+GdzkjV7cn/7lHNJq5x3Tnlb3/dog==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"UQWjGwnj69RaeJLiGWieETHH/y0MAQd8clIWvdJiDSayg8tN/wZe6d8slRI+NLxy0adlvww0OkNDxaFpDkraDA==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCAc5WpIyC/5kWKhS8VEYSZ05dYfuTF+ZdQFV4D9vLTcNQ==\"},{\"@id\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCBvDw7rP7/5JcZtA+GdzkjV7cn/7lHNJq5x3Tnlb3/dog==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"value\":\"7kgrFKjIyjIhp43puYiDsNL6fN9gJgjeUW+fj8yCo4EyMfI1AslaHSBBW4lolfFj6sgqgROtv8bi8FkSvlUEAw==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f\",\"value\":\"lWsLFkFSHZst7ItxYnXuhS2ODLsz7hK1Z6VYnuwNvWBkFpH1YvmEsF0Op741cuj1wxHlMSwK60h1SFP7eSTqBg==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802",
+          "ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z",
+      "holderOf": {
+        "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802": "Alpha",
+        "a287cebcd93b836a712b6393a914a86e63516d401285f3c642f734a28146f83f": "Beta",
+        "ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35": "Alpha"
+      }
+    },
+    {
+      "id": "chain-holder-split-in-two",
+      "description": "Alpha holds two identity keys and names the second as one of Beta in a statement of a quorum of two, signed with both: the statement before names both as keys of one holder, the statement names their holders otherwise.",
+      "basis": "libs/WWCP_POI/SPECIFICATION.md, 8.6, Succession; WWCP_POI3 RoamingNetworkKeyStatement.TryVerifyChain; csharp-review 1",
+      "expected": "refused",
+      "reason": "The key statement 2 of 2 does not follow the one before: The key statement names the holder of the trusted identity key 'ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35' otherwise than it is trusted!",
+      "keyStatements": "{\"keyStatements\":[{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCBvDw7rP7/5JcZtA+GdzkjV7cn/7lHNJq5x3Tnlb3/dog==\"}],\"minConsensus\":1,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"UQWjGwnj69RaeJLiGWieETHH/y0MAQd8clIWvdJiDSayg8tN/wZe6d8slRI+NLxy0adlvww0OkNDxaFpDkraDA==\"}],\"signedAt\":\"2026-10-17T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"},{\"identityKeys\":[{\"@id\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"holder\":\"Alpha\",\"key\":\"owEBIAYhWCCLsE4cG4Pd3zEfW83ffFDt48CAL0fseW4qExz0EpjZ8w==\"},{\"@id\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"holder\":\"Beta\",\"key\":\"owEBIAYhWCBvDw7rP7/5JcZtA+GdzkjV7cn/7lHNJq5x3Tnlb3/dog==\"}],\"minConsensus\":2,\"roamingNetworkId\":\"rn1\",\"roamingNetworkOperatorId\":\"DE*RNO\",\"signatures\":[{\"algorithm\":\"Ed25519\",\"keyId\":\"1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802\",\"value\":\"Ncyf+l3kCgfP/pUVTi8aCuInvfI/LN5LlXPRPc5yloEIDo7g/4wbUb+6bNDZgQUetWuhzYluA9ew5DQAVatbCg==\"},{\"algorithm\":\"Ed25519\",\"keyId\":\"ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35\",\"value\":\"oKwc3UoSgW1DJI0N5wf0aXhZ5S56ai7VxTRNCE5Z4m4/CilP4hFsHm0ORwIHXks1L7Y6YHep4SazUyeHrCg5AA==\"}],\"signedAt\":\"2026-10-18T00:00:00.000Z\",\"validUntil\":\"2027-10-17T00:00:00.000Z\"}]}",
+      "trustedHolders": [
+        [
+          "1ef48003e1c482f88fa9f4ecb3d9cdeeb2037d3be4550ad6ee1854a2c5b0b802",
+          "ea4dadfd821072e3cd0118caa65e79d066165be31fee2d30c8e4688d09681c35"
+        ]
+      ],
+      "at": "2026-10-21T00:00:00.000Z"
     }
   ]
 }

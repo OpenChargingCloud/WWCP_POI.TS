@@ -18,6 +18,28 @@
   versions of QA whose key statement carries such signatures (`RoamingNetwork.TryParse`), the same for each.
   `tests/keyStatementSuccession.test.ts`.
 
+- The frozen run is `csharp-039303b` (WWCP_POI `039303b`, Hermod `c46c8045`, Styx `ff807a46`), AT
+  `2026-11-26T22:03:00.000Z`, made by WWCPPOIConformanceTests (`a50bc7e`), with `poi-trust.json`,
+  `poi-history.json`, `poi-refusals.json`, `poi-qidigital.json` and `poi-evtaler.json` of it, vendored byte for
+  byte: the same 75 files as `csharp-c1b641b`, made anew, with new keys. Its output also tries what it took if
+  GammaOrg left again; QA stays at revision 2.
+  - Two lists new to `tests/conformance.test.ts`, 34 vectors: `keyStatementChains` of `poi-trust.json`, 29 chains of
+    key statements against identity keys trusted per holder, taken with the holder of every key trusted then or
+    refused in the words of WWCP_POI3 (`KeyStatement.parseChain`, `KeyStatement.verifyChain`), among them a holder
+    leaving, the statement signed and decided by the one leaving, and a signer the statement does not name, alone and
+    given; and `keyStatementChains` of `poi-history.json`, 5, of `QA-keyStatements.json` against the trust anchors
+    of the run. All 1029 vectors hold, none deviating: D19 of WWCPPOIConformanceTests is gone with the port above.
+  - The values of the tests are those of this run. Checked against WWCP_POI3 at `464e712`, which is `039303b` but for
+    its workflows: the 567 change sets the tests apply to 60 versions (`TryApplyPendingChangeSet`), the same verdict
+    and words for 511, among them every one of the 241 taken, with its after ETags; the others are those refused for
+    their signatures or owners, which that probe does not check, the words of an ETag that differs, which this
+    library names and WWCP_POI3 does not, and the one named below. And the 890 versions the tests read (`RoamingNetwork.TryParse`),
+    the same verdict, words and ETags for 846, among them every one of the 178 taken but four with numbers of
+    `customData` the probe reads as doubles; the others quote JSON the probe wrote in another order of its
+    properties, or end with a "(Parameter 'Text')" of the older Hermod of the probe.
+  - One refusal of this library differs in its words from WWCP_POI3 there, as before this run, and is left as it is: a
+    certificate stated by another than its body is refused without the "Change N: " WWCP_POI3 begins it with.
+
 - For development, Vitest 5.1.2, Vite 8.4.0 (Rolldown 1.3.4), ESLint 10.15.0, typescript-eslint 8.74.0, Playwright 1.65.1
   and @types/node 26.6.11, and the dependencies beneath them as far as their ranges allow. TypeScript stays at 6.0:
   typescript-eslint 8.74.0 still requires a version below 6.1. What the package depends on is unchanged.
