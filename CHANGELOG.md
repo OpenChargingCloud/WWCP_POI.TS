@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (prepared; not yet published)
+## 0.6.0 (2026-11-27)
 
 Who states a certificate is read with it, and a key statement may carry signatures of identity keys it names no
 longer: a certificate naming another than the roaming network operator in the place of its conformity assessment body
