@@ -37,8 +37,18 @@
     the same verdict, words and ETags for 846, among them every one of the 178 taken but four with numbers of
     `customData` the probe reads as doubles; the others quote JSON the probe wrote in another order of its
     properties, or end with a "(Parameter 'Text')" of the older Hermod of the probe.
-  - One refusal of this library differs in its words from WWCP_POI3 there, as before this run, and is left as it is: a
-    certificate stated by another than its body is refused without the "Change N: " WWCP_POI3 begins it with.
+  - One refusal of this library differed in its words from WWCP_POI3 there, as before this run: a certificate stated
+    by another than its body, refused without the "Change N: " WWCP_POI3 begins it with. See below.
+
+- A certificate names who states it, `statedBy`, as WWCP_POI3 reads it, when the certificate is read: none, for its
+  conformity assessment body, or `roamingNetworkOperator` (4.1). **A version naming another, which was taken, is
+  refused**: "The certificate '…' is stated by its conformity assessment body, or by the roaming network operator in
+  its place, 'roamingNetworkOperator', not by '…'!", also in another case, untrimmed or empty; one that is no text,
+  "statedBy: expected a string.". A change set is refused so at the change after which a certificate names another,
+  "Change N: …", where it was refused after its last change without naming one, and so before a certificate of a
+  change before it that names none where it must name the roaming network operator. Probed against WWCP_POI3 at
+  `464e712`: 11 versions and 17 change sets of QA, the same verdict and words for each, where the library before
+  differed in 25. `tests/certificateStatedBy.test.ts`.
 
 - For development, Vitest 5.1.2, Vite 8.4.0 (Rolldown 1.3.4), ESLint 10.15.0, typescript-eslint 8.74.0, Playwright 1.65.1
   and @types/node 26.6.11, and the dependencies beneath them as far as their ranges allow. TypeScript stays at 6.0:

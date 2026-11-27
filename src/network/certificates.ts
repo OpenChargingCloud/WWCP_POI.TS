@@ -221,6 +221,10 @@ function invalidEnergyMeter(meter: JSONValue): string | undefined {
 
 }
 
+/** A value as a text of a message names it: a text as it is, nothing for none, another value as JSON writes it. */
+const givenText = (value: JSONValue | undefined): string =>
+    typeof value === 'string' ? value : value === undefined ? '' : JSON.stringify(value);
+
 /**
  * The error, when WWCP_POI refuses what it reads as the arguments of the given certificate, by its path: the model it
  * names, the texts of its versions, its releases, each energy meter it was issued with, its document number and URL, its
@@ -233,6 +237,17 @@ function invalidArgument(certificate: JSONObject): string | undefined {
 
     if (unknown !== undefined)
         return `Unknown property '${unknown}'.`;
+
+    // Who states it, read before its identification: the body itself, which names none, or the roaming network operator
+    // in its place (4.1, csharp-review 15). Named by its identification as given, whatever that is. One without a value
+    // is read as none here, and refused where the content is compared with what was written.
+    const statedBy = get(certificate, 'statedBy') ?? undefined;
+
+    if (statedBy !== undefined && typeof statedBy !== 'string')
+        return 'statedBy: expected a string.';
+
+    if (statedBy !== undefined && statedBy !== 'roamingNetworkOperator')
+        return `The certificate '${givenText(certificate['@id'])}' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by '${statedBy}'!`;
 
     if (certificate['@id'] !== undefined && typeof certificate['@id'] !== 'string')
         return '@id: expected a string.';

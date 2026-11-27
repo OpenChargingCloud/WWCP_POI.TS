@@ -27,7 +27,7 @@ const certificateOf = (body: JSONObject, id: string): JSONObject =>
     defined((get(body, 'certificates') as JSONObject[]).find(certificate => certificate['@id'] === id), id);
 
 /** A certificate of the given body, as the PTB:2026-0017 of the PTB, stated by the roaming network operator or not. */
-const certificate = (id: string, statedBy?: string): JSONObject => {
+const certificate = (id: string, statedBy?: JSONValue): JSONObject => {
     const meter = without(certificateOf(bodyOf(qa(), 'PTB'), 'PTB:2026-0017'), 'legislation');
     return statedBy === undefined ? { ...meter, '@id': id } : { ...meter, '@id': id, statedBy };
 };
@@ -87,8 +87,71 @@ describe('Who states a certificate', () => {
         expect(() => applyChangeSet(before, changeSet(before, [ add('BSI:2026-1', certificate('BSI:2026-1'), 'BSI') ]), { checkOwnership: false }))
             .toThrow("The certificate 'BSI:2026-1' of the conformity assessment body 'BSI' without signing keys is stated by the roaming network operator in its place: its statedBy is 'roamingNetworkOperator'!");
 
-        expect(() => applyChangeSet(before, changeSet(before, [ add('BSI:2026-1', certificate('BSI:2026-1', 'BSI'), 'BSI') ]), { checkOwnership: false }))
-            .toThrow("The certificate 'BSI:2026-1' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by 'BSI'!");
+    });
+
+    it('is no other: a certificate naming another is refused when read, of a version and after the change that names it', () => {
+
+        // The verdicts and words of WWCP_POI3 at 464e712 (RoamingNetwork.TryParse, TryApplyPendingChangeSet) for these and
+        // more versions and change sets of QA, 28, the same for each.
+        const NOT_BY  = (id: string, by: string): string =>
+            `The certificate '${id}' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by '${by}'!`;
+
+        const before  = RoamingNetwork.parse(qa());
+
+        const refusal = (changes: JSONArray): string => {
+            try {
+                applyChangeSet(before, changeSet(before, changes), { checkOwnership: false });
+            }
+            catch (e) {
+                return e instanceof Error ? e.message : String(e);
+            }
+            return 'taken';
+        };
+
+        const read = (statedBy: JSONValue, bodyId = 'BSI'): string => {
+            const content = qa();
+            if (bodyId === 'BSI')
+                bodyOf(content, 'BSI')['certificates'] = [ certificate('BSI:2026-1', statedBy) ];
+            else
+                certificateOf(bodyOf(content, bodyId), 'PTB:2026-0017')['statedBy'] = statedBy;
+            try {
+                RoamingNetwork.parse(content);
+            }
+            catch (e) {
+                return e instanceof Error ? e.message : String(e);
+            }
+            return 'taken';
+        };
+
+        // A version: the body, in another case, untrimmed, empty; no text; of a body with keys as well.
+        expect(read('roamingNetworkOperator')).toBe('taken');
+        expect(read('BSI')).toBe(NOT_BY('BSI:2026-1', 'BSI'));
+        expect(read('RoamingNetworkOperator')).toBe(NOT_BY('BSI:2026-1', 'RoamingNetworkOperator'));
+        expect(read(' roamingNetworkOperator ')).toBe(NOT_BY('BSI:2026-1', ' roamingNetworkOperator '));
+        expect(read('')).toBe(NOT_BY('BSI:2026-1', ''));
+        expect(read(5)).toBe('statedBy: expected a string.');
+        expect(read([ 'roamingNetworkOperator' ])).toBe('statedBy: expected a string.');
+        expect(read(null)).toBe("'conformityAssessmentBodies[0].certificates[0].statedBy' is not written as the content holds it: a property without a value is left out!");
+        expect(read('PTB', 'PTB')).toBe(NOT_BY('PTB:2026-0017', 'PTB'));
+
+        // A change set: refused at the change after which the certificate names another, before what the change set is
+        // checked for as a whole.
+        const other = { kind: 'UpdateProperty', entityType: 'ChargingStation', entityId: 'DE*GEF*S2', propertyName: 'description', newValue: { en: 'Two' } };
+        const state = (statedBy: JSONValue, id = 'PTB:2026-0017'): JSONObject =>
+            ({ kind: 'UpdateProperty', entityType: 'ConformityCertificate', entityId: id, propertyName: 'statedBy', newValue: statedBy });
+
+        expect(refusal([ add('BSI:2026-1', certificate('BSI:2026-1', 'BSI'), 'BSI') ])).toBe('Change 0: ' + NOT_BY('BSI:2026-1', 'BSI'));
+        expect(refusal([ other, add('BSI:2026-1', certificate('BSI:2026-1', 'BSI'), 'BSI') ])).toBe('Change 1: ' + NOT_BY('BSI:2026-1', 'BSI'));
+        expect(refusal([ add('BSI:2026-1', certificate('BSI:2026-1', 'roamingNetworkOperator'), 'BSI'), state('BSI', 'BSI:2026-1') ])).toBe('Change 1: ' + NOT_BY('BSI:2026-1', 'BSI'));
+        expect(refusal([ state('X') ])).toBe('Change 0: ' + NOT_BY('PTB:2026-0017', 'X'));
+        expect(refusal([ state(5) ])).toBe('Change 0: statedBy: expected a string.');
+        expect(refusal([ add('BSI:2026-1', certificate('BSI:2026-1', 5), 'BSI') ])).toBe('Change 0: statedBy: expected a string.');
+
+        // Before a certificate of a change before it that names none where it must name the roaming network operator.
+        expect(refusal([ add('BSI:2026-1', certificate('BSI:2026-1'), 'BSI'), add('BSI:2026-2', certificate('BSI:2026-2', 'BSI'), 'BSI') ]))
+            .toBe('Change 1: ' + NOT_BY('BSI:2026-2', 'BSI'));
+        expect(refusal([ add('PTB:2026-0099', certificate('PTB:2026-0099', 'roamingNetworkOperator'), 'PTB'), add('BSI:2026-1', certificate('BSI:2026-1', 'BSI'), 'BSI') ]))
+            .toBe('Change 1: ' + NOT_BY('BSI:2026-1', 'BSI'));
 
     });
 

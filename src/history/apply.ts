@@ -2389,8 +2389,8 @@ function checkStatedBy(before: RoamingNetwork, content: JSONObject, changeSet: C
         const bodyId         = asText(found.party['@id']);
         const statedBy       = get(found.child, 'statedBy');
 
-        if (statedBy !== undefined && statedBy !== 'roamingNetworkOperator')
-            throw new POIError(`The certificate '${certificateId}' is stated by its conformity assessment body, or by the roaming network operator in its place, 'roamingNetworkOperator', not by '${asText(statedBy)}'!`);
+        // Another name than the one of the roaming network operator is refused before, where the certificate is read again
+        // after the change that names it, "Change N: …", as a version naming it is refused when read (certificates.ts).
 
         const byOperator     = keyless.some(id => sameId(id, bodyId));
 
