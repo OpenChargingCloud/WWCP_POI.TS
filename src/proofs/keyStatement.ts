@@ -265,9 +265,7 @@ export class KeyStatement {
             if (statement.roamingNetworkId !== before.roamingNetworkId || statement.roamingNetworkOperatorId !== before.roamingNetworkOperatorId)
                 throw new POIError(`${of} is one of the roaming network operator '${statement.roamingNetworkOperatorId}' of '${statement.roamingNetworkId}', not of '${before.roamingNetworkOperatorId}' of '${before.roamingNetworkId}'!`);
 
-            if (statement.signedAt < before.signedAt)
-                throw new POIError(`${of} was signed before the one it follows!`);
-
+            // Not signed before the one it follows: that one was verified as valid at the `signedAt` of this one.
             const keys = [ ...before.identityKeys, ...others ];
 
             // By the quorum before, among the keys the statement before names, as it names their holders ...

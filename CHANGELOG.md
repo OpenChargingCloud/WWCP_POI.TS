@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `KeyStatement.verifyChain` no longer carries the refusal "… was signed before the one it follows!", which nothing
+  reached: the statement before is verified as valid at the `signedAt` of the one that follows it, so key statements
+  out of order are refused, as before, as "… is not valid at …". No verdict and no words change. WWCP_POI `b1d4113`,
+  the one commit after `c94c762`, takes it out of `TryVerifyChain`, with "… do not lead to the last of them!", which
+  this library never had.
+
 ## 0.6.0 (2026-11-27)
 
 Who states a certificate is read with it, and a key statement may carry signatures of identity keys it names no
