@@ -104,8 +104,8 @@ function verifyOCMF(value: EVTalerSignedMeterValue, key: EVTalerMeasurementKey):
 const args       = process.argv.slice(2);
 const atIndex    = args.indexOf('--at');
 const at         = atIndex >= 0 ? defined(args[atIndex + 1], 'time after --at') : undefined;
-const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-039303b');
-const time       = at ?? (directory.includes('csharp-039303b') ? '2026-11-26T22:03:00.000Z' : new Date().toISOString());
+const directory  = args.find((arg, index) => !arg.startsWith('--') && (atIndex < 0 || index !== atIndex + 1)) ?? join(import.meta.dirname, '..', 'tests', 'vectors', 'csharp-c94c762');
+const time       = at ?? (directory.includes('csharp-c94c762') ? '2026-11-27T01:29:00.000Z' : new Date().toISOString());
 
 const file  = (name: string): string     => join(directory, name);
 const text  = (name: string): string     => readFileSync(file(name), 'utf8');

@@ -1,0 +1,122 @@
+{
+  "@id": "QA",
+  "@context": "https://open.charging.cloud/contexts/wwcp/roamingNetwork/v1",
+  "name": {
+    "en": "Quality Assurance"
+  },
+  "description": {
+    "en": "The roaming network of the examples"
+  },
+  "operator": {
+    "@id": "OCC",
+    "name": {
+      "en": "Open Charging Cloud"
+    },
+    "minConsensus": 2,
+    "keyStatement": {
+      "roamingNetworkId": "QA",
+      "roamingNetworkOperatorId": "OCC",
+      "identityKeys": [
+        {
+          "@id": "9515fe259d12cb55846c8e6ff1f01a826dfbe7f780838dc6e9d9839b223a06de",
+          "key": "owEBIAchWDlb0TW2WeAPffQvLbpoM8Nir2bRJqKIeh79NBJk/gOxHzXJqFoW4UFz8IXvz+6N0poNTc1HaZ9AaAA=",
+          "holder": "BetaOrg"
+        },
+        {
+          "@id": "b3aa34da7c8e19898d65048eca430cb26af47a25dcd5fbc96f5fa02d8723b03e",
+          "key": "pAECIAMhWEIA8dN1yfqMa82WHd4ZUhL5pkjiO8UYZXwCV4LvHnkdV4c7EtEWrND82vkEJVPLuVAas5rw7133c7n610jToFvrWKAiWEIBPnpTeEETMRvpO5Foy6lY3ibGOcfScjWBikgtBce507UaV1opNFSeiF29dnXSV8vY1U6vmHVoaaoNMeap3mHwPuc=",
+          "holder": "AlphaOrg"
+        }
+      ],
+      "minConsensus": 2,
+      "signedAt": "2026-11-27T01:27:56.131Z",
+      "validUntil": "2027-11-27T01:27:55.401Z",
+      "signatures": [
+        {
+          "algorithm": "ES512",
+          "keyId": "b3aa34da7c8e19898d65048eca430cb26af47a25dcd5fbc96f5fa02d8723b03e",
+          "value": "AGjdXz4NBc8RDhD3KqFddnvtF4TnXPOPbbTBmccQRZsXVRJ4H4Gox5tezDDazq1+6mR4Fk52e67CPjy9iN3K7fUwAGgdObWNaVUdQo9IdfE02uV0tfioe6d6kGYmFpZF2Fr092MBZY0EwlY1qlEPH1EOT7GxQyFXxM+DdYznAzbwBCvI"
+        },
+        {
+          "algorithm": "Ed448",
+          "keyId": "9515fe259d12cb55846c8e6ff1f01a826dfbe7f780838dc6e9d9839b223a06de",
+          "value": "DtdAw50/p9XBc3aavinIbfCV2JDIxO7WB27upi+c7nK+Cw978c/iDoGswZxdNZ8WupYEfSC9lwsAlg3kqWT0X1YOi5NKxLUvhE1hDRIGrtYJrnOcsRSwHKOQ8vAku0jrxwtiwPA8yMr/cv4OK/J5NQYA"
+        }
+      ]
+    },
+    "signingKeyCertificates": [
+      {
+        "roamingNetworkOperatorId": "OCC",
+        "signingKey": {
+          "@id": "2d73b59e5fbf318cdd41cc5d3eb4756ba9e43b1d889883240b42b02368c25d8b",
+          "key": "pAECIAEhWCAQDV3ZmtUmuO59mOSh3qRmZBVWh6bJ74ESSMDPXrLliSJYILYwAlW/NJfPg8T67xOf8Ajq5kqTRN146T7NCm2f1X5p",
+          "notAfter": "2027-11-27T01:27:55.401Z",
+          "holder": "AlphaOrg",
+          "usages": [
+            "party"
+          ]
+        },
+        "signedAt": "2026-11-27T01:27:55.401Z",
+        "algorithm": "ES512",
+        "keyId": "b3aa34da7c8e19898d65048eca430cb26af47a25dcd5fbc96f5fa02d8723b03e",
+        "value": "AHvw9It3VsQPofKWMQkgEGmV7e0gr9DNO6g5yqd4cNINwUAkn/6BBKFDwCQPV06mQi8+XWCg16g8Mwa0mQVIPPgEAQqD/5oSvI6DSSI3ynopbCG2+GjsmM1Asyv2EjHO8N3eWJ0Y916/D17FpEz2ZPnHaJWYYM/29ZRQROkr2WjBRjA+"
+      },
+      {
+        "roamingNetworkOperatorId": "OCC",
+        "signingKey": {
+          "@id": "4f347606fb618e05d307e546e9085a6c09df07198021cecfb2d7d0c8a4c65332",
+          "key": "pAECIAEhWCBTGRexFSGpPCYLaqSABGhlESoyIrCwbpvHIIXbq/S6tyJYIGiPlFW9huGuusLrbANxNkwuXyZBb1bKC9tcDHM/V4A6",
+          "notAfter": "2027-11-27T01:27:55.401Z",
+          "holder": "BetaOrg",
+          "usages": [
+            "party"
+          ]
+        },
+        "signedAt": "2026-11-27T01:27:56.160Z",
+        "algorithm": "Ed448",
+        "keyId": "9515fe259d12cb55846c8e6ff1f01a826dfbe7f780838dc6e9d9839b223a06de",
+        "value": "zDQ/VGGN4IPd4dLwJ//CGXNlvtb/NfwRPdYEM6ZH0AenGjvKbQFAoWxVYcoRZlKcTUdDO1Tk+ysAwBVN+DDyUtnkuLbWrGaY0mOF3cxZ9FNtuEu2SGThV5IWSWaP6BfwGRRijVMh//ADAaNjgRrXbD8A"
+      }
+    ],
+    "identityKeys": [
+      {
+        "@id": "9515fe259d12cb55846c8e6ff1f01a826dfbe7f780838dc6e9d9839b223a06de",
+        "key": "owEBIAchWDlb0TW2WeAPffQvLbpoM8Nir2bRJqKIeh79NBJk/gOxHzXJqFoW4UFz8IXvz+6N0poNTc1HaZ9AaAA=",
+        "holder": "BetaOrg"
+      },
+      {
+        "@id": "b3aa34da7c8e19898d65048eca430cb26af47a25dcd5fbc96f5fa02d8723b03e",
+        "key": "pAECIAMhWEIA8dN1yfqMa82WHd4ZUhL5pkjiO8UYZXwCV4LvHnkdV4c7EtEWrND82vkEJVPLuVAas5rw7133c7n610jToFvrWKAiWEIBPnpTeEETMRvpO5Foy6lY3ibGOcfScjWBikgtBce507UaV1opNFSeiF29dnXSV8vY1U6vmHVoaaoNMeap3mHwPuc=",
+        "holder": "AlphaOrg"
+      }
+    ],
+    "created": "2026-11-27T01:27:55.718Z",
+    "lastChange": "2026-11-27T01:27:56.177Z"
+  },
+  "urls": [
+    "https://alpha.example/RNs/QA",
+    "https://beta.example/RNs/QA"
+  ],
+  "created": "2026-11-27T01:27:55.768Z",
+  "lastChange": "2026-11-27T01:27:56.177Z",
+  "eTags": [
+    [
+      "json",
+      "sha256",
+      "base64",
+      "eaSPIagYHfKOz3V6RY9IQ9fO7jnYJsL6hWNOS+DpCMU="
+    ],
+    [
+      "cbor",
+      "sha256",
+      "base64",
+      "qJ4F7BiauJL6sGJMwpIA8isl/QAvdKgwlfHZdtrNxEI="
+    ],
+    [
+      "effectiveTree",
+      "sha256",
+      "base64",
+      "EbOMnpourcStchZmR/dR7RCikDRmDTsysTJL8LkseYU="
+    ]
+  ]
+}

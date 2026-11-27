@@ -32,9 +32,9 @@ describe('Example A1: checking QA from its trust anchor', () => {
         expect(anchor.id).toBe('QA');
         expect(anchor.minConsensus).toBe(2);
         expect(anchor.keys).toEqual([
-            '18f6f520e43a969e7b8d1e63ad6436a6fe085f08f2bc921e61670ef4e7515ed7',
-            '360fe27565650b8ed6f3a4c72588a3be3ca84f96d81db6a73bfed5cf1dd1d9d1',
-            '88c835a361699175074b35337b28ba479040af1986b6ffce6c4870ff57f54d29',
+            '77d575fd06802c9ad99675298937ab82134e0ae414b412e538f548cafee4918b',
+            '9515fe259d12cb55846c8e6ff1f01a826dfbe7f780838dc6e9d9839b223a06de',
+            'b3aa34da7c8e19898d65048eca430cb26af47a25dcd5fbc96f5fa02d8723b03e',
         ]);
         // The URLs of its copies, as the roaming network names them itself: one of each holder of OCC.
         expect(anchor.urls).toEqual([ 'https://alpha.example/RNs/QA', 'https://beta.example/RNs/QA', 'https://gamma.example/RNs/QA' ]);
@@ -44,8 +44,8 @@ describe('Example A1: checking QA from its trust anchor', () => {
         expect(anchor.toQRCode()).toHaveLength(591);
 
         // The URL form names the same keys and quorum, as C# printed it.
-        expect(anchor.toURL()).toBe('https://alpha.example/RNs/QA?keys=18f6f520e43a969e7b8d1e63ad6436a6fe085f08f2bc921e61670ef4e7515ed7,' +
-                                    '360fe27565650b8ed6f3a4c72588a3be3ca84f96d81db6a73bfed5cf1dd1d9d1,88c835a361699175074b35337b28ba479040af1986b6ffce6c4870ff57f54d29&minConsensus=2' +
+        expect(anchor.toURL()).toBe('https://alpha.example/RNs/QA?keys=77d575fd06802c9ad99675298937ab82134e0ae414b412e538f548cafee4918b,' +
+                                    '9515fe259d12cb55846c8e6ff1f01a826dfbe7f780838dc6e9d9839b223a06de,b3aa34da7c8e19898d65048eca430cb26af47a25dcd5fbc96f5fa02d8723b03e&minConsensus=2' +
                                     '&alsoAt=https%3A%2F%2Fbeta.example%2FRNs%2FQA&alsoAt=https%3A%2F%2Fgamma.example%2FRNs%2FQA');
         const fromURL = TrustAnchor.parse(anchor.toURL());
         expect(fromURL.keys).toEqual(anchor.keys);
@@ -62,13 +62,13 @@ describe('Example A1: checking QA from its trust anchor', () => {
         expect(version.signedBy).toEqual([ 'AlphaOrg', 'BetaOrg', 'GammaOrg' ]);
         expect(version.warnings).toEqual([]);
         expect(version.commit.revision).toBe(2);
-        expect(version.commit.id).toBe('be6eaa259b19f95f9f0ca9a6d0cbebcee5e720a017e5e6e714b016e8cc9410be');
+        expect(version.commit.id).toBe('8b3cabad2d06aaf89d4c6b53ce04f1a3d37db0f6111728b38a0c4be377f03991');
 
         // The ETags as C# printed them for this version.
         expect(version.network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:62505fe74a88bdfe02a8ea73434fe28a8e26b0ba40c8f9b23f97eee39fa1fb40',
-            'cbor:sha256:hex:9ffb090b0b4cf1b7f0a645c4cfd5f4864f41383b7e20c569434f7761eef97620',
-            'effectiveTree:sha256:hex:9c8529b027a2fa03ff0500251436582adcc79b38939f9806564b58d8bc104b73',
+            'json:sha256:hex:8830c8f80d393d0b66862a4851b967357e6aed2924d07fe474d7735e21a4c570',
+            'cbor:sha256:hex:53c39c9817bab810f65b666f596f3a3368f61a8e2577e4e2aa5aeead15c0acaa',
+            'effectiveTree:sha256:hex:9c0c0ebc6ff549c6bd698302f82e6704ff4383b3e3bcdc0b39e94be3a0802953',
         ]);
 
         expect(RoamingNetwork.parse(network).matchesCommitETags(Commit.parse(commit).eTags)).toBe(true);
@@ -133,13 +133,13 @@ describe('Example A1: checking QA from its trust anchor', () => {
         // Revision 0: AlphaOrg alone.
         const first = verifyVersion(anchor0, defined(genesis['roamingNetwork']), defined(genesis['commit']), AT);
         expect(first.commit.revision).toBe(0);
-        expect(first.commit.id).toBe('9326be5eefe3004cf06bf4b6348b4e28199d349c5c0a08ef660dc5bb64799ed9');
+        expect(first.commit.id).toBe('72bc5352d5ca91c893b549ffa72e802a0a667a9cbfb9604fb022e513f059386a');
         expect(first.signedBy).toEqual([ 'AlphaOrg' ]);
         expect(first.network.urls).toEqual([ 'https://alpha.example/RNs/QA' ]);
         expect(first.network.eTags().map(etagToText)).toEqual([
-            'json:sha256:hex:d17c62fa038caf450cffd1c2b2927d78d343509de3e513b8d61f5bb93bc7520b',
-            'cbor:sha256:hex:39586e5d19a01ee6cbdff0122d4b73ea2a52a9225f4741141b6805ded5fa7383',
-            'effectiveTree:sha256:hex:b1e8aee95da71e65df24b98dbd9faba6fdbec73443747eee8215e272d120a135',
+            'json:sha256:hex:4fb78b6663beab8a9c2328a36a1ca40e9b7b222b9947141ca6c9c4ca09836184',
+            'cbor:sha256:hex:76da28acdf719a79f0c65903b9b4f39b02fe729acc86aca071d75603633eed67',
+            'effectiveTree:sha256:hex:b85aeadccfb9180516ad2a738c238c26ba0f7044f0aa93c08983b1fa6b0736af',
         ]);
         expect(sameJSON(genesis['roamingNetwork'], readJSON('published/QA-revision0.json'))).toBe(true);
         expect((readJSON('published/QA-revision0-commit.json') as JSONObject)['@id']).toBe(first.commit.id);
@@ -147,7 +147,7 @@ describe('Example A1: checking QA from its trust anchor', () => {
         // Revision 1: BetaOrg joined, both decide.
         const second = verifyVersion(anchor1, readJSON('published/QA-revision1.json'), readJSON('published/QA-revision1-commit.json'), AT);
         expect(second.commit.revision).toBe(1);
-        expect(second.commit.id).toBe('32042eb665874aafccbdefbc36389f44ed6f28813abd5205ac25340de032be5a');
+        expect(second.commit.id).toBe('1f6e76d8210d5f0c001f42675732fa719dd2491ceebf12a6e2fe579f07c39019');
         expect(second.signedBy).toEqual([ 'AlphaOrg', 'BetaOrg' ]);
 
         // The trust anchor of today knows two holders more than the genesis names, and asks for two of them.
@@ -214,7 +214,7 @@ describe('Example A1: checking QA from its trust anchor', () => {
 
         // Out of order: a statement but the last is valid when the one after it was signed.
         expect(() => chain([ first, third, second ]))
-            .toThrow('The key statement 2 of 3 does not follow the one before: The key statement is not valid at 2026-11-26T22:02:01.887Z: it was signed at 2026-11-26T22:02:02.320Z and is valid until 2027-11-26T22:02:00.788Z!');
+            .toThrow('The key statement 2 of 3 does not follow the one before: The key statement is not valid at 2026-11-27T01:27:56.131Z: it was signed at 2026-11-27T01:27:56.425Z and is valid until 2027-11-27T01:27:55.401Z!');
 
         // None of them signed by what is trusted.
         expect(() => KeyStatement.verifyChain(statements, [ [ 'a'.repeat(64) ] ], { at }))

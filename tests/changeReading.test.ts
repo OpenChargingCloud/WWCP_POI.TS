@@ -171,8 +171,8 @@ describe('A change set identified by its changes as WWCP_POI3 writes them again'
 
 describe('A change set read and identified as WWCP_POI3 writes it again: its roaming network, description and metadata', () => {
 
-    // The identifications of a change set of this change, so changed, of QA of the run of WWCP_POI 039303b: as WWCP_POI3 at
-    // 76d3653 gave them of the run of that time (ZProbePreconditions), the rule unchanged; at 039303b it reads the change
+    // The identifications of a change set of this change, so changed, of QA of the run of WWCP_POI c94c762: as WWCP_POI3 at
+    // 76d3653 gave them of the run of that time (ZProbePreconditions), the rule unchanged; at c94c762 it reads the change
     // sets of these tests identified so.
     const two: JSONObject = { kind: 'UpdateProperty', entityType: 'ChargingStation', entityId: 'DE*GEF*S2', propertyName: 'description', newValue: { en: 'Two' } };
 
@@ -184,19 +184,19 @@ describe('A change set read and identified as WWCP_POI3 writes it again: its roa
 
     it('its roaming network trimmed, without a description or metadata with nothing in them, a description as Styx reads a text in languages', () => {
 
-        expect(identification(() => undefined)).toBe('4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac');
+        expect(identification(() => undefined)).toBe('4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252');
 
         for (const change of [ (json: JSONObject): void => { json['roamingNetworkId'] = ' QA '; },
                                (json: JSONObject): void => { json['description'] = {}; },
                                (json: JSONObject): void => { json['description'] = null; },
                                (json: JSONObject): void => { json['description'] = { en: 5, '': 'x', de: null, fr: { a: 1 } }; },
                                (json: JSONObject): void => { json['metadata'] = {}; } ])
-            expect(identification(change)).toBe('4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac');
+            expect(identification(change)).toBe('4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252');
 
-        expect(identification(json => { json['description'] = { en: 'x' }; })).toBe('1b048e6c4f870db82cecd1ee815f75cbedf7d0d15131d3951fed62d7da46f560');
-        expect(identification(json => { json['description'] = { EN: 'x' }; })).toBe('1b048e6c4f870db82cecd1ee815f75cbedf7d0d15131d3951fed62d7da46f560');
-        expect(identification(json => { json['description'] = { en: '' }; })).toBe('22c08babf75abf11ac280048f495b370111ed3786354188a6ece97703b9131aa');
-        expect(identification(json => { json['metadata'] = { a: 1 }; })).toBe('544ae84a20a9eb14bd86b1c0755d6f88309146ef4209926b088f1ad0e2ec8f4a');
+        expect(identification(json => { json['description'] = { en: 'x' }; })).toBe('485c1df9a67beafa10819e44558694cc835a37e8067b9b5d9229836b8e7fba37');
+        expect(identification(json => { json['description'] = { EN: 'x' }; })).toBe('485c1df9a67beafa10819e44558694cc835a37e8067b9b5d9229836b8e7fba37');
+        expect(identification(json => { json['description'] = { en: '' }; })).toBe('daf3646a6bc6aa598fd5f0b8590ddd3709984be367d3d3b9706fcb728a4473e9');
+        expect(identification(json => { json['metadata'] = { a: 1 }; })).toBe('79ec03610c2d0bbba1b190ec7e8957ad20c993cef3e5233c6f826d7096d30e75');
 
         // Identified by them as given, refused in the words of WWCP_POI3.
         const asGiven = (change: (json: JSONObject) => void): string => {
@@ -207,11 +207,11 @@ describe('A change set read and identified as WWCP_POI3 writes it again: its roa
         };
 
         expect(asGiven(json => { json['roamingNetworkId'] = ' QA '; }))
-            .toBe("The change set '770ce7622b9ec10fbf7603e25c3d26eaea9ff08a22833974a2e561ad143ea613' is not identified by its content, '4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac'!");
+            .toBe("The change set '9ec22e2a06337164b08f7fd97a80488c9edde3795ca605eea54301c48653a03d' is not identified by its content, '4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252'!");
         expect(asGiven(json => { json['description'] = {}; }))
-            .toBe("The change set '01b5578ab984d8c3af43a15b4f6e6ec558f6d45d6a6a3a7871e7d382785d9b20' is not identified by its content, '4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac'!");
+            .toBe("The change set '17f6be0d79b58adeadff7a76b96840a4a48b85ab7905643880dc1693617bdf29' is not identified by its content, '4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252'!");
         expect(asGiven(json => { json['metadata'] = {}; }))
-            .toBe("The change set '386e5fcd3a9b2fa7ca1f498322b99c8bc95be5c514ebb8c1cfc1e1b4d93368ab' is not identified by its content, '4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac'!");
+            .toBe("The change set 'c24c481e9564ed40a187b8ab16022d62b9f5009013a7c26e9dc80b66ac65f83f' is not identified by its content, '4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252'!");
 
     });
 

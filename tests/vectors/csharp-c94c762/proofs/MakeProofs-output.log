@@ -1,0 +1,20 @@
+epoch 2, head: revision 11, 560f4b5226fcaa1aa2f33714d526fc777d6a8823970ebd4645626311e7d3850686e3d8474d860d58b9140e7c69a65662d71ef645adc725dd2f47c44239ad0431
+attested revision 11, effectiveTree:sha256:hex:c7153bfe7b719f9a09a726900aa291db942b6196854abd5405b8aec91c37def4, by cce62680…
+attested revision 11, effectiveTree:sha256:hex:c7153bfe7b719f9a09a726900aa291db942b6196854abd5405b8aec91c37def4, by 8a07cd55…
+attested revision 11, effectiveTree:sha256:hex:c7153bfe7b719f9a09a726900aa291db942b6196854abd5405b8aec91c37def4, by d11a09ba…
+proof of DE*GEF*S1: valid
+proof of DE*GEF*S6: valid
+proof of DE*GEF*E3*2: valid
+proof of revision 1 of epoch 2 in checkpoint 8f5497e70dceb683d2d6dce5d283d22eff42080d511056dfc7dd046dd2903e35c9ebaea93ad61801b88aa1ae423c1d4069ec0d23d4aa4291fab70a770d215fd6
+commits of epoch 2 since its genesis: revisions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+price statement original: signature valid, sequence 0, digest f432ae10b36385bf15cf9cd52d7f4c30f4d6fdb62fb9daa44cd847881858bf2c
+price statement twin (r, n-s): signature valid, sequence 0, digest f432ae10b36385bf15cf9cd52d7f4c30f4d6fdb62fb9daa44cd847881858bf2c
+server of checkpoint 4 takes the genuine statement again, sequence 1, digest 026ccab3c40976eff60dfff5095a03629eabca4b55d18d91b66dde7b7d1621d7: Known, 
+server of checkpoint 4 takes the twin of the statement, sequence 1, digest 026ccab3c40976eff60dfff5095a03629eabca4b55d18d91b66dde7b7d1621d7: Known, 
+epoch 1 server (Closing) takes the genuine statement again, sequence 1: Refused, The key '8f852d4b3d6604a06ad8a0e5238558f8be60bb39af716c1223ecee2e2a91f64f' of the price statement is no signing key of the charging station operator 'DE*GEF'!
+epoch 1 server (Closing) takes the twin of the statement, sequence 1: Refused, The key '8f852d4b3d6604a06ad8a0e5238558f8be60bb39af716c1223ecee2e2a91f64f' of the price statement is no signing key of the charging station operator 'DE*GEF'!
+epoch 2 server (Active) takes the genuine statement again, sequence 1: Refused, The signature algorithm 'ES256' of the price statement is not one of the epoch 2, ML-DSA-65, ML-DSA-87!
+epoch 2 server (Active) takes the twin of the statement, sequence 1: Refused, The signature algorithm 'ES256' of the price statement is not one of the epoch 2, ML-DSA-65, ML-DSA-87!
+A certificate of the BSI, signed by the signing keys of AlphaOrg and BetaOrg of OCC: Committed, 
+A certificate of the BSI, signed by the identity keys of AlphaOrg and BetaOrg of OCC: AlreadyCommitted, 
+done

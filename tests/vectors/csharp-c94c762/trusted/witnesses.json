@@ -1,0 +1,18 @@
+[
+  {
+    "witness": "calibration.example",
+    "key": {
+      "@id": "0ba976ab505eb6d55012fa4eaab8efd9330bdd2e44c574c760308a921881d48a",
+      "@context": "https://open.charging.cloud/contexts/wwcp/roamingNetwork/publicKey/v1",
+      "key": "owEBIAYhWCAeoKIUiWkBo923cmC/HVRovqtRT5jywCahRjF1MeSNuA=="
+    }
+  },
+  {
+    "witness": "association.example",
+    "key": {
+      "@id": "11ddfdf817d10b176f5911afd86b07c408be1472868307a7f23c122e68adaf40",
+      "@context": "https://open.charging.cloud/contexts/wwcp/roamingNetwork/publicKey/v1",
+      "key": "pAECIAIhWDB7L5oj8fdEjbXSS4wJVl7+urYJ38Vfo8Gt4tyQBuu2sDSy7GEzIcFIDxjLqC8Kg6EiWDCqjZqdUJPW71dICxkMqMrxkpnenxn1Dh4Xciihixf0TtLpHOXTp0jx55h1Lktzzi8="
+    }
+  }
+]

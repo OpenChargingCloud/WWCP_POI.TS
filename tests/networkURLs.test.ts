@@ -11,7 +11,7 @@ import { clone, get, without, type JSONObject, type JSONValue } from '../src/jso
 
 // The URLs of the copies of a roaming network, `urls` (SPECIFICATION.md section 2), and the quorum of its operator, which
 // fits its keys in every version, not between the changes of one change set (4.1, "Holders joining and leaving"): as
-// WWCP_POI3 at 039303b reads and changes them, in its words. Every verdict below is the one WWCP_POI3 gave for the same
+// WWCP_POI3 at c94c762 reads and changes them, in its words. Every verdict below is the one WWCP_POI3 gave for the same
 // version (`RoamingNetwork.TryParse`) or the same change set (`TryApplyPendingChangeSet`) of the revisions 0 to 2 of QA,
 // the after ETags those it calculated (`CreateChangeSet`).
 
@@ -158,13 +158,13 @@ describe('The URLs of the copies of a roaming network (2)', () => {
     it('are changed as a whole, by the roaming network operator, as WWCP_POI3 applies it', () => {
 
         expect(outcome([ network('urls', [ ALPHA ]) ],
-                       [ 'f6f89ebe4f5e97b484df65992f70c6ddc62707c18c4a2ecd5a8d624d71cc0bfd', '18cfb4acd7753291c7eabf4ecdce2c156a2ca5cccc26859362259c0bff2fbf4b' ])).toBe('taken');
+                       [ '8b22e756133e9c08f8dd12f86cd42328b824d07c3920f0a2967fb1e9cb263f36', '2e93ebea4c3dc7cc8f6ff21301c36b5a9baef217a639d4d2305dfd9ee9830308' ])).toBe('taken');
         expect(outcome([ { ...network('urls', [ ALPHA ]), oldValue: [ ...QA.urls ] } ],
-                       [ 'f6f89ebe4f5e97b484df65992f70c6ddc62707c18c4a2ecd5a8d624d71cc0bfd', '18cfb4acd7753291c7eabf4ecdce2c156a2ca5cccc26859362259c0bff2fbf4b' ])).toBe('taken');
+                       [ '8b22e756133e9c08f8dd12f86cd42328b824d07c3920f0a2967fb1e9cb263f36', '2e93ebea4c3dc7cc8f6ff21301c36b5a9baef217a639d4d2305dfd9ee9830308' ])).toBe('taken');
         expect(outcome([ network('urls', [ 'https://gamma.example/RNs/QA', ALPHA ]) ],
-                       [ '3375fb8797ae31b44063407eb4835e95ee32dfd648626a0339b58c6f2fa76190', 'd43c8d84ad591aa89dc0396ecdbe19de0e18969d626cc8117c494fc2c848d43c' ])).toBe('taken');
+                       [ '46c63ddf746b1de8ba50f20cbd2427d0f90334b8437bf13f7eab3a2e59a6bf63', '10812258f1793999b7f760124e95397226efb1d124dd80a1ce5ab0eb40d69292' ])).toBe('taken');
         expect(outcome([ network('urls') ],
-                       [ '6e131b4e369293324611eec14e03c01e40a7f0044df9f2d76dc0af3628a43caa', '7bc0b0f0a41522fceee82940a635c4281c260ae4e2f54bf0fff13ac6941394a1' ])).toBe('taken');
+                       [ '601b0a310b83ed7ebcfc2728aec2fbc28e893fa0f8a6371c1c82b8f19fd4a0a0', '34dd1e41c558a72f5f64b3fdfe5cf01c4541d5e1fc3c23339da75da3dfeaf0f1' ])).toBe('taken');
 
         // Owned by the roaming network operator: its signing keys, two of its three holders.
         expect(() => applyChangeSet(QA, changeSetOf(QA, [ network('urls', [ ALPHA ]) ])))
@@ -214,18 +214,18 @@ describe('The quorum of a roaming network operator, of every version (4.1, Holde
     it('fits its keys after the last change of a change set, not in between: a holder joins, and leaves', () => {
 
         // BetaOrg joins AlphaOrg, as example A1 did it: the keys and the quorum in either order.
-        const joined = [ '7aaeab1db008db580bfa09c8bbab3fecbd88d759ebb652a97e9c9488c3184196', 'a624297647f2ad5cfde0bd4d857c2c2802b094c1cc17765104bbb5ea30473368' ] as const;
+        const joined = [ '71e70fd1065bdb59136038d744a2b0d2c92090fa2cbc76967d1267e1b1f1f4d9', 'cfe79ff450b384ff017c0247a47ebd6c5469cb2393e20d554be2e0f32677f7e4' ] as const;
 
         expect(outcome([ operator('minConsensus', 2), ...keysOf(1) ], joined, REVISION[0])).toBe('taken');
         expect(outcome([ ...keysOf(1), operator('minConsensus', 2) ], joined, REVISION[0])).toBe('taken');
 
         // GammaOrg joins the two: two of three decide, as before.
-        expect(outcome(keysOf(2), [ '9f969cf364bea49315a26f8c5b8f5cb7df3b19f2458815fe64fa59648da3741c', 'a70f9497da3f0dbf0535597fe7083fafb5954c6a2673a44a0cf7c16535fdec89' ], REVISION[1])).toBe('taken');
+        expect(outcome(keysOf(2), [ 'dfa382cb0547010d5f815fdae6a7d7bb319e88d0a568ac4a49a1ad26d86ab22c', '1202c39b5dd82a651d8bab9fa611f772a9d9e351ea7f73ffee3caa49c0445437' ], REVISION[1])).toBe('taken');
 
         // GammaOrg leaves again, then BetaOrg: the quorum of one is removed, not given as 1.
-        expect(outcome(keysOf(1), [ '92735aab1b67125e5b3c2b247dbe8fab8b16b0f62444ccb2e9131fd581416782', '462cdf5901d0d274b23a8f87e925b797d80fdb7f263c61446607807a252b5c08' ])).toBe('taken');
+        expect(outcome(keysOf(1), [ '4c807b07b5d04d1c12f679722f88ed265d74d4b7fc77e6a47e10f1ec3c14f91a', 'cb94f2abec0bba46248a00daf5b6b708bb1fd0deea93b31c4db662a5bd04dbcf' ])).toBe('taken');
         expect(outcome([ ...keysOf(0), operator('minConsensus') ],
-                       [ 'a52874a1e8bfdbf727f5d6ac2207bc6f37663b0ecbe60733c904ecdb57e1ab71', '7fa531332d846519a5d5f298f4b2b193d1924ef336fce60b4966a86e91e14103' ])).toBe('taken');
+                       [ '579525240c17c367508a16af5f1bc3d7f0cbba70a969ee0d467145da9c28453d', '449a67aab7f72ca9e9c28b7e5103259a9c580b2d9e39b30b20066fdca91dbdc4' ])).toBe('taken');
 
     });
 

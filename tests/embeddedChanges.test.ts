@@ -13,7 +13,7 @@ import type { JSONObject } from '../src/json/value.ts';
 // Changes of the entities a party embeds (SPECIFICATION.md section 4, apply.ts): the charging tariff offers of charging
 // station operators and e-mobility providers, the groups of e-mobility providers, the grid connection points of grid
 // operators, the parking data of parking operators and the parking spaces of charging station operators. The after ETags
-// are those WWCP_POI3 at 039303b calculated for the same changes of the same version (`CreateChangeSet`): a change set is
+// are those WWCP_POI3 at c94c762 calculated for the same changes of the same version (`CreateChangeSet`): a change set is
 // taken only where this library ends in the very same content.
 
 const AT     = '2026-11-05T10:00:00.000Z';
@@ -85,23 +85,23 @@ describe('Changes of charging tariff offers', () => {
     it('of an operator: added, changed and removed as WWCP_POI3 applies them', () => {
 
         expect(applied([ add('ChargingTariffOffer', 'offer-2', offer('offer-2'), 'ChargingStationOperator', 'DE*GEF') ],
-                       [ '9adbf48574959e735e410d90acdf6e18fdaf4c33ed733c464d83726e249ead6f', '3776f452f4c453f32b770d6a71247bbe79b355ba701d517c8ed12d9d2b657992' ]).id).toBe(before.id);
+                       [ 'c682de48103cd55701ddc3f27a5e2b93d4732a463f671e656b95b6241989cdaa', '1982b22316bf551f7b16e36ebb8b2a53691ab9f41e92b656935aa6a6829dea76' ]).id).toBe(before.id);
 
         applied([ update('ChargingTariffOffer', 'offer-1', 'discount', { percent: 20 }) ],
-                [ '853b15d4128d740a7ad147acabe8253ccf3442e173890cf525da9b8563dbe135', '25d9327a3a2b94c392156b5a5e2b0c741c1a41b98e2abc5cd644e599a35d4e8a' ]);
+                [ 'a498b98cac46c71d0741b224d87b3bbdf3a053bb3dd33e83815e25f14383aeea', '68462842e80fa00649a1c1c64f078d8dfcac000f065f6e77741f6bfb712ca06e' ]);
 
         applied([ remove('ChargingTariffOffer', 'offer-1') ],
-                [ 'd78c8b010e99c15e3488e86d76de3fc0d47f7431dbb9b8347a6b7feedca9817d', 'da94df849b91362be2674e3f33faad87a67a95db5a38dcc48d30c23ff49a2fdd' ]);
+                [ '0eabbdac716ec54ac733a3eda75e76d42654093b5e1a843f361442bb81c37fee', '0a337956b7d311572b07d5eee2662b312d947a1fb707ea1ca78660ecfd0c583b' ]);
 
         // Added and changed by one change set: changed as added by the earlier change.
         applied([ add('ChargingTariffOffer', 'offer-2', offer('offer-2'), 'ChargingStationOperator', 'DE*GEF'), update('ChargingTariffOffer', 'offer-2', 'name', { en: 'Two' }) ],
-                [ '4fdd8a0fa019c7fa34dc3e7b829e41ed162f68c4de9d80b27e9dd156a3037e5b', 'c0c8029d6feb5697e04addad3978e17c7fcb666b04573751219eee44215a807e' ]);
+                [ 'e8ee42790712027c440df7728bf03bfdf090c37249b7f023a3b7764b11aeb181', 'ee685c6c246ea2961a25219bff35e6b8edab1d6a0c04946ca4b5e3b46e98091f' ]);
 
     });
 
     it('of a provider', () => {
         applied([ update('ChargingTariffOffer', 'gdf-offer', 'name', { en: 'Six off' }) ],
-                [ '06fd18efe698eccd5c49f368a8facf81c8eb6f9689e5b90a451b509a408bcb84', 'cf6fbf91d23d464623f7e0f846a6c714cb81565ca56e723eaf075e2236107c33' ]);
+                [ '195f862d5008da38838d1984ff2283f3e1a035a385b70105b6c048336fcb2b52', 'fb180da6da7bdd5c5af7662e1d5efe54f104cc9ea95a55a2d404a40f97ef780c' ]);
     });
 
     it('refused in the words of WWCP_POI3', () => {
@@ -137,10 +137,10 @@ describe('Changes of the groups of e-mobility providers', () => {
     it('added and removed as WWCP_POI3 applies them; a group of an operator otherwise', () => {
 
         applied([ add('EVSEGroup', 'DE*GDF*EG_NEW', { '@id': 'DE*GDF*EG_NEW', name: { en: 'New' }, EVSEIds: [ 'DE*GEF*E2*1' ] }, 'EMobilityProvider', 'DE-GDF') ],
-                [ '4a230ffef3557ac94e801002c16431fc88db5747a28b935bd03cdc18b3d6e638', '137732337ebc2045532579af9752e1e3ae8506953bef52b856a4a71a384fd97d' ]);
+                [ '06dec8ad39070d27f72080f01c508e7533ef9b4b8a57e5c80e385735eda4e942', '9e8f416eb1800e4dabf8c2bd9d1d4bc14bf387261a0463d2035776256619337b' ]);
 
         applied([ remove('ChargingTariffOffer', 'gdf-offer'), remove('EVSEGroup', 'DE*GDF*EG_FAV') ],
-                [ '438fa502b143c90e4b9d43f2a5cb890fbd508fc8b6a06d4ec08ea4f01b8aee7a', '8931328547dea2ec52ad7d695a713a4a715f648e885b0671a80672064187e355' ]);
+                [ '702f2efc1d25821ef528fa69609a91ff1d8578b54f2d8df4c450277e933c8f82', '8b433080c22cad00380974d9160b320dead1cf674a6a7d7bb2f413ec7c4dddd5' ]);
 
         expect(refusal([ update('EVSEGroup', 'DE*GDF*EG_FAV', 'chargingStationIds', [ 'DE*GEF*S1' ]) ]))
             .toBe("Change 0: the property 'chargingStationIds' of an EVSE group can not be changed!");
@@ -194,13 +194,13 @@ describe('Changes of grid connection points', () => {
     it('changed and added as WWCP_POI3 applies them, without timestamps, named by their identifications as read', () => {
 
         applied([ update('GridConnectionPoint', 'gcp-1', 'name', { en: 'Point one' }) ],
-                [ '68ad2a538ca5be5f485cc4ed6018966d18808e40146ec3ae3d10a95cfa15284d', '07eb972039d70faa354b4136754bfdba02149dbd23270e197996d532d618b10b' ]);
+                [ '9a59157b71fc82bbbdce3fd6465ca244480850297bb483a981a9996a196ef697', '17458892a37344166df9d16c3d1317a4b666bc343434fe57c5de64e0a717551e' ]);
 
         applied([ removeProperty('GridConnectionPoint', 'gcp-1', 'maintainedBy') ],
-                [ 'ed9b00d63e653689873f0611e9e9c7ee392758af58dd8c6b3a55e289de46f368', '410b8d4856387cc06b743ea8e69cd3664f5e7eb49b323398d8fa80b63742bbe9' ]);
+                [ 'd0c9fc9dbef8480ab777ffdb907b3618f5c5688cc7be58a0633b99b7503278ff', 'a0e73b1f4a5a6e58b9ac469c54953b0945d9f7f60b6cea933443ec204ba6ccdd' ]);
 
         applied([ add('GridConnectionPoint', ' gcp-2 ', { '@id': 'gcp-2', name: { en: 'Two' } }, 'GridOperator', 'DE*NET') ],
-                [ '5efbc0c348c5db920414b31681c36ea420cd4a9e286f642e527f43b64a880917', 'a6d759176d65766254e04284c9f30ff17f3389c59000c9f5355e2d24ca6c7d45' ]);
+                [ '2e37857a179a661b7326bf7d6dc08defae468417aa16ca4cbb4787eed1f5d5cb', 'c8ec186466905892812772c21ca4a4aa81c294bb563b0b082b0aa420e4fcbcd2' ]);
 
         expect(refusal([ add('GridConnectionPoint', 'GCP-1', { '@id': 'GCP-1' }, 'GridOperator', 'DE*NET') ]))
             .toBe("Change 0: the grid connection point 'GCP-1' already exists, at the grid operator 'DE*NET'!");
@@ -219,20 +219,20 @@ describe('Changes of parking data', () => {
     it('of parking operators and the parking spaces of charging station operators, as WWCP_POI3 applies them', () => {
 
         applied([ add('ParkingGarage', 'garage-2', { '@id': 'garage-2', name: { en: 'Two' } }, 'ParkingOperator', 'DE*PRK') ],
-                [ '1430b577d1c4e270f0a27dc312efc6b9186587c618d41bb42977cc687e1c0c35', 'ac9f8bd474c1ff28aec97e3f8a0d94a5811834d3757c107e7e17dbd27abd7701' ]);
+                [ 'd4fb23fc30d5c4f1c9e54a2358a51ef2b76c403ad8aa88685e77edc4ea21fc54', '9ce0db85f3920493fc94691ee1564ade568d9c9b33073e8a6feb2d4ed073a7b8' ]);
 
         applied([ update('ParkingSensor', 'sensor-1', 'geoLocation', { lat: Decimal.parse('50.9'), lng: Decimal.parse('11.6') }) ],
-                [ '7aeac6f90612c046ba7b443023dfe3210472857b2c3f03e150eb619e5644447f', 'db36bf169431d43f7923ded7cc1198a34790c960396c70a2cc974abcb29a6fe4' ]);
+                [ '3c4e0f4815064769a767baf3f6f436c248d5c302f08372b929a370ca503a39ff', '1ba2ed5a0ffec45da265b0394ac347ee39a4f1d2fe56dec214e51ed7b4a2d26c' ]);
 
         applied([ remove('ParkingSpaceGroup', 'space-group-1') ],
-                [ '224ae7dadf7acf9ae3deb12221466c6b39719e1a447ec8c3f64abfbb7af0d787', '0781235fdcaf4239a39d32437f1168e9014999571eb33c13501d7d8f013b512d' ]);
+                [ 'fe29fb9999f38c5b82aefcec3221fc357ced08599db8d57f6237e6e723724dae', '6270526ff5ca37b307504476e41ffa613c6b29ec37c6ff24a0fb86e899f562a7' ]);
 
         applied([ add('ParkingSpace', 'gef-space-2', { '@id': 'gef-space-2' }, 'ChargingStationOperator', 'DE*GEF') ],
-                [ '9086e63bff393217231df010ed89641a75f7312e3b1c5f51f3fd5762921f436d', '0f72cad28a4eb12b7e091c4571d338c5c7fb463a07184eb7e836c0b464567be3' ]);
+                [ 'd58a6b114e963ab2de0a12141db65c5c43582db52618b7b1a63bdb427f0223c2', 'd1f8f4045d1c5f5bbb743f1c47078d58eb0dec265f935ec9e76c0e81fc3d11ba' ]);
 
         // A parking product has no timestamps; its identification is compared with case.
         applied([ add('ParkingProduct', 'P2', { '@id': 'P2', minDuration: 0 }, 'ParkingOperator', 'DE*PRK') ],
-                [ '0218865a5253b83e7552200061805c13a4fd9b99269769469321166e7b67e97d', '74814bddba994ced744d7e500c8ff3e939c8de6a70553493c940e508b255d6a7' ]);
+                [ '96ed60124fa3f6ba3912acaee861ec60431811e7e34d49f7b1ee8a64faea69a0', 'b6416ca4b298aecd2f3bde46bb6ab70088bb57d00beecd21dba90c9b2404490f' ]);
 
         expect(refusal([ update('ParkingProduct', 'p1', 'minDuration', 60) ])).toBe("Change 0: the parking product 'p1' does not exist!");
         expect(refusal([ add('ParkingGarage', 'garage-2', { '@id': 'garage-2' }, 'ChargingStationOperator', 'DE*GEF') ]))

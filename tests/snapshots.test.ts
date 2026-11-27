@@ -70,7 +70,7 @@ describe('A snapshot of the head', () => {
         expect(history.head.commit.id.startsWith(headId)).toBe(true);
 
         // Valid until 15 minutes after AT, by every holder.
-        expect(History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-26T22:18:00.000Z' }).head.commit.revision).toBe(11);
+        expect(History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-27T01:44:00.000Z' }).head.commit.revision).toBe(11);
 
     });
 
@@ -120,7 +120,7 @@ describe('A snapshot of the head', () => {
             .toThrow(`No attestation of the head '${headId}`);
 
         // Every attestation read as POI reads it: one it cannot read is refused, not left out.
-        expect(() => History.fromSnapshot(ofHead({ attestations: [ ...attestations, { ...defined(attestations[0]), validUntil: '2026-11-28T22:03:00.000Z' } ] }), anchoredPQ))
+        expect(() => History.fromSnapshot(ofHead({ attestations: [ ...attestations, { ...defined(attestations[0]), validUntil: '2026-11-29T01:29:00.000Z' } ] }), anchoredPQ))
             .toThrow('Invalid attestation of the snapshot: An attestation is valid for 24 hours at most');
 
         expect(() => History.fromSnapshot(ofHead({ attestations: {} }), anchoredPQ))
@@ -130,10 +130,10 @@ describe('A snapshot of the head', () => {
 
     it('is refused when its attestations are not valid at the time it is checked', () => {
 
-        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-26T22:18:00.001Z' }))
-            .toThrow(/Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:[0-9a-f]+ of the proof, not of 2! \(the attestation by '[0-9a-f]+' is not valid at 2026-11-26T22:18:00.001Z;/);
+        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-27T01:44:00.001Z' }))
+            .toThrow(/Valid attestations of trusted keys of 0 holders attest the root effectiveTree:sha256:hex:[0-9a-f]+ of the proof, not of 2! \(the attestation by '[0-9a-f]+' is not valid at 2026-11-27T01:44:00.001Z;/);
 
-        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-26T22:02:59.999Z' }))
+        expect(() => History.fromSnapshot(ofHead(), { ...anchoredPQ, at: '2026-11-27T01:28:59.999Z' }))
             .toThrow('Valid attestations of trusted keys of 0 holders attest the root');
 
     });
@@ -161,7 +161,7 @@ describe('A snapshot of the head', () => {
             .toThrow(/^The snapshot is not anchored in the trust anchor of the roaming network 'QA': Valid attestations of trusted keys of 1 holder attest the root effectiveTree:sha256:hex:[0-9a-f]+ of the proof, not of 2!$/);
 
         // A signature that does not verify.
-        expect(() => History.fromSnapshot(ofHead({ attestations: changed(attestation => { attestation['validUntil'] = '2026-11-26T22:17:59.999Z'; }, 2) }), anchoredPQ))
+        expect(() => History.fromSnapshot(ofHead({ attestations: changed(attestation => { attestation['validUntil'] = '2026-11-27T01:43:59.999Z'; }, 2) }), anchoredPQ))
             .toThrow(/of 1 holder attest the root .* \(the attestation by '[0-9a-f]+' is invalid:/);
 
     });

@@ -15,13 +15,13 @@ import type { JSONObject, JSONValue } from '../src/json/value.ts';
 
 // The preconditions of change sets (SPECIFICATION.md section 4, preconditions.ts): the ETag an entity must still have in
 // the version a change set is applied to, over its representation as the roaming network embeds it. The ETags below are
-// those WWCP_POI3 at 039303b took as the ETags of these entities of QA, the after ETags those WWCP_POI3 at 039303b
+// those WWCP_POI3 at c94c762 took as the ETags of these entities of QA, the after ETags those WWCP_POI3 at c94c762
 // calculated for the change (S5).
 
 const AT     = '2026-11-05T10:00:00.000Z';
 const QA     = RoamingNetwork.parse(rich());
-const AFTER  = [ '6312e6d0127db4a552a52b55efccbab6ed58f2205808b5347820e268f861a51f', 'f91cb278e70f189d73ca076cde2193911257c586992e669cdc2146195372fdbe' ] as const;
-const POOL   = 'eafe3c67f6ead64227be0c08c73c58a47b1ec3b1f037aa4810ecc49e74bb8aad';
+const AFTER  = [ '6471eef82997f388aa2b17bc788300b9e51c81951d93507bb1016ef0ee6448ca', '5c7449389e5d9a0ec1b7496e35187e3abf01dd9f548ddbcabe2b3b67ca16e46e' ] as const;
+const POOL   = '4525d94470dd619760cb4e20dc17e0544e8b95208f5be9d4042f9181abd0d3e6';
 
 const change = { kind: 'UpdateProperty', entityType: 'ChargingStation', entityId: 'DE*GEF*S2', propertyName: 'description', newValue: { en: 'Two' } };
 
@@ -89,14 +89,14 @@ describe('Preconditions', () => {
     it('hold for an entity of every kind, as the roaming network embeds it, with everything it embeds', () => {
 
         for (const precondition of [
-            pre('RoamingNetwork',          'QA',                'd1f3560a0747fef2bd4c8802aa2e597762a627f3ba1d5d03dd01c11019a4013c'),
-            pre('ChargingStationOperator', 'DE*GEF',            '12b4089ecd0aa0dac03ae7979660ef5a1562809464c3c2d819b320f211950f62'),
+            pre('RoamingNetwork',          'QA',                '7f3b6be49e3cc3ee63fd0b4522936d4e0fe05354c55fad59f6c5fa3f6dfd262e'),
+            pre('ChargingStationOperator', 'DE*GEF',            '8d2fb902ea3e24e67b2fe5ee5bb998f2b60ebffe0310d2c7a156014524ad0ad0'),
             pre('ChargingPool',            'DE*GEF*P1',         POOL),
-            pre('ChargingStation',         'DE*GEF*S1',         'ac0d6669f9eab56d3471485b22b3804e0dfee87f8fc2d3accd4f43c3a3565cf0'),
-            pre('EVSE',                    'DE*GEF*E1*1',       '1d00bbb8b0af3c1b80993d9039f0e4b4dd80079c1d6d57af6de9a55c28036c08'),
-            pre('ConformityCertificate',   'PTB:2026-0017',     '7b307c1a0920eb01a1c02b36621a3b7595d6bfe3ab82916fe87c8eac30301f47'),
-            pre('EVSEGroup',               'DE*GDF*EG_FAV',     '27e4e6c7f7dd2654cf2a8c6d19d7bf33d74d4ec8b275c7f18fb6a71aa38a1531'),
-            pre('GridConnectionPoint',     'gcp-1',             '5f9abcfe6f2c5f5fe6923994ca7311837c63ab810084824088c7c0fe0cfa3f53'),
+            pre('ChargingStation',         'DE*GEF*S1',         'd44edff00088b5d547d78947a1e3d11c61e6f07c502bb4410bac207614b200f4'),
+            pre('EVSE',                    'DE*GEF*E1*1',       'b6a33bbfc6477a33cf53e4af62496e45acfcfd8b13804d2e0222d500370e57ad'),
+            pre('ConformityCertificate',   'PTB:2026-0017',     'c5d39654f1eaf9c841ea9d933f49c67d63c3fc510e108faeda87fd8c848e819e'),
+            pre('EVSEGroup',               'DE*GDF*EG_FAV',     '39a91c97e7f6ba258aed1356aad6f848755b8aaae3f520325dd6f8de1d7e5ba5'),
+            pre('GridConnectionPoint',     'gcp-1',             '76f1a3d1eeb742e8fe68b941b0fd925cc99b9fc57d2aa24da9d292a47f704164'),
             pre('ParkingProduct',          'P1',                'e30df4421eacfaa06624ac1be72a71dd8117055c2be31f8b9580b853d17d730d'),
         ])
             expect(outcome([ precondition ])).toBe('taken');
@@ -105,8 +105,8 @@ describe('Preconditions', () => {
 
     it('of every format and hash algorithm, an entity named in any spelling its type considers equal', () => {
 
-        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '1d39aa47b30cf330517a2fecead1793643805d584e7c9a921fbc49c144501cfb', 'cbor') ])).toBe('taken');
-        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '47aac0fce42f96b79e030e8abfde43fefb2fb49f41e22bd5016ea13cc76391dd2538cf86f29af45116faa206ed52248f154607b233b9a6c86fb65c0a11cc4627', 'cbor', 'sha512') ]))
+        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '4c2b0277925d7141f504371baa14473d523b2fcfeab6f4178e8ec86c2b2c82da', 'cbor') ])).toBe('taken');
+        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', '3d2c1cd6b73f214aa502be58cd15a3d9bb2c42c8b3bccbb1f1ad6b90f0d37a42dc55597f0ac19b5e1909ee0e974128ea0f82cca60bd2d2733f6175e4958c239b', 'cbor', 'sha512') ]))
             .toBe('taken');
 
         // An entity has no effectiveTree ETag: WWCP_POI3 takes one over its canonical JSON.
@@ -121,15 +121,15 @@ describe('Preconditions', () => {
 
         // Checked against the version before the change set, also for the entity it changes.
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL) ], [ { kind: 'UpdateProperty', entityType: 'ChargingPool', entityId: 'DE*GEF*P1', propertyName: 'description', newValue: { en: 'One' } } ],
-                       [ 'd8b29e2d62c6b866adb8a48094688764e3e26fa858841efb22ad0837c9136857', 'de6f372ec91068d0075e0e51e004b152dc8a9df03bfce82a0265eee02efbdfe6' ]))
+                       [ 'ac8c10d2b92429d526af9a1be36ce7a73bc7ef82e36727282e0120d5f3b74fe6', '74ea8f2090bba459940ee290553b56096da36c89b0eb3b6dbb6d3ca2d8746bd0' ]))
             .toBe('taken');
 
     });
 
     it('refused in the words of WWCP_POI3 where they do not hold', () => {
 
-        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', 'ac0d6669f9eab56d3471485b22b3804e0dfee87f8fc2d3accd4f43c3a3565cf0') ]))
-            .toBe(`${NOT_FIT}Precondition 0: the ChargingPool 'DE*GEF*P1' changed, it no longer has the ETag json:sha256:hex:ac0d6669f9eab56d3471485b22b3804e0dfee87f8fc2d3accd4f43c3a3565cf0!`);
+        expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', 'd44edff00088b5d547d78947a1e3d11c61e6f07c502bb4410bac207614b200f4') ]))
+            .toBe(`${NOT_FIT}Precondition 0: the ChargingPool 'DE*GEF*P1' changed, it no longer has the ETag json:sha256:hex:d44edff00088b5d547d78947a1e3d11c61e6f07c502bb4410bac207614b200f4!`);
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P1', POOL), pre('ChargingStation', 'DE*GEF*S1', POOL) ]))
             .toBe(`${NOT_FIT}Precondition 1: the ChargingStation 'DE*GEF*S1' changed, it no longer has the ETag json:sha256:hex:${POOL}!`);
         expect(outcome([ pre('ChargingPool', 'DE*GEF*P9', POOL) ]))
@@ -167,7 +167,7 @@ describe('Preconditions', () => {
         expect(read([ { '@context': 'https://open.charging.cloud/contexts/wwcp/roamingNetwork/precondition/v1', ...good } ])).toBe('read');
         expect(read([])).toBe('read');
 
-        // Another property, too, which WWCP_POI3 at 039303b takes and leaves out (identified without it, it takes it).
+        // Another property, too, which WWCP_POI3 at c94c762 takes and leaves out (identified without it, it takes it).
         for (const invalid of [ { ...good, '@context': 'x' }, { entityType: 'ChargingPool', entityId: 'DE*GEF*P1' }, { entityId: 'DE*GEF*P1', eTag: good['eTag'] as JSONValue },
                                 { ...good, entityId: 5 }, { ...good, eTag: [ 'json', 'sha256', 'base64', 'AAAA' ] }, { ...good, eTag: [ 'json', 'sha256', 'hex', 'abcd' ] },
                                 { ...good, eTag: [ 'xml', 'sha256', 'hex', POOL ] }, { ...good, eTag: `json:sha256:hex:${POOL}` }, { ...good, colour: 'red' }, 'DE*GEF*P1' ] as JSONValue[])
@@ -181,32 +181,32 @@ describe('Preconditions', () => {
 
         const good = pre('ChargingPool', 'DE*GEF*P1', POOL);
 
-        // The identifications of these change sets, of QA of the run of WWCP_POI 039303b: as WWCP_POI3 at 76d3653 gave them of
-        // the run of that time (ZProbePreconditions), the rule unchanged; at 039303b it reads the change sets of these tests
+        // The identifications of these change sets, of QA of the run of WWCP_POI c94c762: as WWCP_POI3 at 76d3653 gave them of
+        // the run of that time (ZProbePreconditions), the rule unchanged; at c94c762 it reads the change sets of these tests
         // identified so.
-        expect(changeSetIdentification(plainJSON([ good ]))).toBe('280666f954ac75fef755d5ee5cc0feb2bab1fcbcc9e3355809d30f88d4ea57ab');
+        expect(changeSetIdentification(plainJSON([ good ]))).toBe('7acfa6a694dddcf3835f82b3427610717c8a723e737b3d59a3abfd1241a82568');
 
         for (const precondition of [ { ...good, entityId: ' DE*GEF*P1 ' }, { ...good, entityId: '\tDE*GEF*P1\n' }, { ...good, entityId: '\u00a0DE*GEF*P1\u2003' },
                                      { ...good, entityType: ' ChargingPool ' }, { '@context': PRECONDITION_CONTEXT, ...good },
                                      { '@context': PRECONDITION_CONTEXT, ...good, entityId: ' DE*GEF*P1' }, { ...good, colour: 'red' } ])
-            expect(changeSetIdentification(plainJSON([ precondition ]))).toBe('280666f954ac75fef755d5ee5cc0feb2bab1fcbcc9e3355809d30f88d4ea57ab');
+            expect(changeSetIdentification(plainJSON([ precondition ]))).toBe('7acfa6a694dddcf3835f82b3427610717c8a723e737b3d59a3abfd1241a82568');
 
         expect(changeSetIdentification(plainJSON([ good, { '@context': PRECONDITION_CONTEXT, ...good } ])))
-            .toBe('44e9fab5d717d79e5639c8b584cd1debdfc23156d6b0dcc81b63ec11ec604e46');
-        expect(changeSetIdentification(plainJSON([ { ...good, entityId: '' } ]))).toBe('66d2140b6cdb4146cc11fc4e3b865ae676493d2f93e4b788da6aac05578133ee');
-        expect(changeSetIdentification(plainJSON([ { ...good, entityId: '   ' } ]))).toBe('66d2140b6cdb4146cc11fc4e3b865ae676493d2f93e4b788da6aac05578133ee');
-        expect(changeSetIdentification(plainJSON([]))).toBe('4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac');
-        expect(changeSetIdentification(plainJSON())).toBe('4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac');
+            .toBe('5bd0efb0ef5f79e35b03a22b441130ce76169fc07d6dd72a31d378daf6dae89b');
+        expect(changeSetIdentification(plainJSON([ { ...good, entityId: '' } ]))).toBe('d26198ab1ea8e3773db6a41520eeb9b1764c0288dd79485d8e4259c07f68c1a3');
+        expect(changeSetIdentification(plainJSON([ { ...good, entityId: '   ' } ]))).toBe('d26198ab1ea8e3773db6a41520eeb9b1764c0288dd79485d8e4259c07f68c1a3');
+        expect(changeSetIdentification(plainJSON([]))).toBe('4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252');
+        expect(changeSetIdentification(plainJSON())).toBe('4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252');
 
         // Identified by them as given, refused in the words of WWCP_POI3.
         expect(readAsGiven([ { ...good, entityId: ' DE*GEF*P1 ' } ]))
-            .toBe("The change set '142c4f8aa48cebc1cce0bdc5788b620e04c65bcc2b7d6fd6455d1f27848c08c1' is not identified by its content, '280666f954ac75fef755d5ee5cc0feb2bab1fcbcc9e3355809d30f88d4ea57ab'!");
+            .toBe("The change set 'b145ff9639c99b4d2ec0dd5292e4395c8614431a819bd40e69ff244b16697a4e' is not identified by its content, '7acfa6a694dddcf3835f82b3427610717c8a723e737b3d59a3abfd1241a82568'!");
         expect(readAsGiven([ { '@context': PRECONDITION_CONTEXT, ...good } ]))
-            .toBe("The change set '68c61fff84440430fd326aeb8b97f6cc23a78f545a31d68acb1e6995df1924ad' is not identified by its content, '280666f954ac75fef755d5ee5cc0feb2bab1fcbcc9e3355809d30f88d4ea57ab'!");
+            .toBe("The change set 'd135570e758b1c9df6c6e6a3acf5384680686babb432700c8c74fdca874dc397' is not identified by its content, '7acfa6a694dddcf3835f82b3427610717c8a723e737b3d59a3abfd1241a82568'!");
         // Another property refused before the identification, as WWCP_POI3 with the change proposed for it refuses it.
         expect(readAsGiven([ { ...good, colour: 'red' } ])).toBe('Invalid precondition 0!');
         expect(readAsGiven([]))
-            .toBe("The change set '461bdd35202671f5c4cff2b583fbbc37310e1401cb28b82f1a5b9ed0c63c8409' is not identified by its content, '4221be4ddbd5fd1090a4e372878cf50b4861e6ba66bac04a62519349d600f0ac'!");
+            .toBe("The change set '7324ef5a1f26de3f2e84e32c65eec61bd97d83b19b2a829af9cccab6a5610ea9' is not identified by its content, '4ae1eb0077b0d0dcc6b9cf62997bcd0ba2b7b43ab07b1fe7770e47e4ba702252'!");
 
         // Signed as identified, as WWCP_POI3 writes it again (ToJSON(Embedded: true, IncludeSignatures: false)).
         const signature = { algorithm: 'Ed25519', keyId: 'DE*GEF', value: 'AAAA' };

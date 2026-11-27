@@ -78,7 +78,7 @@ describe('Example A12: the traffic report and the atlas', () => {
         const status = RuntimeStatus.fromSnapshot(snapshot);
         const now    = defined(status.get('EVSE', 'DE*GEF*E1*1', 'status'));
 
-        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-11-26T22:02:25.599Z');
+        expect(`${asText(now.value)} since ${toTimestamp(now.timestamp)}`).toBe('charging since 2026-11-27T01:28:09.325Z');
 
         const withoutStatus = clone(snapshot);
         delete withoutStatus['runtimeStatus'];
