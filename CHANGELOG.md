@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (prepared; not yet published)
+
+Who states a certificate is read with it, and a key statement may carry signatures of identity keys it names no
+longer: a certificate naming another than the roaming network operator in the place of its conformity assessment body
+is refused where it is read, of a version and at the change of a change set that names it; a signature of a key
+statement by a key neither the statement names nor the verifier was given is passed over, so that the statements of an
+operator, one after the other, lead on where a holder leaves or a key is replaced. Both are probed against WWCP_POI3
+at `464e712`, and the vectors of WWCPPOIConformanceTests `02dd7e1` hold, none deviating, on the run of WWCP_POI
+`c94c762`. See [Migration](#migration) before upgrading: versions 0.5.0 took are refused, key statements it refused
+are taken, and the words of some refusals change.
 
 - WWCP_POI `5219653` ported: a key statement may carry signatures of identity keys it names no longer
   (SPECIFICATION.md 8.6), of a holder that leaves or of a key replaced by one of another holder. A signature by a key
@@ -59,6 +68,28 @@
 - For development, Vitest 5.1.2, Vite 8.4.0 (Rolldown 1.3.4), ESLint 10.15.0, typescript-eslint 8.74.0, Playwright 1.65.1
   and @types/node 26.6.11, and the dependencies beneath them as far as their ranges allow. TypeScript stays at 6.0:
   typescript-eslint 8.74.0 still requires a version below 6.1. What the package depends on is unchanged.
+
+### Migration
+
+- A certificate names who states it, `statedBy`, only as `roamingNetworkOperator`, or not at all, for its conformity
+  assessment body: a version whose certificate names another, also the identification of its body,
+  `roamingNetworkOperator` in another case, untrimmed or empty, which 0.5.0 took, is refused, "The certificate '…' is
+  stated by its conformity assessment body, or by the roaming network operator in its place,
+  'roamingNetworkOperator', not by '…'!", and one that is no text, "statedBy: expected a string."; producers leave it
+  out for the body.
+- A change set giving a certificate such a `statedBy` is refused at the change after which the certificate names it,
+  in the same words after "Change N: ", where 0.5.0 refused it after its last change without naming one, and so before a
+  certificate of a change before it that names none where it must name the roaming network operator.
+- A signature of a key statement by a key neither the statement names nor the verifier was given is passed over and
+  counts for no holder: such a statement, which 0.5.0 refused, "The identity key '…' that signed the key statement is
+  not given!", is taken where the signatures of the keys known reach the quorum, and refused in the words of the
+  quorum where they do not. `TrustContext.evaluate` no longer gives such a signature as invalid, "The public key of a
+  signer was not provided"; its `signedBy` and `trustedHolderCount` are of the signatures it verified. Nothing 0.5.0
+  took of a key statement is refused.
+- The API is that of 0.5.0: nothing new, nothing removed.
+- The dependencies are those of 0.5.0, `@vanaheimr/cose` ^0.15.0 and `@vanaheimr/metrological-cbor` ^0.12.0. The
+  minimum runtime remains Node 22.18, and the package remains ESM-only. The package is 4.0 MB unpacked, as 0.5.0
+  was.
 
 
 ## 0.5.0 (2026-11-17)
